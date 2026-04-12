@@ -1,0 +1,15 @@
+# env
+.env
+*.env
+
+# Next.js
+web/.next/
+web/node_modules/
+web/out/
+
+# WordPress
+themes/*/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

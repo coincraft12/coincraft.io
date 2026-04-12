@@ -1,0 +1,41 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: #0A0A0F;
+    color: #E8E8E8;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  }
+}
+
+@layer components {
+  .cc-container {
+    @apply max-w-cc mx-auto px-6;
+  }
+  .cc-btn {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-cc font-semibold text-sm transition-all duration-300 cursor-pointer;
+  }
+  .cc-btn-primary {
+    @apply bg-cc-accent text-cc-primary hover:bg-cc-accent-dark;
+  }
+  .cc-btn-ghost {
+    @apply border border-cc-accent text-cc-accent hover:bg-cc-accent hover:text-cc-primary;
+  }
+  .cc-btn-outline {
+    @apply border border-white/20 text-cc-text hover:border-cc-accent hover:text-cc-accent;
+  }
+  .cc-label {
+    @apply text-xs font-bold tracking-widest text-cc-accent uppercase;
+  }
+  .cc-section {
+    @apply py-24;
+  }
+  .cc-glass {
+    @apply bg-white/[0.04] border border-white/10 rounded-cc-lg backdrop-blur-sm;
+  }
+}

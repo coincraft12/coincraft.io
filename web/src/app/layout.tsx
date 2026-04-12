@@ -1,0 +1,21 @@
+import type { Metadata } from 'next'
+import './globals.css'
+
+export const metadata: Metadata = {
+  title: 'CoinCraft — 블록체인의 구조를 설계하는 사람들',
+  description: 'Web3 아키텍처 교육, 온체인 분석, Custody 시스템 설계, 특허 전략을 통해 블록체인 산업의 전문가를 양성합니다.',
+  openGraph: {
+    title: 'CoinCraft',
+    description: 'Web3 · Blockchain · Education',
+    url: 'https://coincraft.io',
+    siteName: 'CoinCraft',
+  },
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ko">
+      <body>{children}</body>
+    </html>
+  )
+}
