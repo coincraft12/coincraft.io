@@ -24,11 +24,42 @@
 - [x] 푸터: 사업자 정보·연락처·법무 링크
 - [x] About 페이지 제작 + 운영 배포 (기술 중심 리브랜딩)
 - [x] ABOUT 메뉴 URL 수정 — `#` → `/about/` (모바일 링크 수정, 2026-04-12)
+- [x] WP Super Cache + mod_rewrite 활성화 (전 페이지 서버 응답 ~0ms, 2026-04-12)
+- [x] 미사용 플러그인 11개 삭제 (2026-04-12)
 
 ## 다음 작업 항목
 - [ ] Sharon 검토 → 운영 배포 승인
 - [ ] Nginx 설정 변경 (coincraft.io → Next.js standalone, academy.coincraft.io → WordPress)
 - [ ] 블로그 섹션 WordPress REST API 썸네일 연동 확인
+- [ ] Google 소셜 로그인 연동 (nextend-facebook-connect 플러그인 설치됨)
+  - Sharon이 Google Cloud Console에서 OAuth 클라이언트 ID·Secret 발급 후 진행
+  - 리디렉션 URI: `https://coincraft.io/?oauth=1&action=nextendLogin&provider=google`
+  - 기존 회원 이메일 자동 매칭 설정 켜기
+- [ ] 스테이징 서버 구축 — custody 스테이징 VPS 활용 검토
+  - GitHub Secrets에서 STAGING_HOST IP 확인 (Sharon 직접)
+  - 서버 사양 확인 (RAM/디스크 여유 → coincraft Next.js + Nginx 추가 가능 여부)
+  - 가능하면 staging.coincraft.io 서브도메인으로 구성
+
+- [ ] 전자책 ePub 변환
+  - 살아남기 위한 생존전략 WEB3: `_Archive/05_집필/01. 살아남기 위한 생존전략 WEB3/final_ver1.0.docx` (Sharon 최종본 확인 필요)
+  - 온체인 시그널: `_Archive/05_집필/02. 온체인시그널/prologue.docx + chapter1~4.docx` (Sharon 최종본 확인 필요)
+  - 사토시 픽션: 9차 퇴고 완료 + 분권 결정 후 진행
+  - 완료 후 Next.js 사이트에서 직접 판매 페이지 연동
+
+## 아키텍처 장기 방향 (2026-04-12 확정, CIO-001)
+- **완전 헤드리스 WordPress** 구조로 장기 전환
+- Next.js = 메인 프론트엔드 (모든 라우팅·렌더링·헤더·푸터)
+- WordPress = 백엔드 전용 (REST API로 데이터 제공, 사용자에게 직접 노출 안 함)
+- 단계별 마이그레이션: 강좌 목록 → 강좌 상세 → 계정/결제 순
+- 급하지 않음 — CIO 주도 장기 로드맵으로 관리
+- 현재 스테이징 혼재 구조는 과도기 상태로 인정, 운영 배포 전까지 유지
+
+## 모바일 앱 계획 (2026-04-12 확정, CIO-002)
+- 강의 수강 + 전자책 + 콘텐츠 제공 전용 앱
+- 기술 스택 후보: React Native / Expo (Next.js 코드 재사용 가능)
+- 백엔드: WordPress REST API + Node.js API 연계
+- 선행 조건: 헤드리스 WordPress 전환(CIO-001) 완료 후 착수
+- 앱스토어(iOS) + 플레이스토어(Android) 양쪽 배포 목표
 
 ## 서버 정보
 - 운영 서버: 46.62.212.134 / SSH: `ssh coincraft` / 유저: root
