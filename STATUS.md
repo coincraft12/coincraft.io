@@ -61,6 +61,13 @@
 - 선행 조건: 헤드리스 WordPress 전환(CIO-001) 완료 후 착수
 - 앱스토어(iOS) + 플레이스토어(Android) 양쪽 배포 목표
 
+## 작업 전 필독 (CIO)
+- `Work/CIO/coincraft_platform_roadmap.md` — Phase별 세부 To-Do
+- `Work/CIO/cso_cio_protocol.md` — CIO-CSO 협조 규칙
+- `Work/CIO/decisions.md` — 기존 결정 확인
+- `Work/CIO/daily_log.md` — 최근 작업 맥락 확인
+- `Work/CSO/decisions.md` — 전사 우선순위 확인
+
 ## 서버 정보
 - 운영 서버: 46.62.212.134 / SSH: `ssh coincraft` / 유저: root
 - WordPress 경로: /var/www/coincraft.io / 테마: eduma-child
