@@ -164,19 +164,24 @@
     border-color: #F5A623;
   }
 
-  /* Fix full-screen: must be above fixed header (z-50 = 50) and cover entire viewport */
-  .w-md-editor-fullscreen {
-    z-index: 9999 !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    background-color: #1A1A2E !important;
-  }
-  .w-md-editor-fullscreen .w-md-editor-preview,
-  .w-md-editor-fullscreen .wmde-markdown,
-  .w-md-editor-fullscreen .w-md-editor-content {
-    background-color: #1A1A2E !important;
-  }
+}
+
+/* ── Fullscreen editor — outside @layer so it beats library styles ── */
+.w-md-editor-fullscreen {
+  z-index: 9999 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: #1A1A2E !important;
+}
+.w-md-editor-fullscreen .w-md-editor-content,
+.w-md-editor-fullscreen .w-md-editor-input,
+.w-md-editor-fullscreen .w-md-editor-area,
+.w-md-editor-fullscreen .w-md-editor-preview,
+.w-md-editor-fullscreen .wmde-markdown {
+  background-color: #1A1A2E !important;
 }
