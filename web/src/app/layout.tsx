@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import AppProviders from '@/providers/app-providers'
 
 export const metadata: Metadata = {
   title: 'CoinCraft — 블록체인의 구조를 설계하는 사람들',
@@ -15,7 +16,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   )
 }

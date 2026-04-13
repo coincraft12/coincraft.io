@@ -1,0 +1,76 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy-api:
+    name: Deploy API to Staging
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Deploy to staging
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/coincraft-api
+            git pull origin master
+            npm ci --production
+            npm run build
+            pm2 restart coincraft-api-staging || pm2 start ecosystem.config.js --env staging
+
+  deploy-web:
+    name: Deploy Web to Staging
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Package standalone
+        run: |
+          tar czf /tmp/web-standalone.tar.gz -C .next/standalone .
+          tar czf /tmp/web-static.tar.gz -C .next/static .
+          tar czf /tmp/web-public.tar.gz -C public .
+      - name: Upload to staging
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "/tmp/web-standalone.tar.gz,/tmp/web-static.tar.gz,/tmp/web-public.tar.gz"
+          target: /tmp/
+      - name: Extract and restart
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/coincraft-staging
+            tar xzf /tmp/web-standalone.tar.gz
+            mkdir -p .next/static && tar xzf /tmp/web-static.tar.gz -C .next/static/
+            mkdir -p public && tar xzf /tmp/web-public.tar.gz -C public/
+            rm -rf public/public
+            pm2 restart coincraft-staging
