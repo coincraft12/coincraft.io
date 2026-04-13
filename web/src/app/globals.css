@@ -38,4 +38,96 @@
   .cc-glass {
     @apply bg-white/[0.04] border border-white/10 rounded-cc-lg backdrop-blur-sm;
   }
+
+  /* ── Markdown rendered content ─────────────────────────────────────── */
+  .cc-markdown {
+    @apply text-cc-muted leading-relaxed;
+  }
+  .cc-markdown h1 {
+    @apply text-2xl font-bold text-cc-text mt-6 mb-3;
+  }
+  .cc-markdown h2 {
+    @apply text-xl font-bold text-cc-text mt-5 mb-2;
+  }
+  .cc-markdown h3 {
+    @apply text-lg font-semibold text-cc-text mt-4 mb-2;
+  }
+  .cc-markdown h4,
+  .cc-markdown h5,
+  .cc-markdown h6 {
+    @apply text-base font-semibold text-cc-text mt-3 mb-1;
+  }
+  .cc-markdown p {
+    @apply mb-3;
+  }
+  .cc-markdown strong {
+    @apply font-bold text-cc-text;
+  }
+  .cc-markdown em {
+    @apply italic;
+  }
+  .cc-markdown ul {
+    @apply list-disc list-inside mb-3 space-y-1;
+  }
+  .cc-markdown ol {
+    @apply list-decimal list-inside mb-3 space-y-1;
+  }
+  .cc-markdown li {
+    @apply text-cc-muted;
+  }
+  .cc-markdown a {
+    @apply text-cc-accent hover:underline;
+  }
+  .cc-markdown blockquote {
+    @apply border-l-4 border-cc-accent pl-4 italic text-cc-muted my-3;
+  }
+  .cc-markdown code {
+    @apply bg-white/10 text-cc-accent px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+  .cc-markdown pre {
+    @apply bg-white/5 border border-white/10 rounded-cc p-4 overflow-x-auto mb-3;
+  }
+  .cc-markdown pre code {
+    @apply bg-transparent p-0 text-cc-text;
+  }
+  .cc-markdown hr {
+    @apply border-white/10 my-4;
+  }
+
+  /* ── Markdown editor dark theme overrides ──────────────────────────── */
+  .cc-md-editor .w-md-editor {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #E8E8E8;
+  }
+  .cc-md-editor .w-md-editor-toolbar {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .cc-md-editor .w-md-editor-toolbar li button {
+    color: #9CA3AF;
+  }
+  .cc-md-editor .w-md-editor-toolbar li button:hover {
+    color: #E8E8E8;
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+  .cc-md-editor .w-md-editor-text-pre > code,
+  .cc-md-editor .w-md-editor-text-input {
+    color: #E8E8E8 !important;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .cc-md-editor .w-md-editor-preview {
+    background-color: transparent;
+  }
+  .cc-md-editor .wmde-markdown {
+    background-color: transparent;
+    color: #E8E8E8;
+    font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  }
+  .cc-md-editor .w-md-editor:focus-within {
+    border-color: #F5A623;
+  }
 }

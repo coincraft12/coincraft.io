@@ -9,6 +9,7 @@ import { revalidateCourse } from '@/lib/revalidate';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import MarkdownEditor from '@/components/ui/MarkdownEditor';
 
 interface CourseEditForm {
   title: string;
@@ -175,15 +176,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-cc-text">상세 설명</label>
-          <textarea
-            rows={6}
-            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm focus:outline-none focus:border-cc-accent transition-colors resize-none"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-        </div>
+        <MarkdownEditor
+          label="상세 설명"
+          value={form.description}
+          onChange={(v) => setForm({ ...form, description: v })}
+          height={360}
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">

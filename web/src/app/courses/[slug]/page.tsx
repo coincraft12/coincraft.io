@@ -4,6 +4,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import CurriculumAccordion from '@/components/courses/curriculum-accordion';
 import EnrollButton from '@/components/courses/enroll-button';
+import MarkdownContent from '@/components/ui/MarkdownContent';
 
 export const revalidate = 300;
 
@@ -133,7 +134,7 @@ export default async function CourseDetailPage({
               {course.description && (
                 <div>
                   <h2 className="text-xl font-bold text-cc-text mb-3">강좌 소개</h2>
-                  <p className="text-cc-muted leading-relaxed whitespace-pre-line">{course.description}</p>
+                  <MarkdownContent content={course.description} />
                 </div>
               )}
 
