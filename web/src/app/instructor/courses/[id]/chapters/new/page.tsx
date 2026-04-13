@@ -2,7 +2,7 @@
 
 import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
 import Input from '@/components/ui/Input';
@@ -19,6 +19,7 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
   const { id: courseId } = use(params);
   const router = useRouter();
   const token = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState<CreateChapterBody>({
     title: '',
@@ -37,6 +38,7 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
       );
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['instructor-course', courseId] });
       router.push(`/instructor/courses/${courseId}`);
     },
     onError: (err) => {
