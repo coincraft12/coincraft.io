@@ -151,9 +151,9 @@ export async function getEbookFile(ebookId: string, userId: string): Promise<Buf
   }
 }
 
-export async function getEbookProgress(ebookId: string, userId: string): Promise<{ lastPage: number }> {
+export async function getEbookProgress(ebookId: string, userId: string): Promise<{ lastCfi: string }> {
   const [row] = await db
-    .select({ lastPage: ebookReadingProgress.lastPage })
+    .select({ lastCfi: ebookReadingProgress.lastCfi })
     .from(ebookReadingProgress)
     .where(
       and(
@@ -163,29 +163,29 @@ export async function getEbookProgress(ebookId: string, userId: string): Promise
     )
     .limit(1);
 
-  return { lastPage: row?.lastPage ?? 1 };
+  return { lastCfi: row?.lastCfi ?? '' };
 }
 
 export async function upsertEbookProgress(
   ebookId: string,
   userId: string,
-  page: number
-): Promise<{ lastPage: number }> {
+  cfi: string
+): Promise<{ lastCfi: string }> {
   await db
     .insert(ebookReadingProgress)
     .values({
       userId,
       ebookId,
-      lastPage: page,
+      lastCfi: cfi,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
       target: [ebookReadingProgress.userId, ebookReadingProgress.ebookId],
       set: {
-        lastPage: page,
+        lastCfi: cfi,
         updatedAt: new Date(),
       },
     });
 
-  return { lastPage: page };
+  return { lastCfi: cfi };
 }

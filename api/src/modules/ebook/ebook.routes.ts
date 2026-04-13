@@ -40,8 +40,8 @@ export async function ebookRoutes(app: FastifyInstance): Promise<void> {
   // PATCH /api/v1/ebooks/:id/progress — 읽기 진행도 저장 (인증 필요)
   app.patch('/api/v1/ebooks/:id/progress', { preHandler: [authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { page } = request.body as { page: number };
-    const progress = await ebookService.upsertEbookProgress(id, request.user!.id, page);
+    const { cfi } = request.body as { cfi: string };
+    const progress = await ebookService.upsertEbookProgress(id, request.user!.id, cfi);
     return reply.send(ok(progress));
   });
 }

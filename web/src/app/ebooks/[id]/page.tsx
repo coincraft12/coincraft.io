@@ -32,6 +32,7 @@ export default function EbookViewerPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isFileLoading, setIsFileLoading] = useState(true);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressRestoredRef = useRef(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -62,16 +63,17 @@ export default function EbookViewerPage() {
         const metaJson: EbookMetaResponse = await metaRes.json();
         setMeta(metaJson.data);
 
-        // Fetch reading progress
+        // Fetch reading progress (CFI string)
         try {
           const progressRes = await fetch(`${API_BASE}/api/v1/ebooks/${id}/progress`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (progressRes.ok) {
             const progressJson = await progressRes.json();
-            const savedPage = progressJson?.data?.lastPage;
-            if (savedPage && savedPage > 1) {
-              setLocation(savedPage);
+            const savedCfi = progressJson?.data?.lastCfi;
+            if (savedCfi) {
+              setLocation(savedCfi);
+              progressRestoredRef.current = true;
             }
           }
         } catch {
@@ -104,23 +106,28 @@ export default function EbookViewerPage() {
     // 로그인 안 된 경우 저장 스킵
     if (!token || !id) return;
 
-    // debounce 1초 후 진행도 저장
-    if (saveDebounceRef.current) {
-      clearTimeout(saveDebounceRef.current);
+    // 초기 로드 시 locationChanged 발화는 저장 스킵
+    if (!progressRestoredRef.current) {
+      progressRestoredRef.current = true;
+      return;
     }
+
+    // CFI가 아닌 경우 스킵
+    const cfi = typeof loc === 'string' ? loc : null;
+    if (!cfi) return;
+
+    // debounce 1초 후 CFI 저장
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
     saveDebounceRef.current = setTimeout(() => {
       const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
-      const page = typeof loc === 'number' ? loc : 0;
       fetch(`${API_BASE}/api/v1/ebooks/${id}/progress`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ page }),
-      }).catch(() => {
-        // 저장 실패 시 조용히 무시
-      });
+        body: JSON.stringify({ cfi }),
+      }).catch(() => {});
     }, 1000);
   }, [token, id]);
 
