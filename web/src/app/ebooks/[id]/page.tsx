@@ -31,8 +31,14 @@ export default function EbookViewerPage() {
   const [location, setLocation] = useState<string | number>(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isFileLoading, setIsFileLoading] = useState(true);
+  const [fontSize, setFontSize] = useState(100);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [isTurning, setIsTurning] = useState(false);
+
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
+  const renditionRef = useRef<any>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -52,7 +58,6 @@ export default function EbookViewerPage() {
       setLoadError(null);
 
       try {
-        // Fetch metadata
         const metaRes = await fetch(`${API_BASE}/api/v1/ebooks/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -63,7 +68,6 @@ export default function EbookViewerPage() {
         const metaJson: EbookMetaResponse = await metaRes.json();
         setMeta(metaJson.data);
 
-        // Fetch reading progress (CFI string)
         try {
           const progressRes = await fetch(`${API_BASE}/api/v1/ebooks/${id}/progress`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -76,11 +80,8 @@ export default function EbookViewerPage() {
               progressRestoredRef.current = true;
             }
           }
-        } catch {
-          // 진행도 조회 실패 시 조용히 무시
-        }
+        } catch {}
 
-        // Fetch epub file as ArrayBuffer
         const fileRes = await fetch(`${API_BASE}/api/v1/ebooks/${id}/file`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -100,38 +101,70 @@ export default function EbookViewerPage() {
     loadEbook();
   }, [token, id]);
 
+  // Apply font size whenever it changes
+  useEffect(() => {
+    renditionRef.current?.themes.fontSize(`${fontSize}%`);
+  }, [fontSize]);
+
+  const handleGetRendition = useCallback((rendition: any) => {
+    renditionRef.current = rendition;
+
+    // Text selection color (inject into epub iframe)
+    rendition.themes.register('cc-theme', {
+      '::selection': { background: 'rgba(74, 158, 255, 0.35)' },
+    });
+    rendition.themes.select('cc-theme');
+    rendition.themes.fontSize(`${fontSize}%`);
+
+    // Generate locations for page counting
+    rendition.book.ready.then(() => {
+      rendition.book.locations.generate(1024).then(() => {
+        setTotalPages(rendition.book.locations.length());
+      });
+    });
+  }, []);
+
   const handleLocationChanged = useCallback((loc: string | number) => {
+    // Page turn animation
+    setIsTurning(true);
+    setTimeout(() => setIsTurning(false), 300);
+
     setLocation(loc);
 
-    // 로그인 안 된 경우 저장 스킵
+    // Update current page number
+    if (renditionRef.current && typeof loc === 'string') {
+      const locations = renditionRef.current.book?.locations;
+      if (locations?.length() > 0) {
+        const pageNum = locations.locationFromCfi(loc);
+        if (pageNum >= 0) setCurrentPage(pageNum + 1);
+      }
+    }
+
     if (!token || !id) return;
 
-    // 초기 로드 시 locationChanged 발화는 저장 스킵
     if (!progressRestoredRef.current) {
       progressRestoredRef.current = true;
       return;
     }
 
-    // CFI가 아닌 경우 스킵
     const cfi = typeof loc === 'string' ? loc : null;
     if (!cfi) return;
 
-    // debounce 1초 후 CFI 저장
     if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
     saveDebounceRef.current = setTimeout(() => {
       const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
       fetch(`${API_BASE}/api/v1/ebooks/${id}/progress`, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ cfi }),
       }).catch(() => {});
     }, 1000);
   }, [token, id]);
 
-  // While auth is loading
+  function changeFontSize(delta: number) {
+    setFontSize((prev) => Math.min(Math.max(prev + delta, 80), 160));
+  }
+
   if (isAuthLoading || (!token && !isAuthLoading)) {
     return (
       <div className="min-h-screen bg-cc-primary flex items-center justify-center">
@@ -154,9 +187,7 @@ export default function EbookViewerPage() {
       <div className="min-h-screen bg-cc-primary flex flex-col items-center justify-center gap-4">
         <p className="text-5xl">📖</p>
         <p className="text-cc-text font-semibold">{loadError}</p>
-        <Button variant="outline" onClick={() => router.push('/ebooks')}>
-          전자책 목록으로
-        </Button>
+        <Button variant="outline" onClick={() => router.push('/ebooks')}>전자책 목록으로</Button>
       </div>
     );
   }
@@ -170,44 +201,57 @@ export default function EbookViewerPage() {
     >
       {/* Top bar */}
       <header className="flex items-center justify-between px-4 py-3 bg-[#12122a] border-b border-white/10 shrink-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/ebooks')}
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push('/ebooks')}>
           ← 목록
         </Button>
 
-        <h1 className="text-cc-text text-sm font-semibold truncate max-w-[60%] text-center">
+        <h1 className="text-cc-text text-sm font-semibold truncate max-w-[40%] text-center">
           {meta.title}
         </h1>
 
-        <div className="w-16" />
+        {/* Font size controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => changeFontSize(-10)}
+            className="w-7 h-7 flex items-center justify-center rounded text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-sm"
+          >
+            A-
+          </button>
+          <span className="text-xs text-cc-muted w-8 text-center">{fontSize}%</span>
+          <button
+            onClick={() => changeFontSize(10)}
+            className="w-7 h-7 flex items-center justify-center rounded text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-sm"
+          >
+            A+
+          </button>
+        </div>
       </header>
 
-      {/* Reader */}
-      <div className="flex-1 overflow-hidden">
+      {/* Reader with page turn transition */}
+      <div
+        className="flex-1 overflow-hidden transition-opacity duration-300"
+        style={{ opacity: isTurning ? 0.4 : 1 }}
+      >
         <ReactReader
           url={epubData}
           title={meta.title}
           location={location}
           locationChanged={handleLocationChanged}
+          getRendition={handleGetRendition}
           readerStyles={{
             ...ReactReaderStyle,
-            container: {
-              ...ReactReaderStyle.container,
-              background: '#1a1a2e',
-            },
-            readerArea: {
-              ...ReactReaderStyle.readerArea,
-              background: '#1a1a2e',
-            },
-            arrow: {
-              ...ReactReaderStyle.arrow,
-              color: '#e2b84e',
-            },
+            container: { ...ReactReaderStyle.container, background: '#1a1a2e' },
+            readerArea: { ...ReactReaderStyle.readerArea, background: '#1a1a2e' },
+            arrow: { ...ReactReaderStyle.arrow, color: '#e2b84e' },
           }}
         />
+      </div>
+
+      {/* Bottom bar: page indicator */}
+      <div className="shrink-0 flex items-center justify-center py-2 bg-[#12122a] border-t border-white/10">
+        <span className="text-xs text-cc-muted">
+          {totalPages > 0 ? `${currentPage} / ${totalPages}` : '읽는 중...'}
+        </span>
       </div>
     </div>
   );
