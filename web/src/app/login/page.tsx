@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Input from '@/components/ui/Input';
@@ -21,6 +21,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { setUser, setToken } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') ?? '/';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,7 +37,7 @@ export default function LoginPage() {
       saveToken(res.data.accessToken);
       setToken(res.data.accessToken);
       setUser(res.data.user);
-      router.replace('/');
+      router.replace(redirectTo);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '로그인에 실패했습니다.');
     } finally {
