@@ -1,8 +1,9 @@
 interface Props {
   redirectTo?: string;
+  mode?: 'login' | 'register';
 }
 
-export default function GoogleLoginButton({ redirectTo }: Props) {
+export default function GoogleLoginButton({ redirectTo, mode = 'login' }: Props) {
   function handleClick() {
     if (redirectTo && redirectTo !== '/') {
       sessionStorage.setItem('auth_redirect', redirectTo);
@@ -21,7 +22,7 @@ export default function GoogleLoginButton({ redirectTo }: Props) {
         <path d="M24 44c5.3 0 10.1-2 13.7-5.2l-6.3-5.3C29.5 35.3 26.9 36 24 36c-5.5 0-10-3.3-11.3-8H6.1C9.4 37.5 16.2 44 24 44z" fill="#4CAF50"/>
         <path d="M43.6 20.5H42V20H24v8h11.3c-.6 1.8-1.7 3.4-3.2 4.6l6.3 5.3C44 34.5 44 24 43.6 20.5z" fill="#1976D2"/>
       </svg>
-      Google로 로그인
+      {mode === 'register' ? 'Google로 회원가입' : 'Google로 로그인'}
     </a>
   );
 }

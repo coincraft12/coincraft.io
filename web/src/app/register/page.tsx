@@ -112,8 +112,8 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-3">
-              <GoogleLoginButton />
-              <KakaoLoginButton />
+              <GoogleLoginButton mode="register" />
+              <KakaoLoginButton mode="register" />
             </div>
 
             <p className="mt-6 text-center text-sm text-cc-muted">
