@@ -20,7 +20,17 @@ jobs:
           cache-dependency-path: api/package-lock.json
       - run: npm ci
       - run: npm run build
-      - name: Deploy to staging
+      - name: Package dist
+        run: tar czf /tmp/api-dist.tar.gz dist
+      - name: Upload dist to staging
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "/tmp/api-dist.tar.gz"
+          target: /tmp/
+      - name: Extract and restart
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_HOST }}
@@ -28,10 +38,8 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             cd /opt/coincraft-api
-            git pull origin master
-            npm ci --production
-            npm run build
-            pm2 restart coincraft-api-staging || pm2 start ecosystem.config.js --env staging
+            tar xzf /tmp/api-dist.tar.gz
+            pm2 restart coincraft-api-staging
 
   deploy-web:
     name: Deploy Web to Staging
@@ -47,19 +55,18 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - name: Set staging env
+        run: cp .env.staging .env.local
       - run: npm run build
-      - name: Package standalone
-        run: |
-          tar czf /tmp/web-standalone.tar.gz -C .next/standalone .
-          tar czf /tmp/web-static.tar.gz -C .next/static .
-          tar czf /tmp/web-public.tar.gz -C public .
+      - name: Package build
+        run: tar czf /tmp/next_build.tar.gz .next
       - name: Upload to staging
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "/tmp/web-standalone.tar.gz,/tmp/web-static.tar.gz,/tmp/web-public.tar.gz"
+          source: "/tmp/next_build.tar.gz"
           target: /tmp/
       - name: Extract and restart
         uses: appleboy/ssh-action@v1
@@ -69,8 +76,6 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             cd /opt/coincraft-staging
-            tar xzf /tmp/web-standalone.tar.gz
-            mkdir -p .next/static && tar xzf /tmp/web-static.tar.gz -C .next/static/
-            mkdir -p public && tar xzf /tmp/web-public.tar.gz -C public/
-            rm -rf public/public
+            tar xzf /tmp/next_build.tar.gz
+            cp .next/standalone/server.js server.js
             pm2 restart coincraft-staging

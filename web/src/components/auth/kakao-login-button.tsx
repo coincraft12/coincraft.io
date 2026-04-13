@@ -1,10 +1,7 @@
-import { env } from '@/config/env';
-
 export default function KakaoLoginButton() {
-  const apiUrl = env.apiUrl;
   return (
     <a
-      href={`${apiUrl}/api/v1/auth/kakao`}
+      href="/api/v1/auth/kakao"
       className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-cc font-semibold text-sm transition-all duration-300 cursor-pointer"
       style={{ backgroundColor: '#FEE500', color: '#000000' }}
     >

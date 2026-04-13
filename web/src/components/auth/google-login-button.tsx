@@ -1,10 +1,7 @@
-import { env } from '@/config/env';
-
 export default function GoogleLoginButton() {
-  const apiUrl = env.apiUrl;
   return (
     <a
-      href={`${apiUrl}/api/v1/auth/google`}
+      href="/api/v1/auth/google"
       className="cc-btn cc-btn-outline w-full flex items-center gap-3"
     >
       <svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

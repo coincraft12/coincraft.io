@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
 import Image from 'next/image'
+import { useAuthStore } from '@/store/auth.store'
+import { apiClient } from '@/lib/api-client'
 
 const nav = [
   { label: 'HOME', href: '/' },
@@ -28,6 +30,16 @@ const nav = [
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openSub, setOpenSub] = useState<string | null>(null)
+  const { user, accessToken, logout, isLoading } = useAuthStore()
+
+  async function handleLogout() {
+    try {
+      await apiClient.post('/api/v1/auth/logout', {}, { token: accessToken ?? undefined })
+    } catch {}
+    logout()
+    localStorage.removeItem('cc_access_token')
+    window.location.href = '/'
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a2e] border-b border-white/10">
@@ -78,12 +90,25 @@ export default function Header() {
 
         {/* Auth links */}
         <div className="hidden md:flex items-center gap-3">
-          <a href="/register" className="text-sm text-cc-muted hover:text-cc-text transition-colors">
-            회원가입
-          </a>
-          <a href="/login" className="cc-btn cc-btn-primary text-sm px-4 py-2">
-            로그인
-          </a>
+          {!isLoading && user ? (
+            <>
+              <a href="/my/courses" className="text-sm text-cc-muted hover:text-cc-text transition-colors">
+                {user.name}
+              </a>
+              <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">
+                로그아웃
+              </button>
+            </>
+          ) : !isLoading ? (
+            <>
+              <a href="/register" className="text-sm text-cc-muted hover:text-cc-text transition-colors">
+                회원가입
+              </a>
+              <a href="/login" className="cc-btn cc-btn-primary text-sm px-4 py-2">
+                로그인
+              </a>
+            </>
+          ) : null}
         </div>
 
         {/* Mobile hamburger */}
@@ -136,8 +161,17 @@ export default function Header() {
             </div>
           ))}
           <div className="flex gap-3 pt-3 border-t border-white/10 mt-2">
-            <a href="/register" className="text-sm text-cc-muted">회원가입</a>
-            <a href="/login" className="cc-btn cc-btn-primary text-sm px-4 py-2">로그인</a>
+            {user ? (
+              <>
+                <a href="/my/courses" className="text-sm text-cc-muted">{user.name}</a>
+                <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">로그아웃</button>
+              </>
+            ) : (
+              <>
+                <a href="/register" className="text-sm text-cc-muted">회원가입</a>
+                <a href="/login" className="cc-btn cc-btn-primary text-sm px-4 py-2">로그인</a>
+              </>
+            )}
           </div>
         </div>
       )}

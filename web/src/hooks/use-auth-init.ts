@@ -7,11 +7,15 @@ import { apiClient, ApiError } from '@/lib/api-client';
 const TOKEN_KEY = 'cc_access_token';
 
 export function saveToken(token: string) {
-  if (typeof window !== 'undefined') localStorage.setItem(TOKEN_KEY, token);
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(TOKEN_KEY, token);
+  document.cookie = `cc_token=${token}; path=/; max-age=${60 * 60}; SameSite=Lax`;
 }
 
 export function clearToken() {
-  if (typeof window !== 'undefined') localStorage.removeItem(TOKEN_KEY);
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(TOKEN_KEY);
+  document.cookie = 'cc_token=; path=/; max-age=0';
 }
 
 export function getStoredToken(): string | null {

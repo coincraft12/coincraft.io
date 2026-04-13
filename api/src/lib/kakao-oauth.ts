@@ -20,7 +20,7 @@ export function getKakaoAuthUrl(state: string): string {
     client_id: env.KAKAO_REST_API_KEY!,
     redirect_uri: env.KAKAO_REDIRECT_URI!,
     response_type: 'code',
-    scope: 'account_email,profile_nickname,profile_image',
+    scope: 'profile_nickname,profile_image',
     state,
   });
   return `${AUTH_URL}?${params}`;
