@@ -15,6 +15,13 @@
       "when": 1776051388033,
       "tag": "0001_blog_phase7",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776051388034,
+      "tag": "0002_web3_wallet_auth",
+      "breakpoints": true
     }
   ]
 }

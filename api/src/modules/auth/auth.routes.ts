@@ -153,4 +153,33 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
     return reply.redirect(`${env.FRONTEND_URL}/auth/callback?token=${result.accessToken}`);
   });
+
+  // GET /api/v1/auth/web3/nonce?address=0x...
+  app.get('/web3/nonce', async (request, reply) => {
+    const { address } = request.query as { address?: string };
+    if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: '유효한 지갑 주소를 입력해 주세요. (0x로 시작하는 42자)' } });
+    }
+
+    const result = await authService.getWeb3Nonce(address);
+    return reply.send(ok(result));
+  });
+
+  // POST /api/v1/auth/web3/verify
+  app.post('/web3/verify', async (request, reply) => {
+    const body = request.body as { message?: string; signature?: string };
+    if (!body.message || !body.signature) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: 'message와 signature가 필요합니다.' } });
+    }
+
+    const result = await authService.verifyWeb3Signature(body.message, body.signature);
+    reply.setCookie('refresh_token', result.refreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV !== 'development',
+      sameSite: 'lax',
+      path: '/api/v1/auth',
+      maxAge: 30 * 24 * 3600,
+    });
+    return reply.send(ok({ accessToken: result.accessToken, user: result.user }));
+  });
 }

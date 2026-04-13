@@ -1,4 +1,6 @@
 import { eq } from 'drizzle-orm';
+import { randomBytes } from 'crypto';
+import { ethers } from 'ethers';
 import { db } from '../../db';
 import { users } from '../../db/schema';
 import { redis } from '../../lib/redis';
@@ -235,6 +237,79 @@ export async function handleKakaoCallback(code: string): Promise<AuthTokens & { 
       }).returning();
     }
   }
+
+  const safeUser = toSafeUser(user);
+  const tokens = issueTokens(safeUser);
+  await storeRefreshToken(tokens.refreshToken, user.id);
+  return { ...tokens, user: safeUser };
+}
+
+// ─── Web3 Wallet Auth ─────────────────────────────────────────────────────────
+
+export async function getWeb3Nonce(address: string): Promise<{ nonce: string }> {
+  const checksumAddress = ethers.getAddress(address);
+
+  let [user] = await db.select().from(users).where(eq(users.walletAddress, checksumAddress)).limit(1);
+
+  const nonce = randomBytes(32).toString('hex');
+  const shortName = `${checksumAddress.slice(0, 6)}...${checksumAddress.slice(-4)}`;
+
+  if (!user) {
+    // 신규 사용자 생성 (email nullable 처리: 고유 플레이스홀더 사용)
+    const placeholderEmail = `wallet_${checksumAddress.toLowerCase()}@coincraft.io`;
+    [user] = await db.insert(users).values({
+      walletAddress: checksumAddress,
+      walletNonce: nonce,
+      name: shortName,
+      email: placeholderEmail,
+      emailVerified: false,
+    }).returning();
+  } else {
+    await db.update(users).set({ walletNonce: nonce }).where(eq(users.id, user.id));
+  }
+
+  return { nonce };
+}
+
+export async function verifyWeb3Signature(
+  message: string,
+  signature: string,
+): Promise<AuthTokens & { user: SafeUser }> {
+  // message 형식: "CoinCraft에 로그인합니다.\n\n주소: ${address}\nNonce: ${nonce}"
+  const addressMatch = message.match(/주소:\s*(0x[0-9a-fA-F]{40})/);
+  const nonceMatch = message.match(/Nonce:\s*([0-9a-fA-F]+)/);
+
+  if (!addressMatch || !nonceMatch) {
+    throw Object.assign(new Error('유효하지 않은 메시지 형식입니다.'), { code: 'INVALID_MESSAGE', status: 400 });
+  }
+
+  const address = addressMatch[1];
+  const nonce = nonceMatch[1];
+
+  // 서명자 주소 복원
+  let recoveredAddress: string;
+  try {
+    recoveredAddress = ethers.verifyMessage(message, signature);
+  } catch {
+    throw Object.assign(new Error('서명 검증에 실패했습니다.'), { code: 'INVALID_SIGNATURE', status: 401 });
+  }
+
+  const checksumAddress = ethers.getAddress(address);
+  if (recoveredAddress.toLowerCase() !== checksumAddress.toLowerCase()) {
+    throw Object.assign(new Error('서명자 주소가 일치하지 않습니다.'), { code: 'SIGNATURE_MISMATCH', status: 401 });
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.walletAddress, checksumAddress)).limit(1);
+  if (!user) {
+    throw Object.assign(new Error('지갑 주소를 찾을 수 없습니다. 먼저 nonce를 요청해 주세요.'), { code: 'USER_NOT_FOUND', status: 404 });
+  }
+
+  if (!user.walletNonce || user.walletNonce !== nonce) {
+    throw Object.assign(new Error('Nonce가 유효하지 않습니다.'), { code: 'INVALID_NONCE', status: 401 });
+  }
+
+  // nonce 재사용 방지: 즉시 초기화
+  await db.update(users).set({ walletNonce: null }).where(eq(users.id, user.id));
 
   const safeUser = toSafeUser(user);
   const tokens = issueTokens(safeUser);
