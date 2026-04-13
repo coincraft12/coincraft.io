@@ -47,7 +47,7 @@ export default function EnrollButton({
   if (isFree) {
     const handleEnroll = async () => {
       if (!token) {
-        router.push('/login');
+        router.push(`/login?redirect=${encodeURIComponent(`/courses/${courseSlug}`)}`);
         return;
       }
       setLoading(true);
