@@ -7,6 +7,7 @@ import { healthRoutes } from './routes/health';
 import { authRoutes } from './modules/auth/auth.routes';
 import coursesPlugin from './modules/courses';
 import lmsPlugin from './modules/lms';
+import paymentPlugin from './modules/payment';
 
 export async function buildApp() {
   const app = Fastify({
@@ -23,6 +24,7 @@ export async function buildApp() {
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(coursesPlugin);
   await app.register(lmsPlugin);
+  await app.register(paymentPlugin);
 
   return app;
 }

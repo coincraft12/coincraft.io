@@ -88,7 +88,7 @@ export default function EnrollButton({
       variant="primary"
       size="lg"
       className="w-full"
-      onClick={() => router.push(`/payment/checkout?courseId=${courseId}`)}
+      onClick={() => router.push(`/checkout/${courseId}`)}
     >
       결제하기 — {price}원
     </Button>
