@@ -25,7 +25,14 @@ const nav = [
       { label: '시험 관리 세부 규정', href: '/cert/exam-rules' },
     ],
   },
-  { label: '상점', href: '/shop' },
+  {
+    label: '상점',
+    href: '/shop',
+    children: [
+      { label: '전자책', href: '/ebooks' },
+      { label: '종이책 (준비중)', href: '/shop', disabled: true },
+    ],
+  },
 ]
 
 export default function Header() {
@@ -68,6 +75,14 @@ export default function Header() {
                 <div className="absolute top-full left-0 pt-2 hidden group-hover:block">
                   <div className="bg-[#1a1a2e] border border-white/10 rounded-cc py-2 min-w-[180px] shadow-lg">
                     {item.children.map((c) => (
+                      c.disabled ? (
+                        <span
+                          key={c.label}
+                          className="block px-4 py-2 text-sm text-cc-muted/40 cursor-default"
+                        >
+                          {c.label}
+                        </span>
+                      ) : (
                       <a
                         key={c.label}
                         href={c.href}
@@ -75,6 +90,7 @@ export default function Header() {
                       >
                         {c.label}
                       </a>
+                      )
                     ))}
                   </div>
                 </div>
