@@ -142,6 +142,16 @@
     word-break: break-word !important;
   }
 
+  /* Contain editor overflow so live/preview mode never bleeds outside the editor box */
+  .w-md-editor {
+    overflow: hidden !important;
+  }
+  .w-md-editor-content {
+    flex: 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
   .cc-md-editor .w-md-editor-preview {
     background-color: transparent;
   }
