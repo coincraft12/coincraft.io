@@ -146,7 +146,7 @@ Phase 5~8 중 우선순위 결정 필요:
 - Phase 8: x402 프로토콜
 
 ## Sharon 처리 필요 항목
-- [ ] GitHub Secrets 설정 (STAGING_SSH_KEY, STAGING_HOST, STAGING_USER)
+- [x] GitHub Secrets 설정 (STAGING_SSH_KEY, STAGING_HOST, STAGING_USER) — 자동 배포 완료
 - [x] Google OAuth CLIENT_ID/SECRET 발급 → 스테이징 .env 반영 완료
 - [ ] Kakao 개발자 앱 등록 + REST_API_KEY 발급 → 스테이징 .env 업데이트
   - ⚠️ 카카오계정(이메일) 권한은 비즈니스 앱 심사 후 활성화 가능 → 닉네임만 사용하는 방식으로 구현됨
