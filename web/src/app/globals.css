@@ -1,4 +1,6 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import '@uiw/react-md-editor/markdown-editor.css';
+@import '@uiw/react-markdown-preview/markdown.css';
 
 @tailwind base;
 @tailwind components;
@@ -10,6 +12,21 @@
     background-color: #0A0A0F;
     color: #E8E8E8;
     font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  }
+
+  /* Override wmde-markdown CSS variables so --color-canvas-default never
+     resolves to 'transparent' (undefined var). Without this, the library's
+     background-color: var(--color-canvas-default) falls back to transparent
+     and punches a hole through the page background. */
+  :root {
+    --color-canvas-default: #0A0A0F;
+    --color-canvas-subtle: #1A1A2E;
+    --color-fg-default: #E8E8E8;
+    --color-fg-muted: #9CA3AF;
+    --color-border-default: rgba(255,255,255,0.15);
+    --color-border-muted: rgba(255,255,255,0.1);
+    --color-accent-fg: #F5A623;
+    --color-neutral-muted: rgba(255,255,255,0.08);
   }
 }
 
