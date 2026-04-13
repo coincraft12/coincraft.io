@@ -93,8 +93,8 @@ function LoginForm() {
       </div>
 
       <div className="space-y-3">
-        <GoogleLoginButton />
-        <KakaoLoginButton />
+        <GoogleLoginButton redirectTo={redirectTo} />
+        <KakaoLoginButton redirectTo={redirectTo} />
         <Web3LoginButton />
       </div>
 

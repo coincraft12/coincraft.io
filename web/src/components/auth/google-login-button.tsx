@@ -1,7 +1,18 @@
-export default function GoogleLoginButton() {
+interface Props {
+  redirectTo?: string;
+}
+
+export default function GoogleLoginButton({ redirectTo }: Props) {
+  function handleClick() {
+    if (redirectTo && redirectTo !== '/') {
+      sessionStorage.setItem('auth_redirect', redirectTo);
+    }
+  }
+
   return (
     <a
       href="/api/v1/auth/google"
+      onClick={handleClick}
       className="cc-btn cc-btn-outline w-full flex items-center gap-3"
     >
       <svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">

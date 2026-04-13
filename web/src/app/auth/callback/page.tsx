@@ -30,7 +30,9 @@ function CallbackInner() {
       .get<{ data: any }>('/api/v1/auth/me', { token })
       .then((res) => {
         setUser(res.data);
-        router.replace('/');
+        const redirect = sessionStorage.getItem('auth_redirect') ?? '/';
+        sessionStorage.removeItem('auth_redirect');
+        router.replace(redirect);
       })
       .catch(() => {
         router.replace('/login?error=oauth_failed');

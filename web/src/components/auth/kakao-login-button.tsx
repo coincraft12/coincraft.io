@@ -1,7 +1,18 @@
-export default function KakaoLoginButton() {
+interface Props {
+  redirectTo?: string;
+}
+
+export default function KakaoLoginButton({ redirectTo }: Props) {
+  function handleClick() {
+    if (redirectTo && redirectTo !== '/') {
+      sessionStorage.setItem('auth_redirect', redirectTo);
+    }
+  }
+
   return (
     <a
       href="/api/v1/auth/kakao"
+      onClick={handleClick}
       className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-cc font-semibold text-sm transition-all duration-300 cursor-pointer"
       style={{ backgroundColor: '#FEE500', color: '#000000' }}
     >
