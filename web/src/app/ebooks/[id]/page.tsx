@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ReactReader, ReactReaderStyle } from 'react-reader';
 import { useAuthStore } from '@/store/auth.store';
 import Spinner from '@/components/ui/Spinner';
@@ -22,6 +22,7 @@ interface EbookMetaResponse {
 export default function EbookViewerPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const pathname = usePathname();
   const token = useAuthStore((s) => s.accessToken);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
 
@@ -34,7 +35,7 @@ export default function EbookViewerPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthLoading && !token) {
-      router.push('/login');
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
   }, [isAuthLoading, token, router]);
 

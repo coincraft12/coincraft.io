@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
 import Button from '@/components/ui/Button';
@@ -68,6 +68,7 @@ function findNextLessonId(chapters: Chapter[], currentLessonId: string): string 
 
 export default function LessonPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const params = useParams<{ slug: string; lessonId: string }>();
   const { slug, lessonId } = params;
 
@@ -102,7 +103,7 @@ export default function LessonPage() {
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        router.push('/login');
+        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
         return;
       }
       if (err instanceof ApiError && err.status === 403) {

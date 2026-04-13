@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient } from '@/lib/api-client';
@@ -40,6 +40,7 @@ export default function ExamResultPage() {
   const examId = params.id as string;
   const attemptId = searchParams.get('attemptId');
   const router = useRouter();
+  const pathname = usePathname();
   const token = useAuthStore((s) => s.accessToken);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
 
@@ -49,7 +50,7 @@ export default function ExamResultPage() {
 
   useEffect(() => {
     if (!isAuthLoading && !token) {
-      router.push('/login');
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     if (!token || !attemptId) return;

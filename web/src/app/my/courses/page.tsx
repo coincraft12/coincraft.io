@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient } from '@/lib/api-client';
@@ -28,14 +28,15 @@ interface EnrollmentsResponse {
 
 export default function MyCoursesPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const token = useAuthStore((s) => s.accessToken);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
 
   useEffect(() => {
     if (!isAuthLoading && !token) {
-      router.push('/login');
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [isAuthLoading, token, router]);
+  }, [isAuthLoading, token, router, pathname]);
 
   const { data, isLoading } = useQuery<EnrollmentItem[]>({
     queryKey: ['my-enrollments'],

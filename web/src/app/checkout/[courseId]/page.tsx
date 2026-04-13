@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import Script from 'next/script';
 import Header from '@/components/ui/Header';
 import Button from '@/components/ui/Button';
@@ -44,6 +44,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const courseId = params.courseId as string;
 
   const token = useAuthStore((s) => s.accessToken);
@@ -58,7 +59,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push('/login');
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
   }, [isLoading, user, router]);
 
