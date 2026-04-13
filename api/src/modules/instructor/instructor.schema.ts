@@ -56,6 +56,14 @@ export const updateLessonSchema = z.object({
   order: z.coerce.number().int().min(0).optional(),
 });
 
+export const updateChapterSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  order: z.number().int().min(0).optional(),
+  isPublished: z.boolean().optional(),
+});
+export type UpdateChapterInput = z.infer<typeof updateChapterSchema>;
+
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 export type CreateChapterInput = z.infer<typeof createChapterSchema>;

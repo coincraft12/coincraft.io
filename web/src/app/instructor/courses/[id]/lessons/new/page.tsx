@@ -21,6 +21,20 @@ interface CreateLessonBody {
   order: number;
 }
 
+async function fetchVimeoDuration(url: string): Promise<number> {
+  try {
+    if (url.includes('vimeo.com')) {
+      const res = await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`);
+      if (!res.ok) return 0;
+      const data = await res.json();
+      return typeof data.duration === 'number' ? data.duration : 0;
+    }
+  } catch {
+    return 0;
+  }
+  return 0;
+}
+
 interface LessonResponse {
   success: boolean;
   data: { id: string; courseId: string };
@@ -45,6 +59,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
     textContent: '',
     order: 0,
   });
+  const [videoDuration, setVideoDuration] = useState(0);
   const [formError, setFormError] = useState('');
 
   const mutation = useMutation({
@@ -83,6 +98,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
     }
     const body: CreateLessonBody = {
       ...form,
+      duration: videoDuration,
       videoProvider: form.type === 'video' ? form.videoProvider : undefined,
       videoUrl: form.type === 'video' ? form.videoUrl?.trim() || undefined : undefined,
       textContent: form.type === 'text' ? form.textContent?.trim() || undefined : undefined,
@@ -149,14 +165,10 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
               placeholder="예: https://youtu.be/xxxxx"
               value={form.videoUrl}
               onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-            />
-
-            <Input
-              label="재생 시간 (초)"
-              type="number"
-              min={0}
-              value={form.duration}
-              onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
+              onBlur={async (e) => {
+                const duration = await fetchVimeoDuration(e.target.value);
+                setVideoDuration(duration);
+              }}
             />
           </>
         )}

@@ -13,6 +13,7 @@ import type {
   CreateCourseInput,
   UpdateCourseInput,
   CreateChapterInput,
+  UpdateChapterInput,
   CreateLessonInput,
   UpdateLessonInput,
 } from './instructor.schema';
@@ -257,6 +258,53 @@ export async function addChapter(
     order: created.order,
     isPublished: created.isPublished,
     createdAt: created.createdAt,
+    lessons: [],
+  };
+}
+
+export async function updateChapter(
+  instructorId: string,
+  chapterId: string,
+  input: UpdateChapterInput
+): Promise<ChapterItem> {
+  const [chapter] = await db
+    .select({ id: chapters.id, courseId: chapters.courseId })
+    .from(chapters)
+    .where(eq(chapters.id, chapterId))
+    .limit(1);
+
+  if (!chapter) throw makeError('챕터를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+
+  const [course] = await db
+    .select({ id: courses.id, instructorId: courses.instructorId })
+    .from(courses)
+    .where(eq(courses.id, chapter.courseId))
+    .limit(1);
+
+  if (!course || course.instructorId !== instructorId) {
+    throw makeError('접근 권한이 없습니다.', 'FORBIDDEN', 403);
+  }
+
+  const updateData: Partial<typeof chapters.$inferInsert> = {};
+  if (input.title !== undefined) updateData.title = input.title;
+  if (input.description !== undefined) updateData.description = input.description;
+  if (input.order !== undefined) updateData.order = input.order;
+  if (input.isPublished !== undefined) updateData.isPublished = input.isPublished;
+
+  const [updated] = await db
+    .update(chapters)
+    .set(updateData)
+    .where(eq(chapters.id, chapterId))
+    .returning();
+
+  return {
+    id: updated.id,
+    courseId: updated.courseId,
+    title: updated.title,
+    description: updated.description ?? null,
+    order: updated.order,
+    isPublished: updated.isPublished,
+    createdAt: updated.createdAt,
     lessons: [],
   };
 }

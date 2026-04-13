@@ -114,6 +114,20 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
     enabled: !!token && !!id && activeTab === 'students',
   });
 
+  const reorderChapter = useMutation({
+    mutationFn: async ({ chapterId, newOrder }: { chapterId: string; newOrder: number }) => {
+      await apiClient.put(`/api/v1/instructor/chapters/${chapterId}`, { order: newOrder }, { token: token ?? undefined });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['instructor-course', id] }),
+  });
+
+  const reorderLesson = useMutation({
+    mutationFn: async ({ lessonId, newOrder }: { lessonId: string; newOrder: number }) => {
+      await apiClient.put(`/api/v1/instructor/lessons/${lessonId}`, { order: newOrder }, { token: token ?? undefined });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['instructor-course', id] }),
+  });
+
   const togglePublish = useMutation({
     mutationFn: async () => {
       await apiClient.put(
@@ -136,6 +150,28 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
       else next.add(chapterId);
       return next;
     });
+  }
+
+  function moveChapter(chapterId: string, direction: 'up' | 'down') {
+    if (!course) return;
+    const sorted = [...course.chapters].sort((a, b) => a.order - b.order);
+    const idx = sorted.findIndex(c => c.id === chapterId);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    reorderChapter.mutate({ chapterId: sorted[idx].id, newOrder: sorted[swapIdx].order });
+    reorderChapter.mutate({ chapterId: sorted[swapIdx].id, newOrder: sorted[idx].order });
+  }
+
+  function moveLesson(chapterId: string, lessonId: string, direction: 'up' | 'down') {
+    if (!course) return;
+    const chapter = course.chapters.find(c => c.id === chapterId);
+    if (!chapter) return;
+    const sorted = [...chapter.lessons].sort((a, b) => a.order - b.order);
+    const idx = sorted.findIndex(l => l.id === lessonId);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    reorderLesson.mutate({ lessonId: sorted[idx].id, newOrder: sorted[swapIdx].order });
+    reorderLesson.mutate({ lessonId: sorted[swapIdx].id, newOrder: sorted[idx].order });
   }
 
   if (courseLoading) {
@@ -237,7 +273,7 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
             </div>
           ) : (
             <div className="space-y-3">
-              {course.chapters.map((chapter) => (
+              {[...course.chapters].sort((a, b) => a.order - b.order).map((chapter, chapterIdx, sortedChapters) => (
                 <div
                   key={chapter.id}
                   className="bg-cc-secondary border border-white/10 rounded-cc overflow-hidden"
@@ -248,6 +284,22 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
                     onClick={() => toggleChapter(chapter.id)}
                   >
                     <div className="flex items-center gap-3">
+                      <div className="flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="w-6 h-6 flex items-center justify-center text-xs text-cc-muted hover:text-cc-text disabled:opacity-30 disabled:cursor-not-allowed"
+                          onClick={() => moveChapter(chapter.id, 'up')}
+                          disabled={chapterIdx === 0}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          className="w-6 h-6 flex items-center justify-center text-xs text-cc-muted hover:text-cc-text disabled:opacity-30 disabled:cursor-not-allowed"
+                          onClick={() => moveChapter(chapter.id, 'down')}
+                          disabled={chapterIdx === sortedChapters.length - 1}
+                        >
+                          ▼
+                        </button>
+                      </div>
                       <span className="text-cc-muted text-sm">{chapter.order + 1}.</span>
                       <span className="text-cc-text font-medium text-sm">{chapter.title}</span>
                       {!chapter.isPublished && (
@@ -265,12 +317,28 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
                   {/* Lessons */}
                   {expandedChapters.has(chapter.id) && (
                     <div className="border-t border-white/10">
-                      {chapter.lessons.map((lesson) => (
+                      {[...chapter.lessons].sort((a, b) => a.order - b.order).map((lesson, lessonIdx, sortedLessons) => (
                         <div
                           key={lesson.id}
                           className="flex items-center justify-between px-6 py-2.5 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors"
                         >
                           <div className="flex items-center gap-3">
+                            <div className="flex flex-col">
+                              <button
+                                className="w-6 h-6 flex items-center justify-center text-xs text-cc-muted hover:text-cc-text disabled:opacity-30 disabled:cursor-not-allowed"
+                                onClick={() => moveLesson(chapter.id, lesson.id, 'up')}
+                                disabled={lessonIdx === 0}
+                              >
+                                ▲
+                              </button>
+                              <button
+                                className="w-6 h-6 flex items-center justify-center text-xs text-cc-muted hover:text-cc-text disabled:opacity-30 disabled:cursor-not-allowed"
+                                onClick={() => moveLesson(chapter.id, lesson.id, 'down')}
+                                disabled={lessonIdx === sortedLessons.length - 1}
+                              >
+                                ▼
+                              </button>
+                            </div>
                             <span className="text-xs text-cc-muted w-5 text-center">{lesson.order + 1}</span>
                             <span className="text-sm text-cc-text">{lesson.title}</span>
                             <span className="text-xs text-cc-muted">{typeLabel(lesson.type)}</span>

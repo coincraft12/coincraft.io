@@ -22,6 +22,20 @@ interface LessonEditForm {
   order: number;
 }
 
+async function fetchVimeoDuration(url: string): Promise<number> {
+  try {
+    if (url.includes('vimeo.com')) {
+      const res = await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`);
+      if (!res.ok) return 0;
+      const data = await res.json();
+      return typeof data.duration === 'number' ? data.duration : 0;
+    }
+  } catch {
+    return 0;
+  }
+  return 0;
+}
+
 interface LessonDetailResponse {
   success: boolean;
   data: {
@@ -56,6 +70,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
     textContent: '',
     order: 0,
   });
+  const [videoDuration, setVideoDuration] = useState(0);
   const [formError, setFormError] = useState('');
   const [courseId, setCourseId] = useState('');
 
@@ -75,6 +90,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
   useEffect(() => {
     if (lessonData) {
       setCourseId(lessonData.courseId);
+      setVideoDuration(lessonData.duration ?? 0);
       setForm({
         title: lessonData.title,
         type: (lessonData.type as LessonEditForm['type']) ?? 'video',
@@ -124,7 +140,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
       type: form.type,
       videoProvider: form.type === 'video' && form.videoProvider ? form.videoProvider : undefined,
       videoUrl: form.type === 'video' ? form.videoUrl.trim() || undefined : undefined,
-      duration: form.duration,
+      duration: videoDuration,
       isPreview: form.isPreview,
       isPublished: form.isPublished,
       textContent: form.type === 'text' ? form.textContent.trim() || undefined : undefined,
@@ -195,13 +211,10 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
               label="비디오 URL"
               value={form.videoUrl}
               onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-            />
-            <Input
-              label="재생 시간 (초)"
-              type="number"
-              min={0}
-              value={form.duration}
-              onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
+              onBlur={async (e) => {
+                const duration = await fetchVimeoDuration(e.target.value);
+                setVideoDuration(duration);
+              }}
             />
           </>
         )}

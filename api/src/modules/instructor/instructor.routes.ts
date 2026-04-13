@@ -6,6 +6,7 @@ import {
   createCourseSchema,
   updateCourseSchema,
   createChapterSchema,
+  updateChapterSchema,
   createLessonSchema,
   updateLessonSchema,
 } from './instructor.schema';
@@ -66,6 +67,14 @@ export async function instructorRoutes(app: FastifyInstance): Promise<void> {
     }
     const chapter = await instructorService.addChapter(request.user!.id, id, body.data);
     return reply.code(201).send(created(chapter, '챕터가 추가되었습니다.'));
+  });
+
+  // PUT /api/v1/instructor/chapters/:chapterId — 챕터 수정
+  app.put('/chapters/:chapterId', { preHandler: [authenticate, requireRole('instructor', 'admin')] }, async (request, reply) => {
+    const { chapterId } = request.params as { chapterId: string };
+    const input = updateChapterSchema.parse(request.body);
+    const result = await instructorService.updateChapter(request.user!.id, chapterId, input);
+    return reply.send({ success: true, data: result });
   });
 
   // POST /api/v1/instructor/chapters/:id/lessons — 레슨 추가
