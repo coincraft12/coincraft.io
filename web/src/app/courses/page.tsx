@@ -33,7 +33,7 @@ interface Course {
 }
 
 async function fetchCourses(searchParams: Record<string, string>): Promise<{ data: Course[]; meta: CourseMeta }> {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+  const API_BASE = process.env.API_INTERNAL_URL ?? 'http://localhost:4001';
   const params = new URLSearchParams();
   if (searchParams.level) params.set('level', searchParams.level);
   if (searchParams.isFree) params.set('isFree', searchParams.isFree);

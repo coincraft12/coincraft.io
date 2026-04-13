@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+const API_BASE = typeof window === 'undefined'
+  ? (process.env.API_INTERNAL_URL ?? 'http://localhost:4001')
+  : (process.env.NEXT_PUBLIC_API_URL ?? '');
 
 interface ApiOptions extends RequestInit {
   token?: string;

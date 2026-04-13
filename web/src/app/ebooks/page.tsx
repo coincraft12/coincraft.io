@@ -22,7 +22,7 @@ interface EbooksResponse {
 }
 
 async function fetchEbooks(): Promise<EbookListItem[]> {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+  const API_BASE = process.env.API_INTERNAL_URL ?? 'http://localhost:4001';
   const res = await fetch(`${API_BASE}/api/v1/ebooks`, { next: { revalidate: 60 } });
   if (!res.ok) return [];
   const json: EbooksResponse = await res.json();

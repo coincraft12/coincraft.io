@@ -3,7 +3,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Badge from '@/components/ui/Badge';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+const API_BASE = process.env.API_INTERNAL_URL ?? 'http://localhost:4001';
 
 interface CertExam {
   id: string;

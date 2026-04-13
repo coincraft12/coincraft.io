@@ -7,7 +7,7 @@ import EnrollButton from '@/components/courses/enroll-button';
 
 export const revalidate = 3600;
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_BASE = process.env.API_INTERNAL_URL ?? 'http://localhost:4001';
 
 interface Lesson {
   id: string;
