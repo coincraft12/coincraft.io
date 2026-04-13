@@ -10,6 +10,8 @@ import lmsPlugin from './modules/lms';
 import paymentPlugin from './modules/payment';
 import ebookPlugin from './modules/ebook';
 import certificatesPlugin from './modules/certificates';
+import instructorPlugin from './modules/instructor';
+import blogPlugin from './modules/blog';
 
 export async function buildApp() {
   const app = Fastify({
@@ -29,6 +31,8 @@ export async function buildApp() {
   await app.register(paymentPlugin);
   await app.register(ebookPlugin);
   await app.register(certificatesPlugin);
+  await app.register(instructorPlugin);
+  await app.register(blogPlugin);
 
   return app;
 }

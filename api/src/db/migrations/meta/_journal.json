@@ -8,6 +8,13 @@
       "when": 1776051388032,
       "tag": "0000_wide_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776051388033,
+      "tag": "0001_blog_phase7",
+      "breakpoints": true
     }
   ]
 }

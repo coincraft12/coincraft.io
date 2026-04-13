@@ -19,3 +19,4 @@ export * from './coupons';
 export * from './coupon-usages';
 export * from './wishlists';
 export * from './subscriptions';
+export * from './blog';
