@@ -41,7 +41,7 @@ export default function Header() {
     } catch {}
     logout()
     localStorage.removeItem('cc_access_token')
-    window.location.href = '/'
+    window.location.reload()
   }
 
   return (
