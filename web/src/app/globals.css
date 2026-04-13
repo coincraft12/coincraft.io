@@ -174,4 +174,9 @@
     bottom: 0 !important;
     background-color: #1A1A2E !important;
   }
+  .w-md-editor-fullscreen .w-md-editor-preview,
+  .w-md-editor-fullscreen .wmde-markdown,
+  .w-md-editor-fullscreen .w-md-editor-content {
+    background-color: #1A1A2E !important;
+  }
 }
