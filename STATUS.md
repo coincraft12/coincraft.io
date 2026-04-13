@@ -4,7 +4,7 @@
 > 다음 작업자가 이 파일 하나만 읽어도 현재 상태를 파악할 수 있어야 한다.
 
 ## 현재 상태
-- **단계**: Phase 1 완료 — Auth API + 강좌 목록 API + 프론트엔드 구현 완료, 스테이징 배포 완료
+- **단계**: Phase 2 완료 — LMS (수강/진도/레슨 플레이어) 구현 완료, 스테이징 배포 완료
 - **마지막 업데이트**: 2026-04-13
 - **결정 근거**: CIO-003 (WordPress 완전 제거 — 자체 풀스택 플랫폼)
 
@@ -33,8 +33,8 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 |---|---|---|
 | **0** | 기반 인프라 | ✅ 완료 |
 | **1** | Auth + 강좌 목록 API | ✅ 완료 (2026-04-13) |
-| **2** | LMS (수강/진도) | ⏳ 다음 단계 |
-| **3** | 결제 + 전자책 | ⏳ |
+| **2** | LMS (수강/진도) | ✅ 완료 (2026-04-13) |
+| **3** | 결제 + 전자책 | ⏳ 다음 단계 |
 | **4** | 자격증 시스템 | ⏳ |
 | **5** | 모바일 앱 (Expo) | ⏳ |
 | **6** | 강사 포털 | ⏳ |
@@ -78,25 +78,45 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 - use-auth-init.ts (localStorage 토큰 복원)
 - middleware.ts (/my, /exams 보호 라우트)
 
-## 다음 작업 (Phase 2 — LMS)
-**백엔드 우선:**
-- `POST /api/v1/courses/:id/enroll` (무료 수강 신청)
-- `GET /api/v1/courses/:slug/lessons/:id` (레슨 상세, 수강 권한 검증)
-- `POST /api/v1/lessons/:id/progress` (진도 업데이트)
-- `POST /api/v1/lessons/:id/complete` (레슨 완료)
-- VideoProvider 추상화 (Vimeo/YouTube)
+## Phase 2 완료 항목 (2026-04-13)
+**백엔드 API (`/api/v1/` 접두사):**
+- POST /courses/:id/enroll — 무료 수강 신청
+- GET /courses/:slug/lessons/:lessonId — 레슨 상세 + 수강 권한 검증
+- POST /lessons/:id/progress — 진도 업데이트 (GREATEST 보장)
+- POST /lessons/:id/complete — 레슨 완료 + 강좌 진도 재계산
+- GET /courses/:id/progress — 강좌 진도 조회
+- GET /users/me/enrollments — 내 수강목록
+- VideoProvider 추상화 (Vimeo/YouTube factory pattern)
+
+**프론트엔드:**
+- /courses/[slug] — 강좌 상세 (ISR 3600s, 커리큘럼 아코디언, OG 메타)
+- /courses/[slug]/lessons/[lessonId] — 레슨 플레이어 (Vimeo/YouTube iframe, 텍스트 레슨)
+- /my/courses — 내 수강목록 (React Query, 진도 퍼센트)
+- EnrollButton — 무료/유료/이어보기 상태 분기
+- CurriculumAccordion — 챕터별 아코디언, 잠금/미리보기/완료 표시
+- LessonSidebar — 진도 퍼센트 바, 현재 레슨 하이라이트
+- use-lesson-progress 훅 — 진도 추적 + 완료 처리
+
+## 다음 작업 (Phase 3 — 결제 + 전자책)
+**백엔드:**
+- 포트원 v2 (PortOne) 결제 연동
+- POST /api/v1/payments/prepare — 결제 준비 (임시 주문 생성)
+- POST /api/v1/payments/confirm — 결제 확인 (PortOne 서버 검증)
+- POST /api/v1/payments/webhook — PortOne 웹훅 처리
+- 전자책 다운로드 토큰 발급 (시간제한 서명 URL)
 - ObjectStorage 추상화 (Hetzner S3)
 
 **프론트엔드:**
-- 강좌 상세 페이지 `/courses/[slug]` (ISR, 커리큘럼 아코디언)
-- 레슨 플레이어 페이지 (Vimeo iframe, 진도 추적)
-- 마이페이지 수강 탭
+- 결제 페이지 `/checkout/[courseId]`
+- 결제 완료/실패 페이지
+- 전자책 다운로드 버튼 (구매 완료 시)
 
 ## Sharon 처리 필요 항목
 - [ ] GitHub Secrets 설정 (STAGING_SSH_KEY, STAGING_HOST, STAGING_USER)
 - [ ] Google OAuth 앱 등록 + CLIENT_ID/SECRET 발급 → 스테이징 .env 업데이트
 - [ ] Kakao 개발자 앱 등록 + REST_API_KEY 발급 → 스테이징 .env 업데이트
 - [ ] `staging-api.coincraft.io` DNS A레코드 등록 (204.168.242.99)
+- [ ] 포트원 v2 가맹점 등록 (Phase 3 시작 전)
 
 ## 로컬 개발
 - API: `cd api && npm run dev` → localhost:4000
