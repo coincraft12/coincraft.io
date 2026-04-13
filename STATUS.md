@@ -34,7 +34,7 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 | **0** | 기반 인프라 | ✅ 완료 |
 | **1** | Auth + 강좌 목록 API | ✅ 완료 (2026-04-13) |
 | **2** | LMS (수강/진도) | ✅ 완료 (2026-04-13) |
-| **3** | 결제 + 전자책 | ⏳ 다음 단계 |
+| **3** | 결제 + 전자책 | ✅ 완료 (2026-04-13) |
 | **4** | 자격증 시스템 | ⏳ |
 | **5** | 모바일 앱 (Expo) | ⏳ |
 | **6** | 강사 포털 | ⏳ |
@@ -97,7 +97,7 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 - LessonSidebar — 진도 퍼센트 바, 현재 레슨 하이라이트
 - use-lesson-progress 훅 — 진도 추적 + 완료 처리
 
-## 다음 작업 (Phase 3 — 결제 + 전자책)
+## 다음 작업 (Phase 4 — 자격증 시스템)
 **백엔드:**
 - 포트원 v2 (PortOne) 결제 연동
 - POST /api/v1/payments/prepare — 결제 준비 (임시 주문 생성)
