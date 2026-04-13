@@ -8,9 +8,6 @@ jobs:
   deploy-api:
     name: Deploy API to Staging
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,36 +15,26 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: api/package-lock.json
-      - run: npm ci
-      - run: npm run build
+      - name: Install and build
+        working-directory: api
+        run: npm ci && npm run build
       - name: Package dist
+        working-directory: api
         run: tar czf api-dist.tar.gz dist
-      - name: Upload dist to staging
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "api/api-dist.tar.gz"
-          target: /tmp/
-          strip_components: 1
-      - name: Extract and restart
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /opt/coincraft-api
-            tar xzf /tmp/api-dist.tar.gz
-            pm2 restart coincraft-api-staging
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+      - name: Upload and deploy
+        run: |
+          scp -i ~/.ssh/staging_key api/api-dist.tar.gz ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
+          ssh -i ~/.ssh/staging_key ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-api && tar xzf /tmp/api-dist.tar.gz && pm2 restart coincraft-api-staging"
 
   deploy-web:
     name: Deploy Web to Staging
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -55,29 +42,19 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
-      - run: npm ci
-      - name: Set staging env
-        run: cp .env.staging .env.local
-      - run: npm run build
+      - name: Install and build
+        working-directory: web
+        run: npm ci && cp .env.staging .env.local && npm run build
       - name: Package build
+        working-directory: web
         run: tar czf next_build.tar.gz .next
-      - name: Upload to staging
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "web/next_build.tar.gz"
-          target: /tmp/
-          strip_components: 1
-      - name: Extract and restart
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /opt/coincraft-staging
-            tar xzf /tmp/next_build.tar.gz
-            cp .next/standalone/server.js server.js
-            pm2 restart coincraft-staging
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+      - name: Upload and deploy
+        run: |
+          scp -i ~/.ssh/staging_key web/next_build.tar.gz ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
+          ssh -i ~/.ssh/staging_key ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-staging && tar xzf /tmp/next_build.tar.gz && cp .next/standalone/server.js server.js && pm2 restart coincraft-staging"
