@@ -9,12 +9,14 @@ import { revalidateCourse } from '@/lib/revalidate';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import MarkdownEditor from '@/components/ui/MarkdownEditor';
+import ThumbnailUploader from '@/components/ui/ThumbnailUploader';
 
 interface CreateCourseBody {
   title: string;
   slug?: string;
   shortDescription?: string;
   description?: string;
+  thumbnailUrl?: string;
   level: 'beginner' | 'intermediate' | 'advanced';
   category?: string;
   price: number;
@@ -35,6 +37,7 @@ export default function NewCoursePage() {
     slug: '',
     shortDescription: '',
     description: '',
+    thumbnailUrl: '',
     level: 'beginner',
     category: '',
     price: 0,
@@ -74,6 +77,7 @@ export default function NewCoursePage() {
       slug: form.slug?.trim() || undefined,
       shortDescription: form.shortDescription?.trim() || undefined,
       description: form.description?.trim() || undefined,
+      thumbnailUrl: form.thumbnailUrl?.trim() || undefined,
       category: form.category?.trim() || undefined,
     };
     mutation.mutate(body);
@@ -99,6 +103,12 @@ export default function NewCoursePage() {
           placeholder="예: web3-smart-contract-intro"
           value={form.slug}
           onChange={(e) => setForm({ ...form, slug: e.target.value })}
+        />
+
+        <ThumbnailUploader
+          value={form.thumbnailUrl ?? ''}
+          onChange={(url) => setForm({ ...form, thumbnailUrl: url })}
+          token={token ?? ''}
         />
 
         <div className="flex flex-col gap-1.5">

@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import MarkdownEditor from '@/components/ui/MarkdownEditor';
+import ThumbnailUploader from '@/components/ui/ThumbnailUploader';
 
 interface CourseEditForm {
   title: string;
@@ -159,11 +160,10 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           onChange={(e) => setForm({ ...form, slug: e.target.value })}
         />
 
-        <Input
-          label="썸네일 URL"
-          placeholder="https://..."
+        <ThumbnailUploader
           value={form.thumbnailUrl}
-          onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
+          onChange={(url) => setForm({ ...form, thumbnailUrl: url })}
+          token={token ?? ''}
         />
 
         <div className="flex flex-col gap-1.5">

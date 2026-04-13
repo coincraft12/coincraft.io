@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
 import errorHandler from './plugins/error-handler';
 import corsPlugin from './plugins/cors';
 import swaggerPlugin from './plugins/swagger';
@@ -12,6 +14,7 @@ import ebookPlugin from './modules/ebook';
 import certificatesPlugin from './modules/certificates';
 import instructorPlugin from './modules/instructor';
 import blogPlugin from './modules/blog';
+import { uploadRoutes, UPLOADS_DIR } from './modules/upload/upload.routes';
 
 export async function buildApp() {
   const app = Fastify({
@@ -22,6 +25,12 @@ export async function buildApp() {
   await app.register(corsPlugin);
   await app.register(swaggerPlugin);
   await app.register(cookie);
+  await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
+  await app.register(fastifyStatic, {
+    root: UPLOADS_DIR,
+    prefix: '/api/v1/files/',
+    decorateReply: false,
+  });
 
   // Routes
   await app.register(healthRoutes);
@@ -33,6 +42,7 @@ export async function buildApp() {
   await app.register(certificatesPlugin);
   await app.register(instructorPlugin);
   await app.register(blogPlugin);
+  await app.register(uploadRoutes, { prefix: '/api/v1/instructor/upload' });
 
   return app;
 }
