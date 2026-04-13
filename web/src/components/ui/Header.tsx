@@ -98,6 +98,11 @@ export default function Header() {
               <a href="/my/courses" className="text-sm text-cc-muted hover:text-cc-text transition-colors">
                 {user.name}
               </a>
+              {(user.role === 'admin' || user.role === 'instructor') && (
+                <a href="/instructor" className="text-sm text-cc-accent hover:text-cc-accent/80 transition-colors">
+                  강사 포털
+                </a>
+              )}
               <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">
                 로그아웃
               </button>
@@ -167,6 +172,9 @@ export default function Header() {
             {user ? (
               <>
                 <a href="/my/courses" className="text-sm text-cc-muted">{user.name}</a>
+                {(user.role === 'admin' || user.role === 'instructor') && (
+                  <a href="/instructor" className="text-sm text-cc-accent">강사 포털</a>
+                )}
                 <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">로그아웃</button>
               </>
             ) : (
