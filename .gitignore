@@ -10,6 +10,12 @@ web/out/
 # WordPress
 themes/*/node_modules/
 
+# API
+api/node_modules/
+api/dist/
+api/.env
+api/.env.local
+
 # OS
 .DS_Store
 Thumbs.db
