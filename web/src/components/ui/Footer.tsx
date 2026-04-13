@@ -22,7 +22,7 @@ export default function Footer() {
 
           {/* 2열: 연락처 */}
           <div>
-            <ul className="space-y-3 text-sm text-cc-muted">
+            <ul className="space-y-3 text-base text-cc-muted">
               <li className="flex items-center gap-2">
                 <span className="text-cc-accent">📞</span>
                 고객센터 02-515-0407
@@ -69,7 +69,7 @@ export default function Footer() {
 
           {/* 3열: 법무 링크 + 카카오 버튼 */}
           <div className="flex flex-col gap-4">
-            <ul className="space-y-3 text-sm text-cc-muted">
+            <ul className="space-y-3 text-base text-cc-muted">
               <li>
                 <a href="/terms" className="flex items-center gap-2 hover:text-cc-text transition-colors">
                   <span className="text-cc-accent">📄</span>이용약관
@@ -85,7 +85,7 @@ export default function Footer() {
                   <span className="text-cc-accent">💳</span>환불정책
                 </a>
               </li>
-              <li className="flex items-center gap-2 text-xs text-[#666]">
+              <li className="flex items-center gap-2 text-sm text-[#666]">
                 <span>🚫</span>
                 ⓒ CoinCraft, 강의 예제, 영상 복제 금지
               </li>
