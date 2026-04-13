@@ -26,7 +26,12 @@ jobs:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          python3 -c "import os; open('/home/runner/.ssh/id_ed25519','w').write(os.environ['SSH_KEY'])"
+          python3 -c "
+import os
+key = os.environ['SSH_KEY']
+lines = [l.strip() for l in key.strip().splitlines()]
+open('/home/runner/.ssh/id_ed25519','w').write('\n'.join(lines)+'\n')
+"
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
       - name: Upload and deploy
@@ -55,7 +60,12 @@ jobs:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          python3 -c "import os; open('/home/runner/.ssh/id_ed25519','w').write(os.environ['SSH_KEY'])"
+          python3 -c "
+import os
+key = os.environ['SSH_KEY']
+lines = [l.strip() for l in key.strip().splitlines()]
+open('/home/runner/.ssh/id_ed25519','w').write('\n'.join(lines)+'\n')
+"
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
       - name: Upload and deploy
