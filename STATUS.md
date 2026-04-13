@@ -4,7 +4,7 @@
 > 다음 작업자가 이 파일 하나만 읽어도 현재 상태를 파악할 수 있어야 한다.
 
 ## 현재 상태
-- **단계**: Phase 2 완료 — LMS (수강/진도/레슨 플레이어) 구현 완료, 스테이징 배포 완료
+- **단계**: Phase 4 완료 — 자격증 시스템 (시험/채점/인증서 발급/공개 검증) 구현 완료, 스테이징 배포 완료
 - **마지막 업데이트**: 2026-04-13
 - **결정 근거**: CIO-003 (WordPress 완전 제거 — 자체 풀스택 플랫폼)
 
@@ -35,7 +35,7 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 | **1** | Auth + 강좌 목록 API | ✅ 완료 (2026-04-13) |
 | **2** | LMS (수강/진도) | ✅ 완료 (2026-04-13) |
 | **3** | 결제 + 전자책 | ✅ 완료 (2026-04-13) |
-| **4** | 자격증 시스템 | ⏳ |
+| **4** | 자격증 시스템 | ✅ 완료 (2026-04-13) |
 | **5** | 모바일 앱 (Expo) | ⏳ |
 | **6** | 강사 포털 | ⏳ |
 | **7** | WordPress 마이그레이션 | ⏳ |
@@ -97,26 +97,61 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 - LessonSidebar — 진도 퍼센트 바, 현재 레슨 하이라이트
 - use-lesson-progress 훅 — 진도 추적 + 완료 처리
 
-## 다음 작업 (Phase 4 — 자격증 시스템)
-**백엔드:**
-- 포트원 v2 (PortOne) 결제 연동
+## Phase 3 완료 항목 (2026-04-13)
+**백엔드 API:**
 - POST /api/v1/payments/prepare — 결제 준비 (임시 주문 생성)
-- POST /api/v1/payments/confirm — 결제 확인 (PortOne 서버 검증)
+- POST /api/v1/payments/confirm — 결제 확인 (PortOne V2 서버 검증)
 - POST /api/v1/payments/webhook — PortOne 웹훅 처리
-- 전자책 다운로드 토큰 발급 (시간제한 서명 URL)
-- ObjectStorage 추상화 (Hetzner S3)
+- GET /api/v1/payments/history — 결제 내역
+- GET /api/v1/ebooks — 전자책 목록 (구매 여부 포함)
+- GET /api/v1/ebooks/:id — 전자책 메타
+- GET /api/v1/ebooks/:id/file — EPUB 파일 API 프록시 (inline 뷰어 전용)
 
 **프론트엔드:**
-- 결제 페이지 `/checkout/[courseId]`
-- 결제 완료/실패 페이지
-- 전자책 다운로드 버튼 (구매 완료 시)
+- /checkout/[courseId] — PortOne V2 결제 페이지
+- /checkout/success, /checkout/fail — 결제 결과 페이지
+- /ebooks — 전자책 목록
+- /ebooks/[id] — react-reader EPUB 뷰어 (다운로드 불가, inline only)
+
+**환경:**
+- PORTONE_STORE_ID, PORTONE_CHANNEL_KEY, PORTONE_SECRET_KEY 스테이징 .env 반영 완료
+- GOOGLE_CLIENT_ID/SECRET 스테이징 .env 반영 완료
+
+## Phase 4 완료 항목 (2026-04-13)
+**백엔드 API:**
+- GET /api/v1/exams — 응시 가능 시험 목록
+- GET /api/v1/exams/:id — 시험 상세 (문제 포함)
+- POST /api/v1/exams/:id/attempts — 시험 시작 (attempt 생성)
+- POST /api/v1/attempts/:id/submit — 시험 제출 + 자동 채점
+- GET /api/v1/attempts/:id/result — 채점 결과
+- GET /api/v1/certificates — 내 인증서 목록
+- GET /api/v1/certificates/:number — 공개 인증서 조회
+- POST /api/v1/admin/exams — 시험 생성 (admin)
+- POST /api/v1/admin/exams/:id/questions — 문제 추가 (admin)
+- 인증서 번호: `CC-{LEVEL}-{YYMMDD}-{SEQ:4}` Redis INCR 원자적 채번
+
+**프론트엔드:**
+- /exams — 시험 목록
+- /exams/[id]/attempt — 보안 시험 응시 화면 (fullscreen, copy/paste 차단, visibilitychange 3회→자동제출, 카운트다운 타이머)
+- /certificates/[number] — 공개 인증서 검증 페이지
+
+**시드 데이터:**
+- Basic 레벨 블록체인 기초 시험 5문항 (api/src/db/seed-exam.ts)
+
+## 다음 작업 (Phase 5 — 모바일 앱 또는 강사 포털)
+Phase 5~8 중 우선순위 결정 필요:
+- Phase 5: 모바일 앱 (Expo)
+- Phase 6: 강사 포털
+- Phase 7: WordPress 마이그레이션
+- Phase 8: x402 프로토콜
 
 ## Sharon 처리 필요 항목
 - [ ] GitHub Secrets 설정 (STAGING_SSH_KEY, STAGING_HOST, STAGING_USER)
-- [ ] Google OAuth 앱 등록 + CLIENT_ID/SECRET 발급 → 스테이징 .env 업데이트
+- [x] Google OAuth CLIENT_ID/SECRET 발급 → 스테이징 .env 반영 완료
 - [ ] Kakao 개발자 앱 등록 + REST_API_KEY 발급 → 스테이징 .env 업데이트
+  - ⚠️ 카카오계정(이메일) 권한은 비즈니스 앱 심사 후 활성화 가능 → 닉네임만 사용하는 방식으로 구현됨
 - [ ] `staging-api.coincraft.io` DNS A레코드 등록 (204.168.242.99)
-- [ ] 포트원 v2 가맹점 등록 (Phase 3 시작 전)
+- [x] 포트원 v2 가맹점 등록 + 키 발급 → 스테이징 .env 반영 완료
 
 ## 로컬 개발
 - API: `cd api && npm run dev` → localhost:4000
