@@ -49,7 +49,7 @@ export default function Header() {
       <div className="max-w-cc mx-auto px-6 flex items-center justify-between h-16">
         {/* Logo */}
         <a href="/" className="flex items-center h-10">
-          <Image src="/logo.png" alt="COINCRAFT" width={120} height={32} className="h-8 w-auto object-contain" />
+          <Image src="/logo-header.jpg" alt="COINCRAFT" width={160} height={40} className="h-10 w-auto object-contain" />
         </a>
 
         {/* Desktop nav */}
