@@ -20,7 +20,7 @@ jobs:
         run: npm ci && npm run build
       - name: Package dist
         working-directory: api
-        run: tar czf api-dist.tar.gz dist
+        run: tar czf api-dist.tar.gz dist package.json package-lock.json
       - name: Setup SSH
         env:
           SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
@@ -32,7 +32,7 @@ jobs:
       - name: Upload and deploy
         run: |
           scp -i ~/.ssh/id_ed25519 api/api-dist.tar.gz ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-api && tar xzf /tmp/api-dist.tar.gz && pm2 restart coincraft-api-staging"
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-api && tar xzf /tmp/api-dist.tar.gz && npm ci --production --silent && pm2 restart coincraft-api-staging"
 
   deploy-web:
     name: Deploy Web to Staging
