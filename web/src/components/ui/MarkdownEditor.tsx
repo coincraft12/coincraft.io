@@ -19,6 +19,27 @@ export default function MarkdownEditor({
   onChange,
   height = 320,
 }: MarkdownEditorProps) {
+  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const html = e.clipboardData.getData('text/html');
+    if (!html) return;
+
+    e.preventDefault();
+
+    const TurndownService = (await import('turndown')).default;
+    const td = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' });
+    const markdown = td.turndown(html);
+
+    const textarea = e.currentTarget;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const next = value.slice(0, start) + markdown + value.slice(end);
+    onChange(next);
+
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + markdown.length;
+    }, 0);
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
       {label && <label className="text-sm font-medium text-cc-text">{label}</label>}
@@ -29,7 +50,10 @@ export default function MarkdownEditor({
           height={height}
           preview="edit"
           visibleDragbar={false}
-          textareaProps={{ placeholder: '마크다운으로 작성해 주세요. # 제목, **굵게**, *기울임* 등 사용 가능합니다.' }}
+          textareaProps={{
+            placeholder: '마크다운으로 작성해 주세요. # 제목, **굵게**, *기울임* 등 사용 가능합니다.',
+            onPaste: handlePaste,
+          }}
         />
       </div>
     </div>
