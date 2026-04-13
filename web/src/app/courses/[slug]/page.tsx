@@ -5,7 +5,7 @@ import Footer from '@/components/ui/Footer';
 import CurriculumAccordion from '@/components/courses/curriculum-accordion';
 import EnrollButton from '@/components/courses/enroll-button';
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 const API_BASE = process.env.API_INTERNAL_URL ?? 'http://localhost:4001';
 
@@ -47,7 +47,7 @@ interface CourseDetail {
 
 async function fetchCourseDetail(slug: string): Promise<CourseDetail | null> {
   const res = await fetch(`${API_BASE}/api/v1/courses/${slug}`, {
-    next: { revalidate: 3600 },
+    next: { revalidate: 300 },
   });
   if (!res.ok) return null;
   const json = await res.json() as { success: boolean; data: CourseDetail };
