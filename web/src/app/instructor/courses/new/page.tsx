@@ -8,11 +8,13 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { revalidateCourse } from '@/lib/revalidate';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import MarkdownEditor from '@/components/ui/MarkdownEditor';
 
 interface CreateCourseBody {
   title: string;
   slug?: string;
   shortDescription?: string;
+  description?: string;
   level: 'beginner' | 'intermediate' | 'advanced';
   category?: string;
   price: number;
@@ -32,6 +34,7 @@ export default function NewCoursePage() {
     title: '',
     slug: '',
     shortDescription: '',
+    description: '',
     level: 'beginner',
     category: '',
     price: 0,
@@ -70,6 +73,7 @@ export default function NewCoursePage() {
       ...form,
       slug: form.slug?.trim() || undefined,
       shortDescription: form.shortDescription?.trim() || undefined,
+      description: form.description?.trim() || undefined,
       category: form.category?.trim() || undefined,
     };
     mutation.mutate(body);
@@ -107,6 +111,13 @@ export default function NewCoursePage() {
             onChange={(e) => setForm({ ...form, shortDescription: e.target.value })}
           />
         </div>
+
+        <MarkdownEditor
+          label="상세 설명"
+          value={form.description ?? ''}
+          onChange={(v) => setForm({ ...form, description: v })}
+          height={360}
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
