@@ -4,71 +4,107 @@
 > 다음 작업자가 이 파일 하나만 읽어도 현재 상태를 파악할 수 있어야 한다.
 
 ## 현재 상태
-- **단계**: Next.js 홈페이지 로컬 완성 — Sharon 검토·승인 후 운영 배포 대기
-- **마지막 업데이트**: 2026-04-12
+- **단계**: Phase 1 완료 — Auth API + 강좌 목록 API + 프론트엔드 구현 완료, 스테이징 배포 완료
+- **마지막 업데이트**: 2026-04-13
+- **결정 근거**: CIO-003 (WordPress 완전 제거 — 자체 풀스택 플랫폼)
 
-## 아키텍처 결정 (2026-04-12 확정)
-- `coincraft.io` → Next.js 홈페이지 (신규)
-- `academy.coincraft.io` → WordPress + LearnPress 유지
-- 이유: WordPress 테마 충돌 반복 문제 해결 + Claude 완전 제어 가능
+## 아키텍처 (CIO-003 확정)
 
-## 로컬 개발 환경
-- Next.js: `localhost:3002` (`coincraft.io/web/`)
-- WordPress(academy용): `localhost:8080` (Docker — WordPress 6.9 + MySQL 8.0)
-- 스택: Next.js 16, TypeScript, Tailwind CSS
-
-## 완료 항목
-- [x] Next.js 프로젝트 셋업 (섹션 7개: Hero / About / 5대 사업 트랙 / Academy / Blog / Patent / Community)
-- [x] Academy·Blog 섹션: WordPress REST API 실시간 fetch
-- [x] 헤더: 실제 로고 + 드롭다운 메뉴
-- [x] 푸터: 사업자 정보·연락처·법무 링크
-- [x] About 페이지 제작 + 운영 배포 (기술 중심 리브랜딩)
-- [x] ABOUT 메뉴 URL 수정 — `#` → `/about/` (모바일 링크 수정, 2026-04-12)
-- [x] WP Super Cache + mod_rewrite 활성화 (전 페이지 서버 응답 ~0ms, 2026-04-12)
-- [x] 미사용 플러그인 11개 삭제 (2026-04-12)
-
-## 다음 작업 항목
-- [ ] Sharon 검토 → 운영 배포 승인
-- [ ] Nginx 설정 변경 (coincraft.io → Next.js standalone, academy.coincraft.io → WordPress)
-- [ ] 블로그 섹션 WordPress REST API 썸네일 연동 확인
-- [ ] Google 소셜 로그인 연동 (nextend-facebook-connect 플러그인 설치됨)
-  - Sharon이 Google Cloud Console에서 OAuth 클라이언트 ID·Secret 발급 후 진행
-  - 리디렉션 URI: `https://coincraft.io/?oauth=1&action=nextendLogin&provider=google`
-  - 기존 회원 이메일 자동 매칭 설정 켜기
-- [ ] 스테이징 서버 구축 — custody 스테이징 VPS 활용 검토
-  - GitHub Secrets에서 STAGING_HOST IP 확인 (Sharon 직접)
-  - 서버 사양 확인 (RAM/디스크 여유 → coincraft Next.js + Nginx 추가 가능 여부)
-  - 가능하면 staging.coincraft.io 서브도메인으로 구성
-
-- [ ] 전자책 ePub 변환
-  - 살아남기 위한 생존전략 WEB3: `_Archive/05_집필/01. 살아남기 위한 생존전략 WEB3/final_ver1.0.docx` (Sharon 최종본 확인 필요)
-  - 온체인 시그널: `_Archive/05_집필/02. 온체인시그널/prologue.docx + chapter1~4.docx` (Sharon 최종본 확인 필요)
-  - 사토시 픽션: 9차 퇴고 완료 + 분권 결정 후 진행
-  - 완료 후 Next.js 사이트에서 직접 판매 페이지 연동
-
-## 아키텍처 장기 방향 (2026-04-12 확정, CIO-001)
-- **완전 헤드리스 WordPress** 구조로 장기 전환
-- Next.js = 메인 프론트엔드 (모든 라우팅·렌더링·헤더·푸터)
-- WordPress = 백엔드 전용 (REST API로 데이터 제공, 사용자에게 직접 노출 안 함)
-- 단계별 마이그레이션: 강좌 목록 → 강좌 상세 → 계정/결제 순
-- 급하지 않음 — CIO 주도 장기 로드맵으로 관리
-- 현재 스테이징 혼재 구조는 과도기 상태로 인정, 운영 배포 전까지 유지
-
-## 모바일 앱 계획 (2026-04-12 확정, CIO-002)
-- 강의 수강 + 전자책 + 콘텐츠 제공 전용 앱
-- 기술 스택 후보: React Native / Expo (Next.js 코드 재사용 가능)
-- 백엔드: WordPress REST API + Node.js API 연계
-- 선행 조건: 헤드리스 WordPress 전환(CIO-001) 완료 후 착수
-- 앱스토어(iOS) + 플레이스토어(Android) 양쪽 배포 목표
-
-## 작업 전 필독 (CIO)
-- `Work/CIO/coincraft_platform_roadmap.md` — Phase별 세부 To-Do
-- `Work/CIO/cso_cio_protocol.md` — CIO-CSO 협조 규칙
-- `Work/CIO/decisions.md` — 기존 결정 확인
-- `Work/CIO/daily_log.md` — 최근 작업 맥락 확인
-- `Work/CSO/decisions.md` — 전사 우선순위 확인
+```
+Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
+       ↓ Nginx
+  /api/* → Fastify API (api/, port 4001 staging / 4000 prod)
+       ↓
+  PostgreSQL (Docker: custody-postgres) + Redis
+```
 
 ## 서버 정보
-- 운영 서버: 46.62.212.134 / SSH: `ssh coincraft` / 유저: root
-- WordPress 경로: /var/www/coincraft.io / 테마: eduma-child
-- 배포 규칙: 로컬 수정 → Sharon 승인 → 운영 배포 (운영 직접 수정 금지)
+| 환경 | 서버 | Next.js | API |
+|---|---|---|---|
+| 스테이징 | 204.168.242.99 | port 3000 (PM2: coincraft-staging) | port 4001 (PM2: coincraft-api-staging) |
+| 운영 | 46.62.212.134 | port 3000 (미설치) | port 4000 (미설치) |
+
+- 스테이징 Nginx: `staging.coincraft.io` → port 3000, `/api/*` → port 4001
+- 스테이징 DB: PostgreSQL `custody-postgres` Docker, DB: `coincraft_staging`, 유저: `coincraft`
+- 배포: 로컬 빌드 → SCP → pm2 restart (GitHub Actions 시크릿 미설정으로 수동 배포 중)
+
+## Phase 진행 현황
+| Phase | 내용 | 상태 |
+|---|---|---|
+| **0** | 기반 인프라 | ✅ 완료 |
+| **1** | Auth + 강좌 목록 API | ✅ 완료 (2026-04-13) |
+| **2** | LMS (수강/진도) | ⏳ 다음 단계 |
+| **3** | 결제 + 전자책 | ⏳ |
+| **4** | 자격증 시스템 | ⏳ |
+| **5** | 모바일 앱 (Expo) | ⏳ |
+| **6** | 강사 포털 | ⏳ |
+| **7** | WordPress 마이그레이션 | ⏳ |
+| **8** | x402 프로토콜 | ⏳ |
+
+## Phase 0 완료 항목
+**백엔드:**
+- Fastify 앱 (app.ts, server.ts), env 검증, CORS/Swagger/헬스체크
+- Drizzle ORM + 첫 마이그레이션 (21 테이블), Redis
+- ecosystem.config.js (PM2), .env.example
+
+**프론트엔드:**
+- Next.js 16 App Router, Tailwind, Header/Footer/홈페이지
+- api-client.ts, auth.store.ts (Zustand), query-client.ts (React Query)
+- UI 컴포넌트: Button, Input, Card, Badge, Spinner
+- AppProviders (QueryClientProvider + AuthInitializer)
+
+**CI/CD:**
+- `.github/workflows/ci.yml` (PR lint+typecheck)
+- `.github/workflows/deploy-staging.yml` (master push → 스테이징 자동 배포)
+  - ⚠️ GitHub Secrets 미설정 (STAGING_SSH_KEY, STAGING_HOST, STAGING_USER) — Sharon 설정 필요
+
+## Phase 1 완료 항목 (2026-04-13)
+**백엔드 API (모두 `/api/v1/auth/`, `/api/v1/courses/` 접두사):**
+- 이메일 회원가입/로그인/로그아웃/토큰 갱신
+- 이메일 인증, 비밀번호 재설정
+- Google OAuth / Kakao OAuth 콜백
+- JWT (Node.js crypto HS256, Access 1h / Refresh 30d, Rotation)
+- Rate limit (로그인 5회/15분 블락)
+- GET /courses (목록, 필터, 페이지네이션)
+- GET /courses/:slug (상세, 커리큘럼, 수강여부)
+- authenticate / optional-auth / require-role 미들웨어
+
+**프론트엔드:**
+- /login, /register — 실제 폼 (이메일 + 소셜 로그인)
+- /auth/callback, /auth/verify-email, /auth/email-verified
+- /auth/forgot-password, /auth/reset-password
+- /courses — API 연동 목록 (revalidate 60s)
+- CourseCard, CourseFilters 컴포넌트
+- use-auth-init.ts (localStorage 토큰 복원)
+- middleware.ts (/my, /exams 보호 라우트)
+
+## 다음 작업 (Phase 2 — LMS)
+**백엔드 우선:**
+- `POST /api/v1/courses/:id/enroll` (무료 수강 신청)
+- `GET /api/v1/courses/:slug/lessons/:id` (레슨 상세, 수강 권한 검증)
+- `POST /api/v1/lessons/:id/progress` (진도 업데이트)
+- `POST /api/v1/lessons/:id/complete` (레슨 완료)
+- VideoProvider 추상화 (Vimeo/YouTube)
+- ObjectStorage 추상화 (Hetzner S3)
+
+**프론트엔드:**
+- 강좌 상세 페이지 `/courses/[slug]` (ISR, 커리큘럼 아코디언)
+- 레슨 플레이어 페이지 (Vimeo iframe, 진도 추적)
+- 마이페이지 수강 탭
+
+## Sharon 처리 필요 항목
+- [ ] GitHub Secrets 설정 (STAGING_SSH_KEY, STAGING_HOST, STAGING_USER)
+- [ ] Google OAuth 앱 등록 + CLIENT_ID/SECRET 발급 → 스테이징 .env 업데이트
+- [ ] Kakao 개발자 앱 등록 + REST_API_KEY 발급 → 스테이징 .env 업데이트
+- [ ] `staging-api.coincraft.io` DNS A레코드 등록 (204.168.242.99)
+
+## 로컬 개발
+- API: `cd api && npm run dev` → localhost:4000
+- Web: `cd web && npm run dev` → localhost:3000
+- DB/Redis: `docker compose up -d` (프로젝트 루트)
+- 마이그레이션: `cd api && npm run migrate`
+
+## 작업 전 필독 (CIO)
+- `Work/CIO/coincraft_platform_roadmap.md` — Phase별 개요
+- `Work/CIO/coincraft_platform_todo.md` — 세부 To-Do 체크리스트
+- `Work/CIO/coincraft_platform_architecture.md` — 설계 문서
