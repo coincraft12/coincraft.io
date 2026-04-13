@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { apiClient } from '@/lib/api-client'
 
@@ -31,6 +32,8 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openSub, setOpenSub] = useState<string | null>(null)
   const { user, accessToken, logout, isLoading } = useAuthStore()
+  const pathname = usePathname()
+  const loginHref = `/login?redirect=${encodeURIComponent(pathname)}`
 
   async function handleLogout() {
     try {
@@ -104,7 +107,7 @@ export default function Header() {
               <a href="/register" className="text-sm text-cc-muted hover:text-cc-text transition-colors">
                 회원가입
               </a>
-              <a href="/login" className="cc-btn cc-btn-primary text-sm px-4 py-2">
+              <a href={loginHref} className="cc-btn cc-btn-primary text-sm px-4 py-2">
                 로그인
               </a>
             </>
@@ -169,7 +172,7 @@ export default function Header() {
             ) : (
               <>
                 <a href="/register" className="text-sm text-cc-muted">회원가입</a>
-                <a href="/login" className="cc-btn cc-btn-primary text-sm px-4 py-2">로그인</a>
+                <a href={loginHref} className="cc-btn cc-btn-primary text-sm px-4 py-2">로그인</a>
               </>
             )}
           </div>
