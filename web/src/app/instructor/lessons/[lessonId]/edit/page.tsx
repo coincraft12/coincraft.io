@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { revalidateCourse } from '@/lib/revalidate';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
@@ -95,6 +96,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
       });
     },
     onSuccess: () => {
+      revalidateCourse();
       if (courseId) {
         router.push(`/instructor/courses/${courseId}`);
       } else {

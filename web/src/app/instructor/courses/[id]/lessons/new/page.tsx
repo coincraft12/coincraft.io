@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { revalidateCourse } from '@/lib/revalidate';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
@@ -57,6 +58,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['instructor-course', courseId] });
+      revalidateCourse();
       router.push(`/instructor/courses/${courseId}`);
     },
     onError: (err) => {

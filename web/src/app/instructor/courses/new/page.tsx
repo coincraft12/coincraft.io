@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { revalidateCourse } from '@/lib/revalidate';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
@@ -46,6 +47,7 @@ export default function NewCoursePage() {
       return res.data;
     },
     onSuccess: (data) => {
+      revalidateCourse(data.slug);
       router.push(`/instructor/courses/${data.id}`);
     },
     onError: (err) => {

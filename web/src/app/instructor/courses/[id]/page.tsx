@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { revalidateCourse } from '@/lib/revalidate';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -124,6 +125,7 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['instructor-course', id] });
       queryClient.invalidateQueries({ queryKey: ['instructor-courses'] });
+      revalidateCourse(course?.slug);
     },
   });
 
