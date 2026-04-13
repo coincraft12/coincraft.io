@@ -6,6 +6,7 @@ interface User {
   name: string;
   avatarUrl: string | null;
   role: 'student' | 'instructor' | 'admin';
+  emailVerified: boolean;
 }
 
 interface AuthState {
