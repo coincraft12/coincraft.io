@@ -3,22 +3,24 @@ import Image from 'next/image'
 export default function Footer() {
   return (
     <footer className="bg-[#1a1a2e] border-t border-white/10">
-      {/* Disclaimer */}
+
+      {/* 투자정보 면책 */}
       <div className="border-b border-white/10 py-4 text-center">
         <p className="text-sm font-bold text-cc-text px-4">
           코인크래프트는 블록체인/WEB3 기술 교육 플랫폼이며 투자정보/거래중개를 제공하지 않습니다.
         </p>
       </div>
 
-      {/* Main footer */}
+      {/* 메인 푸터 — 3열 */}
       <div className="max-w-cc mx-auto px-6 py-12">
         <div className="grid md:grid-cols-3 gap-10">
-          {/* Logo */}
+
+          {/* 1열: 로고 */}
           <div className="flex items-start justify-center md:justify-start">
-            <Image src="/logo.png" alt="COINCRAFT" width={128} height={40} className="w-32 object-contain" />
+            <Image src="/logo.png" alt="COINCRAFT" width={128} height={128} className="w-32 object-contain" />
           </div>
 
-          {/* Contact */}
+          {/* 2열: 연락처 */}
           <div>
             <ul className="space-y-3 text-sm text-cc-muted">
               <li className="flex items-center gap-2">
@@ -65,8 +67,8 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Legal */}
-          <div>
+          {/* 3열: 법무 링크 + 카카오 버튼 */}
+          <div className="flex flex-col gap-4">
             <ul className="space-y-3 text-sm text-cc-muted">
               <li>
                 <a href="/terms" className="flex items-center gap-2 hover:text-cc-text transition-colors">
@@ -83,12 +85,31 @@ export default function Footer() {
                   <span className="text-cc-accent">💳</span>환불정책
                 </a>
               </li>
+              <li className="flex items-center gap-2 text-xs text-[#666]">
+                <span>🚫</span>
+                ⓒ CoinCraft, 강의 예제, 영상 복제 금지
+              </li>
             </ul>
+
+            {/* 카카오 노란색 버튼 */}
+            <a
+              href="http://pf.kakao.com/_xhPxdxgn/chat"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded text-sm font-bold transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#FEE500', color: '#191919' }}
+            >
+              <svg viewBox="0 0 512 512" className="w-4 h-4 flex-shrink-0" fill="currentColor" aria-hidden="true">
+                <path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8zm144 276c0 6.6-5.4 12-12 12h-92v92c0 6.6-5.4 12-12 12h-56c-6.6 0-12-5.4-12-12v-92h-92c-6.6 0-12-5.4-12-12v-56c0-6.6 5.4-12 12-12h92v-92c0-6.6 5.4-12 12-12h56c6.6 0 12 5.4 12 12v92h92c6.6 0 12 5.4 12 12v56z" />
+              </svg>
+              문의ㆍ상담은 플러스 친구 코인크래프트
+            </a>
           </div>
+
         </div>
       </div>
 
-      {/* Business info */}
+      {/* 사업자 정보 */}
       <div className="border-t border-white/10 py-6 px-6">
         <div className="max-w-cc mx-auto text-xs text-[#878787] leading-relaxed text-center md:text-left space-y-1">
           <p>
@@ -104,6 +125,7 @@ export default function Footer() {
           <p className="pt-1">© COINCRAFT. ALL RIGHT RESERVED</p>
         </div>
       </div>
+
     </footer>
   )
 }
