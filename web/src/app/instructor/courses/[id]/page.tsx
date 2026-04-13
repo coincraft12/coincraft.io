@@ -99,6 +99,7 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
       return res.data;
     },
     enabled: !!token && !!id,
+    staleTime: 0,
   });
 
   const { data: students, isLoading: studentsLoading } = useQuery<StudentItem[]>({

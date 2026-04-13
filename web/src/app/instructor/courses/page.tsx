@@ -52,6 +52,7 @@ export default function InstructorCoursesPage() {
       return res.data;
     },
     enabled: !!token,
+    staleTime: 0,
   });
 
   return (
