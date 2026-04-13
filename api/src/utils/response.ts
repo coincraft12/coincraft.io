@@ -1,7 +1,7 @@
-export const ok = <T>(data: T) => ({ success: true as const, data });
-export const created = <T>(data: T) => ({ success: true as const, data });
-export const paginated = <T>(items: T[], total: number, page: number, limit: number) => ({
+export const ok = <T>(data: T, message?: string) => ({ success: true as const, data, ...(message && { message }) });
+export const created = <T>(data: T, message?: string) => ({ success: true as const, data, ...(message && { message }) });
+export const paginated = <T>(data: T[], meta: { total: number; page: number; limit: number; totalPages: number }) => ({
   success: true as const,
-  data: items,
-  pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+  data,
+  meta,
 });
