@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ReactReader, ReactReaderStyle } from 'react-reader';
 import { useAuthStore } from '@/store/auth.store';
@@ -31,6 +31,7 @@ export default function EbookViewerPage() {
   const [location, setLocation] = useState<string | number>(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isFileLoading, setIsFileLoading] = useState(true);
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -61,6 +62,22 @@ export default function EbookViewerPage() {
         const metaJson: EbookMetaResponse = await metaRes.json();
         setMeta(metaJson.data);
 
+        // Fetch reading progress
+        try {
+          const progressRes = await fetch(`${API_BASE}/api/v1/ebooks/${id}/progress`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (progressRes.ok) {
+            const progressJson = await progressRes.json();
+            const savedPage = progressJson?.data?.lastPage;
+            if (savedPage && savedPage > 1) {
+              setLocation(savedPage);
+            }
+          }
+        } catch {
+          // 진행도 조회 실패 시 조용히 무시
+        }
+
         // Fetch epub file as ArrayBuffer
         const fileRes = await fetch(`${API_BASE}/api/v1/ebooks/${id}/file`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -83,7 +100,29 @@ export default function EbookViewerPage() {
 
   const handleLocationChanged = useCallback((loc: string | number) => {
     setLocation(loc);
-  }, []);
+
+    // 로그인 안 된 경우 저장 스킵
+    if (!token || !id) return;
+
+    // debounce 1초 후 진행도 저장
+    if (saveDebounceRef.current) {
+      clearTimeout(saveDebounceRef.current);
+    }
+    saveDebounceRef.current = setTimeout(() => {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+      const page = typeof loc === 'number' ? loc : 0;
+      fetch(`${API_BASE}/api/v1/ebooks/${id}/progress`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ page }),
+      }).catch(() => {
+        // 저장 실패 시 조용히 무시
+      });
+    }, 1000);
+  }, [token, id]);
 
   // While auth is loading
   if (isAuthLoading || (!token && !isAuthLoading)) {

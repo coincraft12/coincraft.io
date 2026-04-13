@@ -29,4 +29,19 @@ export async function ebookRoutes(app: FastifyInstance): Promise<void> {
       .header('Content-Length', buffer.length)
       .send(buffer);
   });
+
+  // GET /api/v1/ebooks/:id/progress — 읽기 진행도 조회 (인증 필요)
+  app.get('/api/v1/ebooks/:id/progress', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const progress = await ebookService.getEbookProgress(id, request.user!.id);
+    return reply.send(ok(progress));
+  });
+
+  // PATCH /api/v1/ebooks/:id/progress — 읽기 진행도 저장 (인증 필요)
+  app.patch('/api/v1/ebooks/:id/progress', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { page } = request.body as { page: number };
+    const progress = await ebookService.upsertEbookProgress(id, request.user!.id, page);
+    return reply.send(ok(progress));
+  });
 }

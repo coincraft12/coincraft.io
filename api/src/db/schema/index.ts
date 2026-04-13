@@ -9,6 +9,7 @@ export * from './payments';
 export * from './certificates';
 export * from './ebooks';
 export * from './ebook-purchases';
+export * from './ebook-progress';
 export * from './blog-posts';
 export * from './cert-exams';
 export * from './exam-questions';

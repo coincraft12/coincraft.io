@@ -1,7 +1,7 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { readFile } from 'fs/promises';
 import { db } from '../../db';
-import { ebooks, ebookPurchases } from '../../db/schema';
+import { ebooks, ebookPurchases, ebookReadingProgress } from '../../db/schema';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,4 +149,43 @@ export async function getEbookFile(ebookId: string, userId: string): Promise<Buf
   } catch {
     throw makeError('전자책 파일을 찾을 수 없습니다.', 'FILE_NOT_FOUND', 404);
   }
+}
+
+export async function getEbookProgress(ebookId: string, userId: string): Promise<{ lastPage: number }> {
+  const [row] = await db
+    .select({ lastPage: ebookReadingProgress.lastPage })
+    .from(ebookReadingProgress)
+    .where(
+      and(
+        eq(ebookReadingProgress.userId, userId),
+        eq(ebookReadingProgress.ebookId, ebookId)
+      )
+    )
+    .limit(1);
+
+  return { lastPage: row?.lastPage ?? 1 };
+}
+
+export async function upsertEbookProgress(
+  ebookId: string,
+  userId: string,
+  page: number
+): Promise<{ lastPage: number }> {
+  await db
+    .insert(ebookReadingProgress)
+    .values({
+      userId,
+      ebookId,
+      lastPage: page,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [ebookReadingProgress.userId, ebookReadingProgress.ebookId],
+      set: {
+        lastPage: page,
+        updatedAt: new Date(),
+      },
+    });
+
+  return { lastPage: page };
 }
