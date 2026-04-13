@@ -21,16 +21,15 @@ jobs:
       - name: Package dist
         working-directory: api
         run: tar czf api-dist.tar.gz dist
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/staging_key
-          chmod 600 ~/.ssh/staging_key
-          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+      - name: Add known hosts
+        run: ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
       - name: Upload and deploy
         run: |
-          scp -i ~/.ssh/staging_key api/api-dist.tar.gz ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
-          ssh -i ~/.ssh/staging_key ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-api && tar xzf /tmp/api-dist.tar.gz && pm2 restart coincraft-api-staging"
+          scp api/api-dist.tar.gz ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-api && tar xzf /tmp/api-dist.tar.gz && pm2 restart coincraft-api-staging"
 
   deploy-web:
     name: Deploy Web to Staging
@@ -48,13 +47,12 @@ jobs:
       - name: Package build
         working-directory: web
         run: tar czf next_build.tar.gz .next
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/staging_key
-          chmod 600 ~/.ssh/staging_key
-          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+      - name: Add known hosts
+        run: ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
       - name: Upload and deploy
         run: |
-          scp -i ~/.ssh/staging_key web/next_build.tar.gz ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
-          ssh -i ~/.ssh/staging_key ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-staging && tar xzf /tmp/next_build.tar.gz && cp .next/standalone/server.js server.js && pm2 restart coincraft-staging"
+          scp web/next_build.tar.gz ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-staging && tar xzf /tmp/next_build.tar.gz && cp .next/standalone/server.js server.js && pm2 restart coincraft-staging"
