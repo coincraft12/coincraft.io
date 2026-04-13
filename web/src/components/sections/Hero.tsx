@@ -25,7 +25,7 @@ export default function Hero() {
             특허 전략을 통해 블록체인 산업의 전문가를 양성합니다.
           </p>
           <div className="flex flex-wrap gap-4">
-            <a href="https://academy.coincraft.io/courses" className="cc-btn cc-btn-primary">
+            <a href="/courses" className="cc-btn cc-btn-primary">
               강의 보기
             </a>
             <a href="#about" className="cc-btn cc-btn-ghost">

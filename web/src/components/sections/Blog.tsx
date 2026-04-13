@@ -1,42 +1,32 @@
-const WP_API = 'https://coincraft.io/wp-json'
+const posts = [
+  {
+    id: 1,
+    title: 'ERC-20 vs TRC-20 — 두 토큰 표준의 기술적 차이',
+    excerpt: '이더리움과 TRON의 토큰 표준을 ABI 인코딩, 수수료 구조, 트랜잭션 만료 메커니즘 측면에서 비교 분석합니다.',
+    href: '/blog/erc20-vs-trc20',
+    date: '2026.04.13',
+  },
+  {
+    id: 2,
+    title: 'Custody 시스템 설계: UTXO 모델과 Account 모델의 선택',
+    excerpt: 'Bitcoin의 UTXO 모델과 Ethereum의 Account 모델은 수탁 시스템 설계에 전혀 다른 접근을 요구합니다.',
+    href: '/blog/custody-utxo-vs-account',
+    date: '2026.04.10',
+  },
+  {
+    id: 3,
+    title: '스마트컨트랙트 보안: 재진입 공격 완전 정복',
+    excerpt: 'CEI 패턴과 ReentrancyGuard를 통해 재진입 공격을 방어하는 방법을 실제 코드와 함께 설명합니다.',
+    href: '/blog/reentrancy-attack',
+    date: '2026.04.07',
+  },
+]
 
-type WPPost = {
-  id: number
-  title: { rendered: string }
-  excerpt: { rendered: string }
-  link: string
-  date: string
-  featured_media: number
-  _embedded?: {
-    'wp:featuredmedia'?: Array<{ source_url: string }>
-  }
+function formatDate(dateStr: string) {
+  return dateStr
 }
 
-async function getPosts(): Promise<WPPost[]> {
-  try {
-    const res = await fetch(
-      `${WP_API}/wp/v2/posts?_fields=id,title,excerpt,link,date,featured_media&_embed=wp:featuredmedia&per_page=3&status=publish`,
-      { next: { revalidate: 1800 } }
-    )
-    if (!res.ok) return []
-    return res.json()
-  } catch {
-    return []
-  }
-}
-
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, '').trim()
-}
-
-function formatDate(iso: string) {
-  const d = new Date(iso)
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
-}
-
-export default async function Blog() {
-  const posts = await getPosts()
-
+export default function Blog() {
   return (
     <section id="blog" className="cc-section bg-cc-primary">
       <div className="cc-container">
@@ -47,45 +37,31 @@ export default async function Blog() {
           </h2>
         </div>
 
-        {posts.length === 0 ? (
-          <div className="cc-glass p-10 text-center text-cc-muted mb-10">
-            콘텐츠를 불러오는 중입니다.
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-3 gap-6 mb-10">
-            {posts.map((p) => {
-              const thumb = p._embedded?.['wp:featuredmedia']?.[0]?.source_url
-              return (
-                <a
-                  key={p.id}
-                  href={p.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="cc-glass hover:border-cc-accent/40 transition-all duration-300 group block overflow-hidden"
-                >
-                  <div
-                    className="h-44 bg-cc-accent/5 flex items-center justify-center"
-                    style={thumb ? { backgroundImage: `url(${thumb})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                  >
-                    {!thumb && <span className="text-4xl opacity-20">📄</span>}
-                  </div>
-                  <div className="p-6">
-                    <span className="text-xs text-cc-muted">{formatDate(p.date)}</span>
-                    <h4 className="text-base font-bold text-cc-text mt-2 mb-2 group-hover:text-cc-accent transition-colors leading-snug line-clamp-2">
-                      {p.title.rendered}
-                    </h4>
-                    <p className="text-cc-muted text-sm leading-relaxed line-clamp-3">
-                      {stripHtml(p.excerpt.rendered)}
-                    </p>
-                  </div>
-                </a>
-              )
-            })}
-          </div>
-        )}
+        <div className="grid md:grid-cols-3 gap-6 mb-10">
+          {posts.map((p) => (
+            <a
+              key={p.id}
+              href={p.href}
+              className="cc-glass hover:border-cc-accent/40 transition-all duration-300 group block overflow-hidden"
+            >
+              <div className="h-44 bg-cc-accent/5 flex items-center justify-center">
+                <span className="text-4xl opacity-20">📄</span>
+              </div>
+              <div className="p-6">
+                <span className="text-xs text-cc-muted">{formatDate(p.date)}</span>
+                <h4 className="text-base font-bold text-cc-text mt-2 mb-2 group-hover:text-cc-accent transition-colors leading-snug line-clamp-2">
+                  {p.title}
+                </h4>
+                <p className="text-cc-muted text-sm leading-relaxed line-clamp-3">
+                  {p.excerpt}
+                </p>
+              </div>
+            </a>
+          ))}
+        </div>
 
         <div className="text-center">
-          <a href="https://coincraft.io/blog" className="cc-btn cc-btn-ghost">
+          <a href="/blog" className="cc-btn cc-btn-ghost">
             전체 글 보기
           </a>
         </div>

@@ -1,4 +1,4 @@
-const LOGO = 'https://coincraft.io/wp-content/uploads/2022/06/2-6-scaled.png'
+import Image from 'next/image'
 
 export default function Footer() {
   return (
@@ -15,12 +15,7 @@ export default function Footer() {
         <div className="grid md:grid-cols-3 gap-10">
           {/* Logo */}
           <div className="flex items-start justify-center md:justify-start">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={LOGO}
-              alt="COINCRAFT"
-              className="w-32 object-contain"
-            />
+            <Image src="/logo.png" alt="COINCRAFT" width={128} height={40} className="w-32 object-contain" />
           </div>
 
           {/* Contact */}
@@ -74,17 +69,17 @@ export default function Footer() {
           <div>
             <ul className="space-y-3 text-sm text-cc-muted">
               <li>
-                <a href="/term_conditions/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-cc-text transition-colors">
+                <a href="/terms" className="flex items-center gap-2 hover:text-cc-text transition-colors">
                   <span className="text-cc-accent">📄</span>이용약관
                 </a>
               </li>
               <li>
-                <a href="/privacy_policy/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-cc-text transition-colors">
+                <a href="/privacy" className="flex items-center gap-2 hover:text-cc-text transition-colors">
                   <span className="text-cc-accent">🔒</span>개인정보처리방침
                 </a>
               </li>
               <li>
-                <a href="/refund_returns/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-cc-text transition-colors">
+                <a href="/refund" className="flex items-center gap-2 hover:text-cc-text transition-colors">
                   <span className="text-cc-accent">💳</span>환불정책
                 </a>
               </li>

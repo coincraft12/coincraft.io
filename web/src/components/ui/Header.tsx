@@ -1,53 +1,40 @@
 'use client'
-import { useState, useEffect } from 'react'
-
-const WP_BASE = process.env.NEXT_PUBLIC_WP_URL ?? 'https://coincraft.io'
-const LOGO = `${WP_BASE}/wp-content/uploads/2026/01/COINCRAFT_IO_헤더로고-복사.png`
+import { useState } from 'react'
+import Image from 'next/image'
 
 const nav = [
   { label: 'HOME', href: '/' },
-  { label: 'ABOUT', href: '/about/' },
+  { label: 'ABOUT', href: '/about' },
   {
     label: '전체 강좌',
-    href: '#',
+    href: '/courses',
     children: [
-      { label: 'Web3', href: `${WP_BASE}/course-category/web3/` },
-      { label: '온체인 데이터 분석', href: `${WP_BASE}/course-category/onchain-data/` },
+      { label: 'Web3', href: '/courses?category=web3' },
+      { label: '온체인 데이터 분석', href: '/courses?category=onchain' },
     ],
   },
   {
     label: '검정',
-    href: `${WP_BASE}/cert/`,
+    href: '/cert',
     children: [
-      { label: '검정 신청', href: `${WP_BASE}/cert/application/` },
-      { label: '자격 관리·운영 규정', href: `${WP_BASE}/cert/policy/` },
-      { label: '시험 관리 세부 규정', href: `${WP_BASE}/cert/exam-rules/` },
+      { label: '검정 신청', href: '/cert/apply' },
+      { label: '자격 관리·운영 규정', href: '/cert/policy' },
+      { label: '시험 관리 세부 규정', href: '/cert/exam-rules' },
     ],
   },
-  { label: '상점', href: `${WP_BASE}/shop/` },
+  { label: '상점', href: '/shop' },
 ]
-
-function isWpLoggedIn(): boolean {
-  if (typeof document === 'undefined') return false
-  return document.cookie.split(';').some((c) => c.trim().startsWith('wordpress_logged_in_'))
-}
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openSub, setOpenSub] = useState<string | null>(null)
-  const [loggedIn, setLoggedIn] = useState(false)
-
-  useEffect(() => {
-    setLoggedIn(isWpLoggedIn())
-  }, [])
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a2e] border-b border-white/10">
       <div className="max-w-cc mx-auto px-6 flex items-center justify-between h-16">
         {/* Logo */}
         <a href="/" className="flex items-center h-10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO} alt="COINCRAFT" className="h-8 w-auto object-contain" />
+          <Image src="/logo.png" alt="COINCRAFT" width={120} height={32} className="h-8 w-auto object-contain" />
         </a>
 
         {/* Desktop nav */}
@@ -91,20 +78,12 @@ export default function Header() {
 
         {/* Auth links */}
         <div className="hidden md:flex items-center gap-3">
-          {loggedIn ? (
-            <a href={`${WP_BASE}/account/`} className="cc-btn cc-btn-primary text-sm px-4 py-2">
-              내 계정
-            </a>
-          ) : (
-            <>
-              <a href={`${WP_BASE}/account/?action=register`} className="text-sm text-cc-muted hover:text-cc-text transition-colors">
-                회원가입
-              </a>
-              <a href={`${WP_BASE}/account/`} className="cc-btn cc-btn-primary text-sm px-4 py-2">
-                로그인
-              </a>
-            </>
-          )}
+          <a href="/register" className="text-sm text-cc-muted hover:text-cc-text transition-colors">
+            회원가입
+          </a>
+          <a href="/login" className="cc-btn cc-btn-primary text-sm px-4 py-2">
+            로그인
+          </a>
         </div>
 
         {/* Mobile hamburger */}
@@ -157,14 +136,8 @@ export default function Header() {
             </div>
           ))}
           <div className="flex gap-3 pt-3 border-t border-white/10 mt-2">
-            {loggedIn ? (
-              <a href={`${WP_BASE}/account/`} className="cc-btn cc-btn-primary text-sm px-4 py-2">내 계정</a>
-            ) : (
-              <>
-                <a href={`${WP_BASE}/account/?action=register`} className="text-sm text-cc-muted">회원가입</a>
-                <a href={`${WP_BASE}/account/`} className="cc-btn cc-btn-primary text-sm px-4 py-2">로그인</a>
-              </>
-            )}
+            <a href="/register" className="text-sm text-cc-muted">회원가입</a>
+            <a href="/login" className="cc-btn cc-btn-primary text-sm px-4 py-2">로그인</a>
           </div>
         </div>
       )}
