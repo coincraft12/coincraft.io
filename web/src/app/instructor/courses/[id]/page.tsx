@@ -4,11 +4,26 @@ import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
-import { apiClient, ApiError } from '@/lib/api-client';
+import { apiClient } from '@/lib/api-client';
 import { revalidateCourse } from '@/lib/revalidate';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,7 +95,188 @@ function typeLabel(type: string): string {
   }
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Drag Handle ──────────────────────────────────────────────────────────────
+
+function GripIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <circle cx="5" cy="4" r="1.2" />
+      <circle cx="5" cy="8" r="1.2" />
+      <circle cx="5" cy="12" r="1.2" />
+      <circle cx="11" cy="4" r="1.2" />
+      <circle cx="11" cy="8" r="1.2" />
+      <circle cx="11" cy="12" r="1.2" />
+    </svg>
+  );
+}
+
+// ─── Sortable Lesson ──────────────────────────────────────────────────────────
+
+function SortableLesson({
+  lesson,
+  onEdit,
+}: {
+  lesson: LessonItem;
+  onEdit: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: lesson.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between px-6 py-2.5 border-b border-white/5 last:border-0 bg-cc-secondary hover:bg-white/5 transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <button
+          {...attributes}
+          {...listeners}
+          className="text-cc-muted/40 hover:text-cc-muted cursor-grab active:cursor-grabbing touch-none select-none"
+          tabIndex={-1}
+        >
+          <GripIcon />
+        </button>
+        <span className="text-sm text-cc-text">{lesson.title}</span>
+        <span className="text-xs text-cc-muted">{typeLabel(lesson.type)}</span>
+        {lesson.isPreview && <Badge variant="basic">미리보기</Badge>}
+        {!lesson.isPublished && <Badge variant="default">비공개</Badge>}
+      </div>
+      <div className="flex items-center gap-3">
+        {lesson.duration ? (
+          <span className="text-xs text-cc-muted">{Math.round(lesson.duration / 60)}분</span>
+        ) : null}
+        <button onClick={onEdit} className="text-xs text-cc-accent hover:underline">
+          수정
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sortable Chapter ─────────────────────────────────────────────────────────
+
+function SortableChapter({
+  chapter,
+  courseId,
+  isExpanded,
+  onToggle,
+  onReorderLesson,
+  onNavigate,
+}: {
+  chapter: ChapterItem;
+  courseId: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onReorderLesson: (lessonId: string, newOrder: number) => void;
+  onNavigate: (path: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: chapter.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  const lessonSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const sortedLessons = [...chapter.lessons].sort((a, b) => a.order - b.order);
+
+  function handleLessonDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortedLessons.findIndex((l) => l.id === active.id);
+    const newIndex = sortedLessons.findIndex((l) => l.id === over.id);
+    const reordered = arrayMove(sortedLessons, oldIndex, newIndex);
+
+    reordered.forEach((lesson, idx) => {
+      if (sortedLessons.findIndex((l) => l.id === lesson.id) !== idx) {
+        onReorderLesson(lesson.id, idx);
+      }
+    });
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-cc-secondary border border-white/10 rounded-cc overflow-hidden"
+    >
+      {/* Chapter header */}
+      <div
+        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors"
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-3">
+          <button
+            {...attributes}
+            {...listeners}
+            className="text-cc-muted/40 hover:text-cc-muted cursor-grab active:cursor-grabbing touch-none select-none"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripIcon />
+          </button>
+          <span className="text-cc-text font-medium text-sm">{chapter.title}</span>
+          {!chapter.isPublished && <Badge variant="default">비공개</Badge>}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-cc-muted">{chapter.lessons.length}개 레슨</span>
+          <span className="text-cc-muted text-xs">{isExpanded ? '▲' : '▼'}</span>
+        </div>
+      </div>
+
+      {/* Lessons */}
+      {isExpanded && (
+        <div className="border-t border-white/10">
+          <DndContext
+            sensors={lessonSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleLessonDragEnd}
+          >
+            <SortableContext
+              items={sortedLessons.map((l) => l.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {sortedLessons.map((lesson) => (
+                <SortableLesson
+                  key={lesson.id}
+                  lesson={lesson}
+                  onEdit={() => onNavigate(`/instructor/lessons/${lesson.id}/edit`)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+          <div className="px-6 py-3">
+            <button
+              onClick={() => onNavigate(`/instructor/courses/${courseId}/lessons/new?chapterId=${chapter.id}`)}
+              className="text-xs text-cc-accent hover:underline"
+            >
+              + 레슨 추가
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function InstructorCourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -90,6 +286,10 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
 
   const [activeTab, setActiveTab] = useState<'curriculum' | 'students'>('curriculum');
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
+
+  const chapterSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const { data: course, isLoading: courseLoading } = useQuery<CourseDetail>({
     queryKey: ['instructor-course', id],
@@ -152,26 +352,20 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
     });
   }
 
-  function moveChapter(chapterId: string, direction: 'up' | 'down') {
-    if (!course) return;
-    const sorted = [...course.chapters].sort((a, b) => a.order - b.order);
-    const idx = sorted.findIndex(c => c.id === chapterId);
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= sorted.length) return;
-    reorderChapter.mutate({ chapterId: sorted[idx].id, newOrder: sorted[swapIdx].order });
-    reorderChapter.mutate({ chapterId: sorted[swapIdx].id, newOrder: sorted[idx].order });
-  }
+  function handleChapterDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !course) return;
 
-  function moveLesson(chapterId: string, lessonId: string, direction: 'up' | 'down') {
-    if (!course) return;
-    const chapter = course.chapters.find(c => c.id === chapterId);
-    if (!chapter) return;
-    const sorted = [...chapter.lessons].sort((a, b) => a.order - b.order);
-    const idx = sorted.findIndex(l => l.id === lessonId);
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= sorted.length) return;
-    reorderLesson.mutate({ lessonId: sorted[idx].id, newOrder: sorted[swapIdx].order });
-    reorderLesson.mutate({ lessonId: sorted[swapIdx].id, newOrder: sorted[idx].order });
+    const sorted = [...course.chapters].sort((a, b) => a.order - b.order);
+    const oldIndex = sorted.findIndex((c) => c.id === active.id);
+    const newIndex = sorted.findIndex((c) => c.id === over.id);
+    const reordered = arrayMove(sorted, oldIndex, newIndex);
+
+    reordered.forEach((chapter, idx) => {
+      if (sorted.findIndex((c) => c.id === chapter.id) !== idx) {
+        reorderChapter.mutate({ chapterId: chapter.id, newOrder: idx });
+      }
+    });
   }
 
   if (courseLoading) {
@@ -189,6 +383,8 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
       </div>
     );
   }
+
+  const sortedChapters = [...course.chapters].sort((a, b) => a.order - b.order);
 
   return (
     <div className="space-y-8">
@@ -264,7 +460,7 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
             </Button>
           </div>
 
-          {course.chapters.length === 0 ? (
+          {sortedChapters.length === 0 ? (
             <div className="text-center py-16 bg-cc-secondary border border-white/10 rounded-cc space-y-3">
               <p className="text-cc-muted">챕터가 없습니다. 챕터를 먼저 추가해 주세요.</p>
               <Button size="sm" onClick={() => router.push(`/instructor/courses/${id}/chapters/new`)}>
@@ -272,105 +468,32 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {[...course.chapters].sort((a, b) => a.order - b.order).map((chapter, chapterIdx, sortedChapters) => (
-                <div
-                  key={chapter.id}
-                  className="bg-cc-secondary border border-white/10 rounded-cc overflow-hidden"
-                >
-                  {/* Chapter header */}
-                  <div
-                    className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors"
-                    onClick={() => toggleChapter(chapter.id)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="w-6 h-6 flex items-center justify-center text-xs text-cc-muted hover:text-cc-text disabled:opacity-30 disabled:cursor-not-allowed"
-                          onClick={() => moveChapter(chapter.id, 'up')}
-                          disabled={chapterIdx === 0}
-                        >
-                          ▲
-                        </button>
-                        <button
-                          className="w-6 h-6 flex items-center justify-center text-xs text-cc-muted hover:text-cc-text disabled:opacity-30 disabled:cursor-not-allowed"
-                          onClick={() => moveChapter(chapter.id, 'down')}
-                          disabled={chapterIdx === sortedChapters.length - 1}
-                        >
-                          ▼
-                        </button>
-                      </div>
-                      <span className="text-cc-muted text-sm">{chapter.order + 1}.</span>
-                      <span className="text-cc-text font-medium text-sm">{chapter.title}</span>
-                      {!chapter.isPublished && (
-                        <Badge variant="default">비공개</Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-cc-muted">{chapter.lessons.length}개 레슨</span>
-                      <span className="text-cc-muted text-xs">
-                        {expandedChapters.has(chapter.id) ? '▲' : '▼'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Lessons */}
-                  {expandedChapters.has(chapter.id) && (
-                    <div className="border-t border-white/10">
-                      {[...chapter.lessons].sort((a, b) => a.order - b.order).map((lesson, lessonIdx, sortedLessons) => (
-                        <div
-                          key={lesson.id}
-                          className="flex items-center justify-between px-6 py-2.5 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex flex-col">
-                              <button
-                                className="w-6 h-6 flex items-center justify-center text-xs text-cc-muted hover:text-cc-text disabled:opacity-30 disabled:cursor-not-allowed"
-                                onClick={() => moveLesson(chapter.id, lesson.id, 'up')}
-                                disabled={lessonIdx === 0}
-                              >
-                                ▲
-                              </button>
-                              <button
-                                className="w-6 h-6 flex items-center justify-center text-xs text-cc-muted hover:text-cc-text disabled:opacity-30 disabled:cursor-not-allowed"
-                                onClick={() => moveLesson(chapter.id, lesson.id, 'down')}
-                                disabled={lessonIdx === sortedLessons.length - 1}
-                              >
-                                ▼
-                              </button>
-                            </div>
-                            <span className="text-xs text-cc-muted w-5 text-center">{lesson.order + 1}</span>
-                            <span className="text-sm text-cc-text">{lesson.title}</span>
-                            <span className="text-xs text-cc-muted">{typeLabel(lesson.type)}</span>
-                            {lesson.isPreview && <Badge variant="basic">미리보기</Badge>}
-                            {!lesson.isPublished && <Badge variant="default">비공개</Badge>}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {lesson.duration ? (
-                              <span className="text-xs text-cc-muted">{Math.round(lesson.duration / 60)}분</span>
-                            ) : null}
-                            <button
-                              onClick={() => router.push(`/instructor/lessons/${lesson.id}/edit`)}
-                              className="text-xs text-cc-accent hover:underline"
-                            >
-                              수정
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="px-6 py-3">
-                        <button
-                          onClick={() => router.push(`/instructor/courses/${id}/lessons/new?chapterId=${chapter.id}`)}
-                          className="text-xs text-cc-accent hover:underline"
-                        >
-                          + 레슨 추가
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            <DndContext
+              sensors={chapterSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleChapterDragEnd}
+            >
+              <SortableContext
+                items={sortedChapters.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3">
+                  {sortedChapters.map((chapter) => (
+                    <SortableChapter
+                      key={chapter.id}
+                      chapter={chapter}
+                      courseId={id}
+                      isExpanded={expandedChapters.has(chapter.id)}
+                      onToggle={() => toggleChapter(chapter.id)}
+                      onReorderLesson={(lessonId, newOrder) =>
+                        reorderLesson.mutate({ lessonId, newOrder })
+                      }
+                      onNavigate={(path) => router.push(path)}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       )}

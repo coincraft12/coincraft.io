@@ -91,14 +91,6 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
           />
         </div>
 
-        <Input
-          label="순서"
-          type="number"
-          min={0}
-          value={form.order}
-          onChange={(e) => setForm({ ...form, order: Number(e.target.value) })}
-        />
-
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
