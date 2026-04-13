@@ -17,7 +17,7 @@ export default function Footer() {
 
           {/* 1열: 로고 */}
           <div className="flex items-start justify-center md:justify-start">
-            <Image src="/logo-footer-v1.png" alt="COINCRAFT" width={128} height={128} className="w-32 object-contain" />
+            <Image src="/logo-footer-v1.png" alt="COINCRAFT" width={192} height={192} className="w-48 object-contain" />
           </div>
 
           {/* 2열: 연락처 */}
