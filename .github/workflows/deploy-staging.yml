@@ -21,15 +21,16 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Package dist
-        run: tar czf /tmp/api-dist.tar.gz dist
+        run: tar czf api-dist.tar.gz dist
       - name: Upload dist to staging
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "/tmp/api-dist.tar.gz"
+          source: "api/api-dist.tar.gz"
           target: /tmp/
+          strip_components: 1
       - name: Extract and restart
         uses: appleboy/ssh-action@v1
         with:
@@ -59,15 +60,16 @@ jobs:
         run: cp .env.staging .env.local
       - run: npm run build
       - name: Package build
-        run: tar czf /tmp/next_build.tar.gz .next
+        run: tar czf next_build.tar.gz .next
       - name: Upload to staging
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "/tmp/next_build.tar.gz"
+          source: "web/next_build.tar.gz"
           target: /tmp/
+          strip_components: 1
       - name: Extract and restart
         uses: appleboy/ssh-action@v1
         with:
