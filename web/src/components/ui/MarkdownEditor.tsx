@@ -51,7 +51,6 @@ export default function MarkdownEditor({
           height={height}
           preview="edit"
           visibleDragbar={false}
-          extraCommands={[]}
           textareaProps={{
             placeholder: '마크다운으로 작성해 주세요. # 제목, **굵게**, *기울임* 등 사용 가능합니다.',
             onPaste: handlePaste,
