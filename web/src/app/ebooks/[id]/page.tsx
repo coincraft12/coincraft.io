@@ -40,6 +40,7 @@ export default function EbookViewerPage() {
   const progressRestoredRef = useRef(false);
   const renditionRef = useRef<any>(null);
   const isFirstLocationRef = useRef(true);
+  const currentLocationRef = useRef<string | number>(0);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -117,15 +118,24 @@ export default function EbookViewerPage() {
     rendition.themes.select('cc-theme');
     rendition.themes.fontSize(`${fontSize}%`);
 
-    // Generate locations for page counting
+    // Generate locations for page counting, then sync current page
     rendition.book.ready.then(() => {
       rendition.book.locations.generate(1024).then(() => {
-        setTotalPages(rendition.book.locations.length());
+        const len = rendition.book.locations.length();
+        setTotalPages(len);
+        // Sync page number from current CFI (handles restored progress position)
+        const loc = currentLocationRef.current;
+        if (typeof loc === 'string' && len > 0) {
+          const pageNum = rendition.book.locations.locationFromCfi(loc);
+          if (pageNum >= 0) setCurrentPage(pageNum + 1);
+        }
       });
     });
   }, []);
 
   const handleLocationChanged = useCallback((loc: string | number) => {
+    currentLocationRef.current = loc;
+
     // Skip the very first event (initial render)
     if (isFirstLocationRef.current) {
       isFirstLocationRef.current = false;
