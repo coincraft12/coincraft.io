@@ -298,13 +298,33 @@ export default function EbookViewerPage() {
     });
   }, []);
 
-  // iframe 바운드를 클릭 시점에 계산해서 캐시 (DOM이 안정된 시점)
+  // epub 흰 콘텐츠 영역을 정확히 계산
+  // iframe.contentDocument.body 기준 → 실제 흰 페이지 영역만 클리핑
   function cacheIframeBounds() {
     if (!readerContainerRef.current) return;
-    const iframe = readerContainerRef.current.querySelector('iframe') as HTMLElement | null;
+    const iframe = readerContainerRef.current.querySelector('iframe') as HTMLIFrameElement | null;
     if (!iframe) return;
-    const ir = iframe.getBoundingClientRect();
+
     const pr = readerContainerRef.current.getBoundingClientRect();
+    const ir = iframe.getBoundingClientRect();
+
+    // epub body 경계: iframe 뷰포트 기준 → 메인 뷰포트 기준으로 변환
+    try {
+      const body = iframe.contentDocument?.body;
+      if (body) {
+        const br = body.getBoundingClientRect(); // iframe 내부 뷰포트 기준
+        const x = ir.left + br.left - pr.left;
+        const y = ir.top  + br.top  - pr.top;
+        const w = br.width;
+        const h = br.height;
+        if (w > 0 && h > 0) {
+          iframeBoundsRef.current = { x, y, w, h };
+          return;
+        }
+      }
+    } catch {}
+
+    // 폴백: iframe 엘리먼트 경계
     iframeBoundsRef.current = {
       x: ir.left - pr.left,
       y: ir.top  - pr.top,
