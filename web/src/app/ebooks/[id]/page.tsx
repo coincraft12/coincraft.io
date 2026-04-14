@@ -8,7 +8,7 @@ import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
 
 // ── Canvas-based page-turn animation ─────────────────────────────────────────
-function PageTurnCanvas({ onDone }: { onDone: () => void }) {
+function PageTurnCanvas({ onDone, direction }: { onDone: () => void; direction: 'forward' | 'backward' }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -35,36 +35,70 @@ function PageTurnCanvas({ onDone }: { onDone: () => void }) {
     function draw(now: number) {
       const raw = Math.min((now - start) / DURATION, 1);
       const t   = easeInOut(raw);
-      const foldX = W * (1 - t);
+
+      // forward: 오른쪽→왼쪽 (foldX: W→0)
+      // backward: 왼쪽→오른쪽 (foldX: 0→W, 즉 페이지 우측에서 진행)
+      const foldX = direction === 'forward' ? W * (1 - t) : W * t;
 
       ctx.clearRect(0, 0, W, H);
 
-      if (foldX > 0) {
-        // ── Page face (cream/white) sweeping right→left ──────────────────
-        const pg = ctx.createLinearGradient(0, 0, foldX, 0);
-        pg.addColorStop(0,    'rgba(252, 248, 244, 0.98)');
-        pg.addColorStop(0.80, 'rgba(252, 248, 244, 0.98)');
-        pg.addColorStop(1,    'rgba(205, 195, 180, 0.96)');
-        ctx.fillStyle = pg;
-        ctx.fillRect(0, 0, foldX, H);
+      if (direction === 'forward') {
+        // 페이지 면: 0 ~ foldX (반투명, 콘텐츠 살짝 비침)
+        if (foldX > 0) {
+          const pg = ctx.createLinearGradient(0, 0, foldX, 0);
+          pg.addColorStop(0,    'rgba(252, 248, 244, 0.60)');
+          pg.addColorStop(0.80, 'rgba(252, 248, 244, 0.60)');
+          pg.addColorStop(1,    'rgba(200, 190, 174, 0.75)');
+          ctx.fillStyle = pg;
+          ctx.fillRect(0, 0, foldX, H);
 
-        // ── Fold shadow on the page face (near the fold line) ────────────
-        const foldW = Math.min(70, foldX);
-        const fs = ctx.createLinearGradient(foldX - foldW, 0, foldX, 0);
-        fs.addColorStop(0, 'rgba(0,0,0,0)');
-        fs.addColorStop(0.6, 'rgba(0,0,0,0.07)');
-        fs.addColorStop(1, 'rgba(0,0,0,0.38)');
-        ctx.fillStyle = fs;
-        ctx.fillRect(Math.max(0, foldX - foldW), 0, foldW, H);
+          // fold 그림자 (접히는 선)
+          const foldW = Math.min(70, foldX);
+          const fs = ctx.createLinearGradient(foldX - foldW, 0, foldX, 0);
+          fs.addColorStop(0, 'rgba(0,0,0,0)');
+          fs.addColorStop(0.6, 'rgba(0,0,0,0.06)');
+          fs.addColorStop(1, 'rgba(0,0,0,0.32)');
+          ctx.fillStyle = fs;
+          ctx.fillRect(Math.max(0, foldX - foldW), 0, foldW, H);
 
-        // ── Cast shadow on the content to the right of the fold ──────────
-        const castW = Math.min(45, W - foldX);
-        if (castW > 0) {
-          const cs = ctx.createLinearGradient(foldX, 0, foldX + castW, 0);
-          cs.addColorStop(0, 'rgba(0,0,0,0.22)');
-          cs.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = cs;
-          ctx.fillRect(foldX, 0, castW, H);
+          // cast shadow (fold 오른쪽 콘텐츠 위)
+          const castW = Math.min(40, W - foldX);
+          if (castW > 0) {
+            const cs = ctx.createLinearGradient(foldX, 0, foldX + castW, 0);
+            cs.addColorStop(0, 'rgba(0,0,0,0.18)');
+            cs.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = cs;
+            ctx.fillRect(foldX, 0, castW, H);
+          }
+        }
+      } else {
+        // backward: foldX ~ W 영역이 페이지 면
+        if (foldX < W) {
+          const pg = ctx.createLinearGradient(foldX, 0, W, 0);
+          pg.addColorStop(0,    'rgba(200, 190, 174, 0.75)');
+          pg.addColorStop(0.20, 'rgba(252, 248, 244, 0.60)');
+          pg.addColorStop(1,    'rgba(252, 248, 244, 0.60)');
+          ctx.fillStyle = pg;
+          ctx.fillRect(foldX, 0, W - foldX, H);
+
+          // fold 그림자 (왼쪽 접히는 선)
+          const foldW = Math.min(70, W - foldX);
+          const fs = ctx.createLinearGradient(foldX, 0, foldX + foldW, 0);
+          fs.addColorStop(0, 'rgba(0,0,0,0.32)');
+          fs.addColorStop(0.4, 'rgba(0,0,0,0.06)');
+          fs.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = fs;
+          ctx.fillRect(foldX, 0, foldW, H);
+
+          // cast shadow (fold 왼쪽 콘텐츠 위)
+          const castW = Math.min(40, foldX);
+          if (castW > 0) {
+            const cs = ctx.createLinearGradient(foldX - castW, 0, foldX, 0);
+            cs.addColorStop(0, 'rgba(0,0,0,0)');
+            cs.addColorStop(1, 'rgba(0,0,0,0.18)');
+            ctx.fillStyle = cs;
+            ctx.fillRect(foldX - castW, 0, castW, H);
+          }
         }
       }
 
@@ -77,7 +111,7 @@ function PageTurnCanvas({ onDone }: { onDone: () => void }) {
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [onDone]);
+  }, [onDone, direction]);
 
   return (
     <canvas
@@ -114,13 +148,14 @@ export default function EbookViewerPage() {
   const [fontSize, setFontSize] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [showFlip, setShowFlip] = useState(false);
+  const [flipDir, setFlipDir] = useState<'forward' | 'backward' | null>(null);
 
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const renditionRef = useRef<any>(null);
   const isFirstLocationRef = useRef(true);
   const currentLocationRef = useRef<string | number>(0);
+  const prevPageNumRef = useRef<number>(-1);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -248,8 +283,18 @@ export default function EbookViewerPage() {
     if (isFirstLocationRef.current) {
       isFirstLocationRef.current = false;
     } else {
-      // Trigger page-turn animation
-      setShowFlip(true);
+      // Detect direction via page number comparison
+      let dir: 'forward' | 'backward' = 'forward';
+      if (typeof loc === 'string' && renditionRef.current) {
+        const locations = renditionRef.current.book?.locations;
+        if (locations?.length() > 0) {
+          const newPageNum = locations.locationFromCfi(loc);
+          if (newPageNum >= 0 && prevPageNumRef.current >= 0 && newPageNum < prevPageNumRef.current) {
+            dir = 'backward';
+          }
+        }
+      }
+      setFlipDir(dir);
     }
 
     setLocation(loc);
@@ -259,7 +304,10 @@ export default function EbookViewerPage() {
       const locations = renditionRef.current.book?.locations;
       if (locations?.length() > 0) {
         const pageNum = locations.locationFromCfi(loc);
-        if (pageNum >= 0) setCurrentPage(pageNum + 1);
+        if (pageNum >= 0) {
+          setCurrentPage(pageNum + 1);
+          prevPageNumRef.current = pageNum;
+        }
       }
     }
 
@@ -367,8 +415,8 @@ export default function EbookViewerPage() {
         />
 
         {/* Canvas page-turn animation */}
-        {showFlip && (
-          <PageTurnCanvas onDone={() => setShowFlip(false)} />
+        {flipDir && (
+          <PageTurnCanvas direction={flipDir} onDone={() => setFlipDir(null)} />
         )}
       </div>
 
