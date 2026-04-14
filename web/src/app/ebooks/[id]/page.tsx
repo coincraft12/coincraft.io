@@ -182,9 +182,9 @@ export default function EbookViewerPage() {
   const isFirstLocationRef  = useRef(true);
   const currentLocationRef  = useRef<string | number>(0);
   const readerContainerRef  = useRef<HTMLDivElement>(null);
-  const iframeBoundsRef     = useRef<ClipBounds | null>(null);
   const isAnimatingRef      = useRef(false);
   const prevPageRef         = useRef(0);
+  const touchStartXRef      = useRef(0);
   // refs for values used inside stable callbacks
   const flipEnabledRef      = useRef(flipEnabled);
   const metaRef             = useRef<EbookMeta | null>(null);
@@ -275,21 +275,6 @@ export default function EbookViewerPage() {
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }
 
-  // ── iframe 경계 캐시 ─────────────────────────────────────────────────────────
-  function cacheIframeBounds() {
-    if (!readerContainerRef.current) return;
-    const iframe = readerContainerRef.current.querySelector('iframe') as HTMLIFrameElement | null;
-    if (!iframe) { iframeBoundsRef.current = null; return; }
-    const pr = readerContainerRef.current.getBoundingClientRect();
-    const ir = iframe.getBoundingClientRect();
-    iframeBoundsRef.current = {
-      x: ir.left - pr.left,
-      y: ir.top  - pr.top,
-      w: ir.width,
-      h: ir.height,
-    };
-  }
-
   // ── 애니메이션 시작 — 단일 진입점 ───────────────────────────────────────────
   function startFlip(dir: 'forward' | 'backward') {
     const now = Date.now();
@@ -299,7 +284,6 @@ export default function EbookViewerPage() {
 
     lastFlipTimeRef.current = now;
     isAnimatingRef.current = true;
-    cacheIframeBounds();
     setFlipDir(dir);
 
     // 안전장치: 750ms 후에도 onDone이 안 불렸으면 강제 해제
@@ -497,7 +481,29 @@ export default function EbookViewerPage() {
             ...ReactReaderStyle,
             container: { ...ReactReaderStyle.container, background: '#1a1a2e' },
             readerArea: { ...ReactReaderStyle.readerArea, background: '#1a1a2e' },
-            arrow: { ...ReactReaderStyle.arrow, color: '#e2b84e' },
+            prev: { display: 'none' },
+            next: { display: 'none' },
+          }}
+        />
+
+        {/* 클릭/터치 네비게이션 오버레이 — 좌:이전 / 우:다음, 스와이프 지원 */}
+        <div
+          className="absolute inset-0"
+          style={{ zIndex: 5 }}
+          onPointerDown={(e) => { touchStartXRef.current = e.clientX; }}
+          onPointerUp={(e) => {
+            const dx = e.clientX - touchStartXRef.current;
+            const rect = e.currentTarget.getBoundingClientRect();
+            if (Math.abs(dx) > 30) {
+              // 스와이프: 왼쪽 스와이프 = 다음, 오른쪽 스와이프 = 이전
+              if (dx < 0) renditionRef.current?.next();
+              else renditionRef.current?.prev();
+            } else {
+              // 탭: 오른쪽 절반 = 다음, 왼쪽 절반 = 이전
+              const x = e.clientX - rect.left;
+              if (x > rect.width / 2) renditionRef.current?.next();
+              else renditionRef.current?.prev();
+            }
           }}
         />
 
@@ -531,7 +537,7 @@ export default function EbookViewerPage() {
         {flipDir && (
           <PageTurnCanvas
             direction={flipDir}
-            clipBounds={iframeBoundsRef.current}
+            clipBounds={null}
             onDone={() => {
               if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
               isAnimatingRef.current = false;
