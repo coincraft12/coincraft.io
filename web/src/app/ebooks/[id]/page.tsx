@@ -166,6 +166,7 @@ export default function EbookViewerPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages]   = useState(0);
   const [flipDir, setFlipDir]         = useState<'forward' | 'backward' | null>(null);
+  const [flipClipBounds, setFlipClipBounds] = useState<ClipBounds | null>(null);
   const [toast, setToast]             = useState<string | null>(null);
   const [showPaywall, setShowPaywall]   = useState(false);
   const [flipEnabled, setFlipEnabled] = useState<boolean>(() => {
@@ -284,6 +285,27 @@ export default function EbookViewerPage() {
 
     lastFlipTimeRef.current = now;
     isAnimatingRef.current = true;
+
+    // iframe(흰 책 영역) 바운드 측정 → 캔버스 클리핑에 사용
+    const container = readerContainerRef.current;
+    if (container) {
+      const iframe = container.querySelector('iframe');
+      if (iframe) {
+        const cr = container.getBoundingClientRect();
+        const ir = iframe.getBoundingClientRect();
+        setFlipClipBounds({
+          x: ir.left - cr.left,
+          y: ir.top - cr.top,
+          w: ir.width,
+          h: ir.height,
+        });
+      } else {
+        setFlipClipBounds(null);
+      }
+    } else {
+      setFlipClipBounds(null);
+    }
+
     setFlipDir(dir);
 
     // 안전장치: 750ms 후에도 onDone이 안 불렸으면 강제 해제
@@ -537,7 +559,7 @@ export default function EbookViewerPage() {
         {flipDir && (
           <PageTurnCanvas
             direction={flipDir}
-            clipBounds={null}
+            clipBounds={flipClipBounds}
             onDone={() => {
               if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
               isAnimatingRef.current = false;
