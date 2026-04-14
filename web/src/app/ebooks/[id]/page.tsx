@@ -121,12 +121,14 @@ export default function EbookViewerPage() {
   const handleGetRendition = useCallback((rendition: any) => {
     renditionRef.current = rendition;
 
-    // Text selection color (inject into epub iframe)
-    rendition.themes.register('cc-theme', {
-      '::selection': { background: 'rgba(74, 158, 255, 0.35)' },
-    });
-    rendition.themes.select('cc-theme');
     rendition.themes.fontSize(`${fontSize}%`);
+
+    // Inject selection color directly into each epub iframe chapter
+    rendition.hooks.content.register((contents: any) => {
+      const style = contents.document.createElement('style');
+      style.innerHTML = '::selection { background: rgba(74, 158, 255, 0.35) !important; }';
+      contents.document.head.appendChild(style);
+    });
 
     // Generate locations for page counting
     rendition.book.ready.then(() => {
