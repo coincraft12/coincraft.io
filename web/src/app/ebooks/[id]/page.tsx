@@ -7,8 +7,14 @@ import { useAuthStore } from '@/store/auth.store';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
 
+interface ClipBounds { clipX: number; clipY: number; clipW: number; clipH: number; }
+
 // ── Canvas-based page-turn animation ─────────────────────────────────────────
-function PageTurnCanvas({ onDone, direction }: { onDone: () => void; direction: 'forward' | 'backward' }) {
+function PageTurnCanvas({ onDone, direction, clipBounds }: {
+  onDone: () => void;
+  direction: 'forward' | 'backward';
+  clipBounds: ClipBounds | null;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -25,18 +31,8 @@ function PageTurnCanvas({ onDone, direction }: { onDone: () => void; direction: 
     const W = canvas.width;
     const H = canvas.height;
 
-    // epub iframe 의 실제 위치를 찾아 클리핑 영역으로 사용
-    // ReactReader 내부엔 타이틀바 등이 있어 iframe이 전체를 차지하지 않는다
-    const iframe = parent.querySelector('iframe') as HTMLElement | null;
-    let clipX = 0, clipY = 0, clipW = W, clipH = H;
-    if (iframe) {
-      const iframeRect = iframe.getBoundingClientRect();
-      const parentRect = parent.getBoundingClientRect();
-      clipX = iframeRect.left - parentRect.left;
-      clipY = iframeRect.top  - parentRect.top;
-      clipW = iframeRect.width;
-      clipH = iframeRect.height;
-    }
+    // 부모로부터 미리 계산된 iframe 클리핑 영역 사용 (매 애니메이션마다 DOM 쿼리 방지)
+    const { clipX, clipY, clipW, clipH } = clipBounds ?? { clipX: 0, clipY: 0, clipW: W, clipH: H };
 
     const DURATION = 650;
     const start = performance.now();
@@ -133,7 +129,7 @@ function PageTurnCanvas({ onDone, direction }: { onDone: () => void; direction: 
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [onDone, direction]);
+  }, [onDone, direction, clipBounds]);
 
   return (
     <canvas
@@ -178,6 +174,8 @@ export default function EbookViewerPage() {
   const isFirstLocationRef = useRef(true);
   const currentLocationRef = useRef<string | number>(0);
   const prevPageNumRef = useRef<number>(-1);
+  const iframeBoundsRef = useRef<ClipBounds | null>(null);
+  const readerContainerRef = useRef<HTMLDivElement>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -290,6 +288,27 @@ export default function EbookViewerPage() {
         setTotalPages(rendition.book.locations.length());
       });
     });
+
+    // epub iframe 바운드 캐시 — 페이지 넘길 때마다 DOM 쿼리하지 않도록 미리 계산
+    function cacheIframeBounds() {
+      if (!readerContainerRef.current) return;
+      const iframe = readerContainerRef.current.querySelector('iframe') as HTMLElement | null;
+      if (!iframe) return;
+      const iRect = iframe.getBoundingClientRect();
+      const pRect = readerContainerRef.current.getBoundingClientRect();
+      iframeBoundsRef.current = {
+        clipX: iRect.left - pRect.left,
+        clipY: iRect.top  - pRect.top,
+        clipW: iRect.width,
+        clipH: iRect.height,
+      };
+    }
+
+    // rendered 이벤트 후 캐시 (iframe이 실제로 그려진 뒤)
+    rendition.on('rendered', () => setTimeout(cacheIframeBounds, 0));
+    // 창 리사이즈 시 재계산
+    window.addEventListener('resize', cacheIframeBounds);
+    return () => window.removeEventListener('resize', cacheIframeBounds);
   }, []);
 
   const handleLocationChanged = useCallback((loc: string | number) => {
@@ -301,37 +320,31 @@ export default function EbookViewerPage() {
 
     currentLocationRef.current = loc;
 
+    // locationFromCfi는 한 번만 호출 — 방향 감지 + 페이지 카운터 공유
+    let newPageNum = -1;
+    if (typeof loc === 'string' && renditionRef.current) {
+      const locations = renditionRef.current.book?.locations;
+      if (locations?.length() > 0) {
+        newPageNum = locations.locationFromCfi(loc);
+        if (newPageNum >= 0) {
+          setCurrentPage(newPageNum + 1);
+          prevPageNumRef.current = newPageNum;
+        }
+      }
+    }
+
     // Skip the very first event (initial render)
     if (isFirstLocationRef.current) {
       isFirstLocationRef.current = false;
     } else {
-      // Detect direction via page number comparison
-      let dir: 'forward' | 'backward' = 'forward';
-      if (typeof loc === 'string' && renditionRef.current) {
-        const locations = renditionRef.current.book?.locations;
-        if (locations?.length() > 0) {
-          const newPageNum = locations.locationFromCfi(loc);
-          if (newPageNum >= 0 && prevPageNumRef.current >= 0 && newPageNum < prevPageNumRef.current) {
-            dir = 'backward';
-          }
-        }
-      }
+      const dir: 'forward' | 'backward' =
+        newPageNum >= 0 && prevPageNumRef.current >= 0 && newPageNum < prevPageNumRef.current
+          ? 'backward'
+          : 'forward';
       setFlipDir(dir);
     }
 
     setLocation(loc);
-
-    // Update current page number
-    if (renditionRef.current && typeof loc === 'string') {
-      const locations = renditionRef.current.book?.locations;
-      if (locations?.length() > 0) {
-        const pageNum = locations.locationFromCfi(loc);
-        if (pageNum >= 0) {
-          setCurrentPage(pageNum + 1);
-          prevPageNumRef.current = pageNum;
-        }
-      }
-    }
 
     if (!token || !id) return;
 
@@ -421,7 +434,7 @@ export default function EbookViewerPage() {
       </header>
 
       {/* Reader with page-flip overlay */}
-      <div className="flex-1 overflow-hidden relative">
+      <div ref={readerContainerRef} className="flex-1 overflow-hidden relative">
         <ReactReader
           url={epubData}
           title={meta.title}
@@ -436,9 +449,13 @@ export default function EbookViewerPage() {
           }}
         />
 
-        {/* Canvas page-turn animation */}
+        {/* Canvas page-turn animation — clipBounds는 렌더 시점에 이미 캐시된 값 */}
         {flipDir && (
-          <PageTurnCanvas direction={flipDir} onDone={() => setFlipDir(null)} />
+          <PageTurnCanvas
+            direction={flipDir}
+            clipBounds={iframeBoundsRef.current}
+            onDone={() => setFlipDir(null)}
+          />
         )}
       </div>
 
