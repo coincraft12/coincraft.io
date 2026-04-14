@@ -123,12 +123,24 @@ export default function EbookViewerPage() {
 
     rendition.themes.fontSize(`${fontSize}%`);
 
-    // Inject selection color directly into each epub iframe chapter
-    rendition.hooks.content.register((contents: any) => {
+    const SELECTION_CSS = `
+      ::selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
+      ::-moz-selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
+      * { -webkit-tap-highlight-color: rgba(74, 158, 255, 0.2) !important; }
+    `;
+
+    function injectStyle(contents: any) {
+      if (!contents?.document?.head) return;
       const style = contents.document.createElement('style');
-      style.innerHTML = '::selection { background: rgba(74, 158, 255, 0.35) !important; }';
+      style.innerHTML = SELECTION_CSS;
       contents.document.head.appendChild(style);
-    });
+    }
+
+    // For future chapters
+    rendition.hooks.content.register(injectStyle);
+
+    // For already-rendered content
+    rendition.getContents().forEach(injectStyle);
 
     // Generate locations for page counting
     rendition.book.ready.then(() => {
