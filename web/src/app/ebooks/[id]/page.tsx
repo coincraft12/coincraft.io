@@ -18,6 +18,9 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
   clipBounds: ClipBounds | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // onDone을 ref로 관리 — 부모 리렌더 시 새 함수 참조로 인해 effect가 재실행되는 것을 방지
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -33,13 +36,13 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
     const W = canvas.width;
     const H = canvas.height;
 
-    // epub iframe 실제 영역에만 그린다
+    // epub iframe 실제 영역에만 그린다 (mount 시점의 값을 그대로 사용)
     const cx = clipBounds?.x  ?? 0;
     const cy = clipBounds?.y  ?? 0;
     const cw = clipBounds?.w  ?? W;
     const ch = clipBounds?.h  ?? H;
 
-    const DURATION = 500;
+    const DURATION = 600;
     const start = performance.now();
     let rafId: number;
 
@@ -128,13 +131,15 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
       if (raw < 1) {
         rafId = requestAnimationFrame(draw);
       } else {
-        onDone();
+        onDoneRef.current();
       }
     }
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [onDone, direction, clipBounds]);
+  // direction 변경 시에만 재실행. onDone은 ref로, clipBounds는 mount 시 값 고정
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [direction]);
 
   return (
     <canvas
