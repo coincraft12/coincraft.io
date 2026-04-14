@@ -61,4 +61,4 @@ jobs:
       - name: Upload and deploy
         run: |
           scp -i ~/.ssh/id_ed25519 web/next_build.tar.gz ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-staging && tar xzf /tmp/next_build.tar.gz && cp -r public .next/standalone/public && cp .next/standalone/server.js server.js && pm2 restart coincraft-staging"
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "cd /opt/coincraft-staging && tar xzf /tmp/next_build.tar.gz && cp -r public/. .next/standalone/public/ && cp .next/standalone/server.js server.js && pm2 restart coincraft-staging"
