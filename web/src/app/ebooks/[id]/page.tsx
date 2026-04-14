@@ -173,6 +173,10 @@ export default function EbookViewerPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [flipDir, setFlipDir] = useState<'forward' | 'backward' | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [flipEnabled, setFlipEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('ebook-flip-enabled') !== 'false';
+  });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveDebounceRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -328,6 +332,7 @@ export default function EbookViewerPage() {
       showToast('마지막 페이지입니다');
       return;
     }
+    if (!flipEnabled) return; // 효과 비활성화 시 애니메이션 없이 epub.js가 처리
     flipFiredRef.current = true;
     cacheIframeBounds();
     setFlipDir(dir);
@@ -456,6 +461,24 @@ export default function EbookViewerPage() {
             className="w-10 h-10 flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-base font-bold"
           >
             A+
+          </button>
+
+          {/* 페이지 넘김 효과 토글 */}
+          <button
+            onClick={() => {
+              const next = !flipEnabled;
+              setFlipEnabled(next);
+              localStorage.setItem('ebook-flip-enabled', String(next));
+              showToast(next ? '넘김 효과 켜짐' : '넘김 효과 꺼짐');
+            }}
+            title={flipEnabled ? '넘김 효과 끄기' : '넘김 효과 켜기'}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors text-lg ${
+              flipEnabled
+                ? 'text-cc-accent hover:bg-white/10'
+                : 'text-cc-muted hover:bg-white/10'
+            }`}
+          >
+            {flipEnabled ? '📖' : '📄'}
           </button>
         </div>
       </header>
