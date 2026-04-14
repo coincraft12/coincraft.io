@@ -34,11 +34,12 @@ export default function EbookViewerPage() {
   const [fontSize, setFontSize] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [isTurning, setIsTurning] = useState(false);
+  const [flipKey, setFlipKey] = useState(0); // increment to re-trigger animation
 
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const renditionRef = useRef<any>(null);
+  const isFirstLocationRef = useRef(true);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -125,9 +126,13 @@ export default function EbookViewerPage() {
   }, []);
 
   const handleLocationChanged = useCallback((loc: string | number) => {
-    // Page turn animation
-    setIsTurning(true);
-    setTimeout(() => setIsTurning(false), 300);
+    // Skip the very first event (initial render)
+    if (isFirstLocationRef.current) {
+      isFirstLocationRef.current = false;
+    } else {
+      // Trigger page-flip animation
+      setFlipKey((k) => k + 1);
+    }
 
     setLocation(loc);
 
@@ -210,28 +215,25 @@ export default function EbookViewerPage() {
         </h1>
 
         {/* Font size controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => changeFontSize(-10)}
-            className="w-7 h-7 flex items-center justify-center rounded text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-sm"
+            className="w-10 h-10 flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-base font-bold"
           >
-            A-
+            A−
           </button>
-          <span className="text-xs text-cc-muted w-8 text-center">{fontSize}%</span>
+          <span className="text-sm text-cc-muted w-12 text-center font-mono">{fontSize}%</span>
           <button
             onClick={() => changeFontSize(10)}
-            className="w-7 h-7 flex items-center justify-center rounded text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-sm"
+            className="w-10 h-10 flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-base font-bold"
           >
             A+
           </button>
         </div>
       </header>
 
-      {/* Reader with page turn transition */}
-      <div
-        className="flex-1 overflow-hidden transition-opacity duration-300"
-        style={{ opacity: isTurning ? 0.4 : 1 }}
-      >
+      {/* Reader with page-flip overlay */}
+      <div className="flex-1 overflow-hidden relative">
         <ReactReader
           url={epubData}
           title={meta.title}
@@ -245,12 +247,17 @@ export default function EbookViewerPage() {
             arrow: { ...ReactReaderStyle.arrow, color: '#e2b84e' },
           }}
         />
+
+        {/* Page-flip animation overlay — re-mounts on each page turn */}
+        {flipKey > 0 && (
+          <div key={flipKey} className="ebook-page-flip" />
+        )}
       </div>
 
       {/* Bottom bar: page indicator */}
-      <div className="shrink-0 flex items-center justify-center py-2 bg-[#12122a] border-t border-white/10">
-        <span className="text-xs text-cc-muted">
-          {totalPages > 0 ? `${currentPage} / ${totalPages}` : '읽는 중...'}
+      <div className="shrink-0 flex items-center justify-center py-3 bg-[#12122a] border-t border-white/10">
+        <span className="text-sm font-medium text-cc-muted tracking-wide">
+          {totalPages > 0 ? `${currentPage} / ${totalPages} 페이지` : '읽는 중...'}
         </span>
       </div>
     </div>
