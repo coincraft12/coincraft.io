@@ -7,6 +7,85 @@ import { useAuthStore } from '@/store/auth.store';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
 
+// ── Canvas-based page-turn animation ─────────────────────────────────────────
+function PageTurnCanvas({ onDone }: { onDone: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const parent = canvas.parentElement!;
+    canvas.width  = parent.offsetWidth;
+    canvas.height = parent.offsetHeight;
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const DURATION = 650;
+    const start = performance.now();
+    let rafId: number;
+
+    function easeInOut(t: number) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    function draw(now: number) {
+      const raw = Math.min((now - start) / DURATION, 1);
+      const t   = easeInOut(raw);
+      const foldX = W * (1 - t);
+
+      ctx.clearRect(0, 0, W, H);
+
+      if (foldX > 0) {
+        // ── Page face (cream/white) sweeping right→left ──────────────────
+        const pg = ctx.createLinearGradient(0, 0, foldX, 0);
+        pg.addColorStop(0,    'rgba(252, 248, 244, 0.98)');
+        pg.addColorStop(0.80, 'rgba(252, 248, 244, 0.98)');
+        pg.addColorStop(1,    'rgba(205, 195, 180, 0.96)');
+        ctx.fillStyle = pg;
+        ctx.fillRect(0, 0, foldX, H);
+
+        // ── Fold shadow on the page face (near the fold line) ────────────
+        const foldW = Math.min(70, foldX);
+        const fs = ctx.createLinearGradient(foldX - foldW, 0, foldX, 0);
+        fs.addColorStop(0, 'rgba(0,0,0,0)');
+        fs.addColorStop(0.6, 'rgba(0,0,0,0.07)');
+        fs.addColorStop(1, 'rgba(0,0,0,0.38)');
+        ctx.fillStyle = fs;
+        ctx.fillRect(Math.max(0, foldX - foldW), 0, foldW, H);
+
+        // ── Cast shadow on the content to the right of the fold ──────────
+        const castW = Math.min(45, W - foldX);
+        if (castW > 0) {
+          const cs = ctx.createLinearGradient(foldX, 0, foldX + castW, 0);
+          cs.addColorStop(0, 'rgba(0,0,0,0.22)');
+          cs.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = cs;
+          ctx.fillRect(foldX, 0, castW, H);
+        }
+      }
+
+      if (raw < 1) {
+        rafId = requestAnimationFrame(draw);
+      } else {
+        onDone();
+      }
+    }
+
+    rafId = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafId);
+  }, [onDone]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}
+    />
+  );
+}
+
 interface EbookMeta {
   id: string;
   title: string;
@@ -34,7 +113,7 @@ export default function EbookViewerPage() {
   const [fontSize, setFontSize] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [flipKey, setFlipKey] = useState(0); // increment to re-trigger animation
+  const [showFlip, setShowFlip] = useState(false);
 
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
@@ -168,8 +247,8 @@ export default function EbookViewerPage() {
     if (isFirstLocationRef.current) {
       isFirstLocationRef.current = false;
     } else {
-      // Trigger page-flip animation
-      setFlipKey((k) => k + 1);
+      // Trigger page-turn animation
+      setShowFlip(true);
     }
 
     setLocation(loc);
@@ -286,9 +365,9 @@ export default function EbookViewerPage() {
           }}
         />
 
-        {/* Page-flip animation overlay — re-mounts on each page turn */}
-        {flipKey > 0 && (
-          <div key={flipKey} className="ebook-page-flip" />
+        {/* Canvas page-turn animation */}
+        {showFlip && (
+          <PageTurnCanvas onDone={() => setShowFlip(false)} />
         )}
       </div>
 
