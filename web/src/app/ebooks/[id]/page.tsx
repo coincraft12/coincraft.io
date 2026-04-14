@@ -167,6 +167,7 @@ export default function EbookViewerPage() {
   const [totalPages, setTotalPages]   = useState(0);
   const [flipDir, setFlipDir]         = useState<'forward' | 'backward' | null>(null);
   const [flipClipBounds, setFlipClipBounds] = useState<ClipBounds | null>(null);
+  const [iframeOverlay, setIframeOverlay] = useState<{l:number;t:number;w:number;h:number}|null>(null);
   const [toast, setToast]             = useState<string | null>(null);
   const [showPaywall, setShowPaywall]   = useState(false);
   const [flipEnabled, setFlipEnabled] = useState<boolean>(() => {
@@ -276,39 +277,30 @@ export default function EbookViewerPage() {
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }
 
+  // ── iframe 오버레이 동기화 — 렌더 후 iframe 위치에 맞게 오버레이 이동 ────────
+  const syncIframeOverlay = useCallback(() => {
+    const container = readerContainerRef.current;
+    if (!container) return;
+    const iframe = container.querySelector('iframe');
+    if (!iframe) return;
+    const cr = container.getBoundingClientRect();
+    const ir = iframe.getBoundingClientRect();
+    const bounds = { l: ir.left - cr.left, t: ir.top - cr.top, w: ir.width, h: ir.height };
+    setIframeOverlay(bounds);
+    setFlipClipBounds({ x: bounds.l, y: bounds.t, w: bounds.w, h: bounds.h });
+  }, []);
+
   // ── 애니메이션 시작 — 단일 진입점 ───────────────────────────────────────────
   function startFlip(dir: 'forward' | 'backward') {
     const now = Date.now();
-    if (now - lastFlipTimeRef.current < 800) return; // 이중 넘김 방지
+    if (now - lastFlipTimeRef.current < 800) return;
     if (isAnimatingRef.current) return;
     if (!flipEnabledRef.current) return;
 
     lastFlipTimeRef.current = now;
     isAnimatingRef.current = true;
-
-    // iframe(흰 책 영역) 바운드 측정 → 캔버스 클리핑에 사용
-    const container = readerContainerRef.current;
-    if (container) {
-      const iframe = container.querySelector('iframe');
-      if (iframe) {
-        const cr = container.getBoundingClientRect();
-        const ir = iframe.getBoundingClientRect();
-        setFlipClipBounds({
-          x: ir.left - cr.left,
-          y: ir.top - cr.top,
-          w: ir.width,
-          h: ir.height,
-        });
-      } else {
-        setFlipClipBounds(null);
-      }
-    } else {
-      setFlipClipBounds(null);
-    }
-
     setFlipDir(dir);
 
-    // 안전장치: 750ms 후에도 onDone이 안 불렸으면 강제 해제
     if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
     safetyTimerRef.current = setTimeout(() => {
       if (isAnimatingRef.current) {
@@ -316,11 +308,6 @@ export default function EbookViewerPage() {
         setFlipDir(null);
       }
     }, 750);
-  }
-
-  // ── iframe 바운드 조회 헬퍼 ─────────────────────────────────────────────────
-  function getIframeBounds(): DOMRect | null {
-    return readerContainerRef.current?.querySelector('iframe')?.getBoundingClientRect() ?? null;
   }
 
   // ── 렌디션 설정 ─────────────────────────────────────────────────────────────
@@ -335,11 +322,15 @@ export default function EbookViewerPage() {
       s.textContent = '.epub-container{width:100%!important;left:0!important;margin:0!important;}';
       document.head.appendChild(s);
     }
-    // 초기화 후 리사이즈 — epub.js가 전체 너비를 다시 계산하도록
+    // 초기화 후 리사이즈 → 오버레이 동기화
     setTimeout(() => {
       const c = readerContainerRef.current;
       if (c) renditionRef.current?.resize(c.offsetWidth, c.offsetHeight);
+      setTimeout(syncIframeOverlay, 50);
     }, 150);
+
+    // 페이지 전환 후 오버레이 위치 재동기화
+    rendition.on('rendered', () => setTimeout(syncIframeOverlay, 50));
 
     const SELECTION_CSS = `
       html body *::selection { background: rgba(74,158,255,0.35) !important; color: inherit !important; }
@@ -526,40 +517,36 @@ export default function EbookViewerPage() {
           }}
         />
 
-        {/* 클릭/터치 네비게이션 오버레이 — iframe(흰 책 영역) 안에서만 동작 */}
-        <div
-          className="absolute inset-0"
-          style={{ zIndex: 5 }}
-          onPointerDown={(e) => {
-            // iframe 바깥(목차 버튼·상단바 등) 클릭은 무시
-            const ir = getIframeBounds();
-            if (ir && (
-              e.clientX < ir.left || e.clientX > ir.right ||
-              e.clientY < ir.top  || e.clientY > ir.bottom
-            )) {
-              touchStartXRef.current = -Infinity;
-              return;
-            }
-            touchStartXRef.current = e.clientX;
-          }}
-          onPointerUp={(e) => {
-            if (!isFinite(touchStartXRef.current)) {
-              touchStartXRef.current = 0;
-              return;
-            }
-            const dx = e.clientX - touchStartXRef.current;
-            const ir = getIframeBounds();
-            if (Math.abs(dx) > 30) {
-              if (dx < 0) renditionRef.current?.next();
-              else renditionRef.current?.prev();
-            } else {
-              // 탭: iframe 기준 좌우 절반으로 판단
-              const midX = ir ? (ir.left + ir.right) / 2 : e.currentTarget.getBoundingClientRect().left + e.currentTarget.getBoundingClientRect().width / 2;
-              if (e.clientX > midX) renditionRef.current?.next();
-              else renditionRef.current?.prev();
-            }
-          }}
-        />
+        {/* 클릭/스와이프 오버레이 — iframe 위치에 딱 맞게 배치 (목차 버튼 등 외부 영역 제외) */}
+        {iframeOverlay && (
+          <div
+            style={{
+              position: 'absolute',
+              left: iframeOverlay.l,
+              top: iframeOverlay.t,
+              width: iframeOverlay.w,
+              height: iframeOverlay.h,
+              zIndex: 5,
+              cursor: 'pointer',
+            }}
+            onPointerDown={(e) => {
+              touchStartXRef.current = e.clientX;
+            }}
+            onPointerUp={(e) => {
+              const dx = e.clientX - touchStartXRef.current;
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              if (Math.abs(dx) > 30) {
+                // 스와이프: 왼쪽 = 다음, 오른쪽 = 이전
+                if (dx < 0) renditionRef.current?.next();
+                else renditionRef.current?.prev();
+              } else {
+                // 탭: 오른쪽 절반 = 다음, 왼쪽 절반 = 이전
+                if (e.clientX > rect.left + rect.width / 2) renditionRef.current?.next();
+                else renditionRef.current?.prev();
+              }
+            }}
+          />
+        )}
 
         {/* 미리보기 종료 — 결제 유도 오버레이 */}
         {showPaywall && (
