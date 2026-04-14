@@ -130,10 +130,12 @@ export default function EbookViewerPage() {
     `;
 
     function injectStyle(contents: any) {
-      if (!contents?.document?.head) return;
-      const style = contents.document.createElement('style');
+      const doc = contents?.document;
+      if (!doc) return;
+      const style = doc.createElement('style');
       style.innerHTML = SELECTION_CSS;
-      contents.document.head.appendChild(style);
+      // Append to body (after all epub stylesheets) so cascade order wins
+      (doc.body ?? doc.head)?.appendChild(style);
     }
 
     // For future chapters
