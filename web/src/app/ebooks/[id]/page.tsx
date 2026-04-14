@@ -33,10 +33,11 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
     const W = canvas.width;
     const H = canvas.height;
 
-    const cx = clipBounds?.x ?? 0;
-    const cy = clipBounds?.y ?? 0;
-    const cw = clipBounds?.w ?? W;
-    const ch = clipBounds?.h ?? H;
+    // 경계 clamping — canvas 밖으로 절대 나가지 않도록
+    const cx = Math.max(0, clipBounds?.x ?? 0);
+    const cy = Math.max(0, clipBounds?.y ?? 0);
+    const cw = Math.min(W - cx, clipBounds ? clipBounds.w : W);
+    const ch = Math.min(H - cy, clipBounds ? clipBounds.h : H);
 
     const DURATION = 600;
     const start = performance.now();
@@ -326,7 +327,7 @@ export default function EbookViewerPage() {
       });
     });
 
-    // 첫/마지막 페이지 경계 토스트만 담당 (애니메이션은 locationChanged에서)
+    // 클릭 즉시 애니메이션 시작 (navigation 전) → epub.js 흰 화면 flash 가림
     const origNext = rendition.next.bind(rendition);
     const origPrev = rendition.prev.bind(rendition);
     rendition.next = () => {
@@ -334,6 +335,7 @@ export default function EbookViewerPage() {
         showToast('마지막 페이지입니다');
         return Promise.resolve();
       }
+      startFlip('forward');
       return origNext();
     };
     rendition.prev = () => {
@@ -341,6 +343,7 @@ export default function EbookViewerPage() {
         showToast('첫 페이지입니다');
         return Promise.resolve();
       }
+      startFlip('backward');
       return origPrev();
     };
   }, []);
@@ -360,11 +363,6 @@ export default function EbookViewerPage() {
       if (locs?.length() > 0) {
         const pageNum = locs.locationFromCfi(loc) + 1;
         if (pageNum > 0) {
-          if (!isFirstLocationRef.current && prevPageRef.current > 0 && pageNum !== prevPageRef.current) {
-            // 페이지가 실제로 바뀌었을 때만 애니메이션
-            const dir: 'forward' | 'backward' = pageNum > prevPageRef.current ? 'forward' : 'backward';
-            startFlip(dir);
-          }
           prevPageRef.current = pageNum;
           setCurrentPage(pageNum);
         }
