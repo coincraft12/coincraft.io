@@ -174,6 +174,7 @@ export default function EbookViewerPage() {
   const isFirstLocationRef = useRef(true);
   const currentLocationRef = useRef<string | number>(0);
   const prevPageNumRef = useRef<number>(-1);
+  const isAnimatingRef = useRef(false);  // 애니메이션 중복 방지용
   const iframeBoundsRef = useRef<ClipBounds | null>(null);
   const readerContainerRef = useRef<HTMLDivElement>(null);
 
@@ -326,23 +327,26 @@ export default function EbookViewerPage() {
       const locations = renditionRef.current.book?.locations;
       if (locations?.length() > 0) {
         newPageNum = locations.locationFromCfi(loc);
-        if (newPageNum >= 0) {
-          setCurrentPage(newPageNum + 1);
-          prevPageNumRef.current = newPageNum;
-        }
+        if (newPageNum >= 0) setCurrentPage(newPageNum + 1);
       }
     }
 
     // Skip the very first event (initial render)
     if (isFirstLocationRef.current) {
       isFirstLocationRef.current = false;
-    } else {
+    } else if (!isAnimatingRef.current) {
+      // epub.js가 locationChanged를 한 페이지 넘김에 여러 번 발사하는 경우 방지
+      // isAnimatingRef가 true인 동안은 추가 애니메이션 트리거 무시
       const dir: 'forward' | 'backward' =
         newPageNum >= 0 && prevPageNumRef.current >= 0 && newPageNum < prevPageNumRef.current
           ? 'backward'
           : 'forward';
+      isAnimatingRef.current = true;
       setFlipDir(dir);
     }
+
+    // 방향 감지 후 prevPageNum 업데이트 (비교 기준값이므로 비교 이후에 갱신)
+    if (newPageNum >= 0) prevPageNumRef.current = newPageNum;
 
     setLocation(loc);
 
@@ -454,7 +458,10 @@ export default function EbookViewerPage() {
           <PageTurnCanvas
             direction={flipDir}
             clipBounds={iframeBoundsRef.current}
-            onDone={() => setFlipDir(null)}
+            onDone={() => {
+              isAnimatingRef.current = false;
+              setFlipDir(null);
+            }}
           />
         )}
       </div>
