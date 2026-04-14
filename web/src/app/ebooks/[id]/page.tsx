@@ -108,6 +108,16 @@ export default function EbookViewerPage() {
     renditionRef.current?.themes.fontSize(`${fontSize}%`);
   }, [fontSize]);
 
+  // Sync page counter when locations finish generating
+  useEffect(() => {
+    if (totalPages === 0) return;
+    const cfi = renditionRef.current?.location?.start?.cfi ?? currentLocationRef.current;
+    if (typeof cfi === 'string') {
+      const pageNum = renditionRef.current?.book?.locations?.locationFromCfi(cfi);
+      if (pageNum >= 0) setCurrentPage(pageNum + 1);
+    }
+  }, [totalPages]);
+
   const handleGetRendition = useCallback((rendition: any) => {
     renditionRef.current = rendition;
 
@@ -118,17 +128,10 @@ export default function EbookViewerPage() {
     rendition.themes.select('cc-theme');
     rendition.themes.fontSize(`${fontSize}%`);
 
-    // Generate locations for page counting, then sync current page
+    // Generate locations for page counting
     rendition.book.ready.then(() => {
       rendition.book.locations.generate(1024).then(() => {
-        const len = rendition.book.locations.length();
-        setTotalPages(len);
-        // Sync page number from current CFI (handles restored progress position)
-        const loc = currentLocationRef.current;
-        if (typeof loc === 'string' && len > 0) {
-          const pageNum = rendition.book.locations.locationFromCfi(loc);
-          if (pageNum >= 0) setCurrentPage(pageNum + 1);
-        }
+        setTotalPages(rendition.book.locations.length());
       });
     });
   }, []);
