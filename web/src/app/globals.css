@@ -187,18 +187,25 @@
 }
 
 /* ── Ebook page-flip animation ── */
-@keyframes page-flip-forward {
-  0%   { transform: perspective(1400px) rotateY(0deg); box-shadow: 4px 0 16px rgba(0,0,0,0.5); opacity: 1; }
-  45%  { transform: perspective(1400px) rotateY(-90deg); box-shadow: 0 0 24px rgba(0,0,0,0.7); opacity: 1; }
-  100% { transform: perspective(1400px) rotateY(-180deg); opacity: 0; }
+@keyframes page-flip-shadow {
+  0%   { transform: translateX(110%); opacity: 0; }
+  15%  { opacity: 1; }
+  50%  { transform: translateX(0%); }
+  85%  { opacity: 1; }
+  100% { transform: translateX(-110%); opacity: 0; }
 }
 .ebook-page-flip {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to right, #f5f0e8 0%, #ffffff 40%, #e8e0d0 100%);
-  transform-origin: left center;
-  animation: page-flip-forward 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  background: linear-gradient(to right,
+    transparent 0%,
+    rgba(0,0,0,0.08) 15%,
+    rgba(0,0,0,0.25) 45%,
+    rgba(0,0,0,0.25) 55%,
+    rgba(0,0,0,0.08) 85%,
+    transparent 100%
+  );
+  animation: page-flip-shadow 0.45s ease-in-out forwards;
   pointer-events: none;
   z-index: 10;
-  border-radius: 0 2px 2px 0;
 }
