@@ -19,6 +19,17 @@ export interface EbookMeta {
   isPublished: boolean;
   pageCount: number | null;
   createdAt: Date;
+  hasFullAccess: boolean; // 구매 여부 또는 무료 여부
+}
+
+export interface UserEbookItem {
+  id: string;
+  slug: string;
+  title: string;
+  coverImageUrl: string | null;
+  price: string;
+  isFree: boolean;
+  purchasedAt: Date | null;
 }
 
 export interface EbookListItem {
@@ -75,6 +86,46 @@ export async function listEbooks(): Promise<EbookListItem[]> {
   return rows;
 }
 
+export async function listUserEbooks(userId: string): Promise<UserEbookItem[]> {
+  // 구매한 전자책
+  const purchased = await db
+    .select({
+      id: ebooks.id,
+      slug: ebooks.slug,
+      title: ebooks.title,
+      coverImageUrl: ebooks.coverImageUrl,
+      price: ebooks.price,
+      isFree: ebooks.isFree,
+      purchasedAt: ebookPurchases.purchasedAt,
+    })
+    .from(ebookPurchases)
+    .innerJoin(ebooks, eq(ebookPurchases.ebookId, ebooks.id))
+    .where(and(eq(ebookPurchases.userId, userId), eq(ebooks.isPublished, true)))
+    .orderBy(desc(ebookPurchases.purchasedAt));
+
+  // 무료 전자책 (별도 구매 불필요)
+  const freeBooks = await db
+    .select({
+      id: ebooks.id,
+      slug: ebooks.slug,
+      title: ebooks.title,
+      coverImageUrl: ebooks.coverImageUrl,
+      price: ebooks.price,
+      isFree: ebooks.isFree,
+    })
+    .from(ebooks)
+    .where(and(eq(ebooks.isPublished, true), eq(ebooks.isFree, true)))
+    .orderBy(desc(ebooks.createdAt));
+
+  const purchasedIds = new Set(purchased.map((e) => e.id));
+  const freeOnly = freeBooks.filter((e) => !purchasedIds.has(e.id));
+
+  return [
+    ...purchased.map((e) => ({ ...e, purchasedAt: e.purchasedAt })),
+    ...freeOnly.map((e) => ({ ...e, purchasedAt: null })),
+  ];
+}
+
 export async function getEbookMeta(ebookId: string, userId: string): Promise<EbookMeta> {
   const [ebook] = await db
     .select({
@@ -98,13 +149,8 @@ export async function getEbookMeta(ebookId: string, userId: string): Promise<Ebo
     throw makeError('전자책을 찾을 수 없습니다.', 'NOT_FOUND', 404);
   }
 
-  // Check access: free ebook or purchased
-  if (!ebook.isFree) {
-    const access = await hasAccess(ebookId, userId);
-    if (!access) {
-      throw makeError('이 전자책에 접근할 권한이 없습니다.', 'FORBIDDEN', 403);
-    }
-  }
+  // hasFullAccess: 무료 전자책이거나 구매한 경우
+  const hasFullAccess = ebook.isFree || await hasAccess(ebookId, userId);
 
   return {
     id: ebook.id,
@@ -117,6 +163,7 @@ export async function getEbookMeta(ebookId: string, userId: string): Promise<Ebo
     isPublished: ebook.isPublished,
     pageCount: ebook.pageCount,
     createdAt: ebook.createdAt,
+    hasFullAccess,
   };
 }
 
@@ -136,13 +183,8 @@ export async function getEbookFile(ebookId: string, userId: string): Promise<Buf
     throw makeError('전자책을 찾을 수 없습니다.', 'NOT_FOUND', 404);
   }
 
-  // Check access: free ebook or purchased
-  if (!ebook.isFree) {
-    const access = await hasAccess(ebookId, userId);
-    if (!access) {
-      throw makeError('이 전자책에 접근할 권한이 없습니다.', 'FORBIDDEN', 403);
-    }
-  }
+  // 미구매 유료 전자책도 미리보기(20페이지) 허용 — 프론트에서 페이지 제한 적용
+  // (전체 접근 여부는 getEbookMeta의 hasFullAccess 필드로 판단)
 
   const filePath = `/opt/coincraft-api/ebooks/${ebookId}.epub`;
 

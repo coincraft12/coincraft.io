@@ -5,6 +5,12 @@ import { ok } from '../../utils/response';
 import * as ebookService from './ebook.service';
 
 export async function ebookRoutes(app: FastifyInstance): Promise<void> {
+  // GET /api/v1/users/me/ebooks — 내 전자책 목록 (구매 + 무료)
+  app.get('/api/v1/users/me/ebooks', { preHandler: [authenticate] }, async (request, reply) => {
+    const list = await ebookService.listUserEbooks(request.user!.id);
+    return reply.send(ok(list));
+  });
+
   // GET /api/v1/ebooks — 전자책 목록 (인증 불필요)
   app.get('/api/v1/ebooks', async (_request, reply) => {
     const list = await ebookService.listEbooks();

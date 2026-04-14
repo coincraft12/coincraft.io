@@ -26,6 +26,21 @@ interface EnrollmentsResponse {
   data: EnrollmentItem[];
 }
 
+interface UserEbookItem {
+  id: string;
+  slug: string;
+  title: string;
+  coverImageUrl: string | null;
+  price: string;
+  isFree: boolean;
+  purchasedAt: string | null;
+}
+
+interface UserEbooksResponse {
+  success: boolean;
+  data: UserEbookItem[];
+}
+
 export default function MyCoursesPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,6 +57,17 @@ export default function MyCoursesPage() {
     queryKey: ['my-enrollments'],
     queryFn: async () => {
       const res = await apiClient.get<EnrollmentsResponse>('/api/v1/users/me/enrollments', {
+        token: token ?? undefined,
+      });
+      return res.data;
+    },
+    enabled: !!token,
+  });
+
+  const { data: ebooks, isLoading: isEbooksLoading } = useQuery<UserEbookItem[]>({
+    queryKey: ['my-ebooks'],
+    queryFn: async () => {
+      const res = await apiClient.get<UserEbooksResponse>('/api/v1/users/me/ebooks', {
         token: token ?? undefined,
       });
       return res.data;
@@ -67,6 +93,7 @@ export default function MyCoursesPage() {
             <h1 className="text-3xl md:text-4xl font-bold text-cc-text">내 강좌</h1>
           </div>
 
+          {/* 강좌 섹션 */}
           {isLoading ? (
             <div className="flex justify-center py-24">
               <Spinner size="lg" />
@@ -138,6 +165,58 @@ export default function MyCoursesPage() {
               ))}
             </div>
           )}
+
+          {/* 전자책 섹션 */}
+          <div className="mt-16">
+            <div className="mb-8">
+              <p className="cc-label mb-2">MY LIBRARY</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-cc-text">내 전자책</h2>
+            </div>
+
+            {isEbooksLoading ? (
+              <div className="flex justify-center py-12">
+                <Spinner size="lg" />
+              </div>
+            ) : !ebooks || ebooks.length === 0 ? (
+              <div className="text-center py-12 space-y-4">
+                <p className="text-4xl">📚</p>
+                <p className="text-cc-muted">보유한 전자책이 없습니다.</p>
+                <Button variant="outline" onClick={() => router.push('/ebooks')}>
+                  전자책 둘러보기
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                {ebooks.map((ebook) => (
+                  <div
+                    key={ebook.id}
+                    className="bg-cc-secondary border border-white/10 rounded-cc overflow-hidden hover:border-cc-accent/40 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/ebooks/${ebook.id}`)}
+                  >
+                    {ebook.coverImageUrl ? (
+                      <img
+                        src={ebook.coverImageUrl}
+                        alt={ebook.title}
+                        className="w-full aspect-[3/4] object-cover"
+                      />
+                    ) : (
+                      <div className="w-full aspect-[3/4] bg-white/5 flex items-center justify-center">
+                        <span className="text-4xl">📖</span>
+                      </div>
+                    )}
+                    <div className="p-3 space-y-1">
+                      <h3 className="text-cc-text font-semibold text-xs leading-snug line-clamp-2">
+                        {ebook.title}
+                      </h3>
+                      {ebook.isFree && (
+                        <span className="text-xs text-cc-accent font-medium">무료</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </main>
       <Footer />

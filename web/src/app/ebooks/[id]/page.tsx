@@ -134,11 +134,15 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
   );
 }
 
+const PREVIEW_PAGE_LIMIT = 20;
+
 interface EbookMeta {
   id: string;
   title: string;
   description: string | null;
   isFree: boolean;
+  hasFullAccess: boolean;
+  price: string;
 }
 
 interface EbookMetaResponse {
@@ -163,6 +167,7 @@ export default function EbookViewerPage() {
   const [totalPages, setTotalPages]   = useState(0);
   const [flipDir, setFlipDir]         = useState<'forward' | 'backward' | null>(null);
   const [toast, setToast]             = useState<string | null>(null);
+  const [showPaywall, setShowPaywall]   = useState(false);
   const [flipEnabled, setFlipEnabled] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('ebook-flip-enabled') !== 'false';
@@ -170,6 +175,7 @@ export default function EbookViewerPage() {
 
   const toastTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFlipTimeRef     = useRef(0);
   const saveDebounceRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const renditionRef        = useRef<any>(null);
@@ -181,12 +187,16 @@ export default function EbookViewerPage() {
   const prevPageRef         = useRef(0);
   // refs for values used inside stable callbacks
   const flipEnabledRef      = useRef(flipEnabled);
+  const metaRef             = useRef<EbookMeta | null>(null);
+  const setShowPaywallRef   = useRef(setShowPaywall);
   const totalPagesRef       = useRef(totalPages);
   const currentPageRef      = useRef(currentPage);
 
-  useEffect(() => { flipEnabledRef.current  = flipEnabled; },  [flipEnabled]);
-  useEffect(() => { totalPagesRef.current   = totalPages; },   [totalPages]);
-  useEffect(() => { currentPageRef.current  = currentPage; },  [currentPage]);
+  useEffect(() => { flipEnabledRef.current    = flipEnabled; },   [flipEnabled]);
+  useEffect(() => { totalPagesRef.current     = totalPages; },    [totalPages]);
+  useEffect(() => { currentPageRef.current    = currentPage; },   [currentPage]);
+  useEffect(() => { metaRef.current           = meta; },          [meta]);
+  useEffect(() => { setShowPaywallRef.current = setShowPaywall; }, [setShowPaywall]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -282,9 +292,12 @@ export default function EbookViewerPage() {
 
   // ── 애니메이션 시작 — 단일 진입점 ───────────────────────────────────────────
   function startFlip(dir: 'forward' | 'backward') {
+    const now = Date.now();
+    if (now - lastFlipTimeRef.current < 800) return; // 이중 넘김 방지
     if (isAnimatingRef.current) return;
     if (!flipEnabledRef.current) return;
 
+    lastFlipTimeRef.current = now;
     isAnimatingRef.current = true;
     cacheIframeBounds();
     setFlipDir(dir);
@@ -333,6 +346,11 @@ export default function EbookViewerPage() {
     rendition.next = () => {
       if (currentPageRef.current >= totalPagesRef.current && totalPagesRef.current > 0) {
         showToast('마지막 페이지입니다');
+        return Promise.resolve();
+      }
+      // 미리보기 페이지 제한 — hasFullAccess 없는 경우 20페이지 이후 차단
+      if (!metaRef.current?.hasFullAccess && currentPageRef.current >= PREVIEW_PAGE_LIMIT) {
+        setShowPaywallRef.current(true);
         return Promise.resolve();
       }
       startFlip('forward');
@@ -482,6 +500,33 @@ export default function EbookViewerPage() {
             arrow: { ...ReactReaderStyle.arrow, color: '#e2b84e' },
           }}
         />
+
+        {/* 미리보기 종료 — 결제 유도 오버레이 */}
+        {showPaywall && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-30"
+            style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(26,26,46,0.92) 30%, rgba(26,26,46,1) 60%)' }}
+          >
+            <div className="text-center space-y-5 px-6 max-w-sm">
+              <p className="text-5xl">📖</p>
+              <h2 className="text-xl font-bold text-cc-text">미리보기가 끝났습니다</h2>
+              <p className="text-cc-muted text-sm leading-relaxed">
+                {PREVIEW_PAGE_LIMIT}페이지까지 무료로 읽으실 수 있습니다.<br />
+                전체 내용을 보려면 구매해주세요.
+              </p>
+              {meta && (
+                <p className="text-cc-accent font-bold text-lg">{Number(meta.price).toLocaleString()}원</p>
+              )}
+              <div className="flex flex-col gap-3">
+                <Button onClick={() => router.push(`/ebooks`)}>
+                  구매하러 가기
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowPaywall(false)}>
+                  계속 읽기 (이전 페이지로)
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {flipDir && (
           <PageTurnCanvas
