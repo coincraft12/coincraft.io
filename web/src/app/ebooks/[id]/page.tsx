@@ -127,6 +127,10 @@ export default function EbookViewerPage() {
       html body *::selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
       html body *::-moz-selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
       * { -webkit-tap-highlight-color: rgba(74, 158, 255, 0.2) !important; }
+      a:link { color: #2563eb !important; }
+      a:visited { color: #7c3aed !important; }
+      a:hover { color: #1d4ed8 !important; text-decoration: underline !important; }
+      a:active { color: #1e40af !important; }
     `;
 
     function injectStyle(contents: any) {

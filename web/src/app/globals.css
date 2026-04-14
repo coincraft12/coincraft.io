@@ -188,17 +188,17 @@
 
 /* ── Ebook page-flip animation ── */
 @keyframes page-flip-forward {
-  0%   { transform: perspective(1400px) rotateY(0deg); box-shadow: -4px 0 12px rgba(0,0,0,0.4); }
-  40%  { transform: perspective(1400px) rotateY(-90deg); box-shadow: 0 0 20px rgba(0,0,0,0.6); }
+  0%   { transform: perspective(1400px) rotateY(0deg); box-shadow: 4px 0 16px rgba(0,0,0,0.5); opacity: 1; }
+  45%  { transform: perspective(1400px) rotateY(-90deg); box-shadow: 0 0 24px rgba(0,0,0,0.7); opacity: 1; }
   100% { transform: perspective(1400px) rotateY(-180deg); opacity: 0; }
 }
 .ebook-page-flip {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to right, #1e1e38 0%, #2a2a4a 50%, #1a1a2e 100%);
+  background: linear-gradient(to right, #f5f0e8 0%, #ffffff 40%, #e8e0d0 100%);
   transform-origin: left center;
-  animation: page-flip-forward 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: page-flip-forward 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   pointer-events: none;
   z-index: 10;
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 2px 2px 0;
 }
