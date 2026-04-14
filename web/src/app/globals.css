@@ -186,25 +186,36 @@
   background-color: #1A1A2E !important;
 }
 
-/* ── Ebook page-flip animation ── */
-@keyframes page-flip-shadow {
-  0%   { transform: translateX(200%); }
-  100% { transform: translateX(-200%); }
+/* ── Ebook page-curl animation ── */
+@keyframes page-curl {
+  0%   { transform: perspective(1200px) rotateY(0deg);    box-shadow: -4px 0 10px rgba(0,0,0,0.15); opacity: 1; }
+  45%  { transform: perspective(1200px) rotateY(-90deg);  box-shadow: -28px 0 52px rgba(0,0,0,0.55); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: perspective(1200px) rotateY(-180deg); box-shadow: none; opacity: 0; }
 }
 .ebook-page-flip {
   position: absolute;
-  top: 0;
-  left: -8%;
-  width: 16%;
-  height: 100%;
-  background: linear-gradient(to right,
-    transparent 0%,
-    rgba(0,0,0,0.35) 40%,
-    rgba(0,0,0,0.55) 50%,
-    rgba(0,0,0,0.35) 60%,
-    transparent 100%
-  );
-  animation: page-flip-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  inset: 0;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  animation: page-curl 0.6s cubic-bezier(0.4, 0, 0.55, 1) forwards;
   pointer-events: none;
   z-index: 10;
+}
+/* 앞면: 책 페이지 색 (흰/베이지) */
+.ebook-page-flip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, #ccc4b8 0%, #ede8e0 20%, #f8f4ee 60%, #ffffff 100%);
+  backface-visibility: hidden;
+}
+/* 뒷면: 종이 뒷면 (살짝 어두운 베이지) */
+.ebook-page-flip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to left, #bbb4a8 0%, #cec8bc 50%, #beb8ac 100%);
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
 }
