@@ -22,6 +22,11 @@ export default function Web3LoginButton() {
 
   async function handleWeb3Login() {
     if (!window.ethereum) {
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.location.href = 'https://metamask.app.link/dapp/coincraft.io';
+        return;
+      }
       setErrorMsg('MetaMask가 설치되어 있지 않습니다.');
       setStatus('error');
       return;

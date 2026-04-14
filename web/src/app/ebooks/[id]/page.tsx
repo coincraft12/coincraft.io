@@ -124,15 +124,17 @@ export default function EbookViewerPage() {
     rendition.themes.fontSize(`${fontSize}%`);
 
     const SELECTION_CSS = `
-      ::selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
-      ::-moz-selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
+      html body *::selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
+      html body *::-moz-selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
       * { -webkit-tap-highlight-color: rgba(74, 158, 255, 0.2) !important; }
     `;
 
     function injectStyle(contents: any) {
       const doc = contents?.document;
       if (!doc) return;
+      if (doc.getElementById('cc-selection-style')) return; // 중복 방지
       const style = doc.createElement('style');
+      style.id = 'cc-selection-style';
       style.innerHTML = SELECTION_CSS;
       // Append to body (after all epub stylesheets) so cascade order wins
       (doc.body ?? doc.head)?.appendChild(style);
@@ -153,6 +155,12 @@ export default function EbookViewerPage() {
   }, []);
 
   const handleLocationChanged = useCallback((loc: string | number) => {
+    // CFI가 아닌 href 형태(TOC 클릭)이면 rendition.display()로 직접 이동
+    if (typeof loc === 'string' && !loc.startsWith('epubcfi(')) {
+      renditionRef.current?.display(loc);
+      return;
+    }
+
     currentLocationRef.current = loc;
 
     // Skip the very first event (initial render)

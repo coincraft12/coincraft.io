@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../../middleware/authenticate';
+import { requireRole } from '../../middleware/require-role';
 import { ok } from '../../utils/response';
 import * as ebookService from './ebook.service';
 
@@ -43,5 +44,14 @@ export async function ebookRoutes(app: FastifyInstance): Promise<void> {
     const { cfi } = request.body as { cfi: string };
     const progress = await ebookService.upsertEbookProgress(id, request.user!.id, cfi);
     return reply.send(ok(progress));
+  });
+
+  // POST /api/v1/ebooks/:id/extract-cover — EPUB에서 표지 이미지 추출 (admin/instructor 전용)
+  app.post('/api/v1/ebooks/:id/extract-cover', {
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await ebookService.extractAndSaveCover(id);
+    return reply.send(ok(result));
   });
 }
