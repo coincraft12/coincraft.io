@@ -277,15 +277,22 @@ export default function EbookViewerPage() {
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }
 
-  // ── iframe 오버레이 동기화 — 렌더 후 iframe 위치에 맞게 오버레이 이동 ────────
+  // ── iframe 오버레이 동기화 — 2페이지 스프레드 포함 모든 iframe을 감싸는 박스
   const syncIframeOverlay = useCallback(() => {
     const container = readerContainerRef.current;
     if (!container) return;
-    const iframe = container.querySelector('iframe');
-    if (!iframe) return;
+    const iframes = Array.from(container.querySelectorAll('iframe'));
+    if (iframes.length === 0) return;
     const cr = container.getBoundingClientRect();
-    const ir = iframe.getBoundingClientRect();
-    const bounds = { l: ir.left - cr.left, t: ir.top - cr.top, w: ir.width, h: ir.height };
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    iframes.forEach((f) => {
+      const r = f.getBoundingClientRect();
+      left   = Math.min(left,   r.left);
+      top    = Math.min(top,    r.top);
+      right  = Math.max(right,  r.right);
+      bottom = Math.max(bottom, r.bottom);
+    });
+    const bounds = { l: left - cr.left, t: top - cr.top, w: right - left, h: bottom - top };
     setIframeOverlay(bounds);
     setFlipClipBounds({ x: bounds.l, y: bounds.t, w: bounds.w, h: bounds.h });
   }, []);
