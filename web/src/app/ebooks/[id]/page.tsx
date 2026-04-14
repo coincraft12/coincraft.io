@@ -10,15 +10,12 @@ import Button from '@/components/ui/Button';
 interface ClipBounds { x: number; y: number; w: number; h: number; }
 
 // ── Canvas-based page-turn animation ─────────────────────────────────────────
-// clipBounds: epub 흰 콘텐츠 영역 (iframe bounds). null이면 전체 캔버스 사용.
-// 색상: epub 흰 배경(#fff)과 동일하게 맞춰 자연스럽게 합성.
 function PageTurnCanvas({ onDone, direction, clipBounds }: {
   onDone: () => void;
   direction: 'forward' | 'backward';
   clipBounds: ClipBounds | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // onDone을 ref로 관리 — 부모 리렌더 시 새 함수 참조로 인해 effect가 재실행되는 것을 방지
   const onDoneRef = useRef(onDone);
   useEffect(() => { onDoneRef.current = onDone; });
 
@@ -36,11 +33,10 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
     const W = canvas.width;
     const H = canvas.height;
 
-    // epub iframe 실제 영역에만 그린다 (mount 시점의 값을 그대로 사용)
-    const cx = clipBounds?.x  ?? 0;
-    const cy = clipBounds?.y  ?? 0;
-    const cw = clipBounds?.w  ?? W;
-    const ch = clipBounds?.h  ?? H;
+    const cx = clipBounds?.x ?? 0;
+    const cy = clipBounds?.y ?? 0;
+    const cw = clipBounds?.w ?? W;
+    const ch = clipBounds?.h ?? H;
 
     const DURATION = 600;
     const start = performance.now();
@@ -53,14 +49,9 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
     function draw(now: number) {
       const raw = Math.min((now - start) / DURATION, 1);
       const t   = easeInOut(raw);
-
-      // forward: 오른쪽→왼쪽 / backward: 왼쪽→오른쪽
-      // fold 위치는 클리핑 영역 안에서 계산
       const foldX = cx + (direction === 'forward' ? cw * (1 - t) : cw * t);
 
       ctx.clearRect(0, 0, W, H);
-
-      // epub 콘텐츠 영역 밖으로 그림 나가지 않도록 clip
       ctx.save();
       ctx.beginPath();
       ctx.rect(cx, cy, cw, ch);
@@ -68,15 +59,13 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
 
       if (direction === 'forward') {
         if (foldX > cx) {
-          // 페이지 면 — epub 흰 배경과 동일한 흰색
           const pg = ctx.createLinearGradient(cx, 0, foldX, 0);
-          pg.addColorStop(0,    'rgba(255, 255, 255, 0.97)');
-          pg.addColorStop(0.85, 'rgba(255, 255, 255, 0.97)');
-          pg.addColorStop(1,    'rgba(220, 220, 220, 0.98)');
+          pg.addColorStop(0,    'rgba(255,255,255,0.97)');
+          pg.addColorStop(0.85, 'rgba(255,255,255,0.97)');
+          pg.addColorStop(1,    'rgba(220,220,220,0.98)');
           ctx.fillStyle = pg;
           ctx.fillRect(cx, cy, foldX - cx, ch);
 
-          // fold 그림자
           const foldW = Math.min(80, foldX - cx);
           const fs = ctx.createLinearGradient(foldX - foldW, 0, foldX, 0);
           fs.addColorStop(0,   'rgba(0,0,0,0)');
@@ -85,7 +74,6 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
           ctx.fillStyle = fs;
           ctx.fillRect(Math.max(cx, foldX - foldW), cy, foldW, ch);
 
-          // cast shadow (접힌 선 오른쪽)
           const castW = Math.min(40, cx + cw - foldX);
           if (castW > 0) {
             const cs = ctx.createLinearGradient(foldX, 0, foldX + castW, 0);
@@ -97,15 +85,13 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
         }
       } else {
         if (foldX < cx + cw) {
-          // 페이지 면 — 흰색
           const pg = ctx.createLinearGradient(foldX, 0, cx + cw, 0);
-          pg.addColorStop(0,    'rgba(220, 220, 220, 0.98)');
-          pg.addColorStop(0.15, 'rgba(255, 255, 255, 0.97)');
-          pg.addColorStop(1,    'rgba(255, 255, 255, 0.97)');
+          pg.addColorStop(0,    'rgba(220,220,220,0.98)');
+          pg.addColorStop(0.15, 'rgba(255,255,255,0.97)');
+          pg.addColorStop(1,    'rgba(255,255,255,0.97)');
           ctx.fillStyle = pg;
           ctx.fillRect(foldX, cy, cx + cw - foldX, ch);
 
-          // fold 그림자
           const foldW = Math.min(80, cx + cw - foldX);
           const fs = ctx.createLinearGradient(foldX, 0, foldX + foldW, 0);
           fs.addColorStop(0,   'rgba(0,0,0,0.38)');
@@ -114,7 +100,6 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
           ctx.fillStyle = fs;
           ctx.fillRect(foldX, cy, foldW, ch);
 
-          // cast shadow (접힌 선 왼쪽)
           const castW = Math.min(40, foldX - cx);
           if (castW > 0) {
             const cs = ctx.createLinearGradient(foldX - castW, 0, foldX, 0);
@@ -137,7 +122,6 @@ function PageTurnCanvas({ onDone, direction, clipBounds }: {
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  // direction 변경 시에만 재실행. onDone은 ref로, clipBounds는 mount 시 값 고정
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [direction]);
 
@@ -168,22 +152,23 @@ export default function EbookViewerPage() {
   const token = useAuthStore((s) => s.accessToken);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
 
-  const [epubData, setEpubData] = useState<ArrayBuffer | null>(null);
-  const [meta, setMeta] = useState<EbookMeta | null>(null);
-  const [location, setLocation] = useState<string | number>(0);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [epubData, setEpubData]       = useState<ArrayBuffer | null>(null);
+  const [meta, setMeta]               = useState<EbookMeta | null>(null);
+  const [location, setLocation]       = useState<string | number>(0);
+  const [loadError, setLoadError]     = useState<string | null>(null);
   const [isFileLoading, setIsFileLoading] = useState(true);
-  const [fontSize, setFontSize] = useState(100);
+  const [fontSize, setFontSize]       = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [flipDir, setFlipDir] = useState<'forward' | 'backward' | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [totalPages, setTotalPages]   = useState(0);
+  const [flipDir, setFlipDir]         = useState<'forward' | 'backward' | null>(null);
+  const [toast, setToast]             = useState<string | null>(null);
   const [flipEnabled, setFlipEnabled] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('ebook-flip-enabled') !== 'false';
   });
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const toastTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const safetyTimerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveDebounceRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const renditionRef        = useRef<any>(null);
@@ -191,14 +176,16 @@ export default function EbookViewerPage() {
   const currentLocationRef  = useRef<string | number>(0);
   const readerContainerRef  = useRef<HTMLDivElement>(null);
   const iframeBoundsRef     = useRef<ClipBounds | null>(null);
-  // rendition 패치에서 호출하는 안정적인 트리거 ref (stale closure 방지)
-  const flipTriggerRef      = useRef<(dir: 'forward' | 'backward') => void>(() => {});
-  // 애니메이션 진행 중 여부 — 중복 트리거 방지
   const isAnimatingRef      = useRef(false);
-  // locationChanged fallback용 이전 페이지 추적
   const prevPageRef         = useRef(0);
-  // 최신 flipEnabled 값을 locationChanged 콜백에서 읽기 위한 ref
+  // refs for values used inside stable callbacks
   const flipEnabledRef      = useRef(flipEnabled);
+  const totalPagesRef       = useRef(totalPages);
+  const currentPageRef      = useRef(currentPage);
+
+  useEffect(() => { flipEnabledRef.current  = flipEnabled; },  [flipEnabled]);
+  useEffect(() => { totalPagesRef.current   = totalPages; },   [totalPages]);
+  useEffect(() => { currentPageRef.current  = currentPage; },  [currentPage]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -210,13 +197,11 @@ export default function EbookViewerPage() {
   // Fetch meta + epub file
   useEffect(() => {
     if (!token || !id) return;
-
     const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
     async function loadEbook() {
       setIsFileLoading(true);
       setLoadError(null);
-
       try {
         const metaRes = await fetch(`${API_BASE}/api/v1/ebooks/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -235,10 +220,7 @@ export default function EbookViewerPage() {
           if (progressRes.ok) {
             const progressJson = await progressRes.json();
             const savedCfi = progressJson?.data?.lastCfi;
-            if (savedCfi) {
-              setLocation(savedCfi);
-              progressRestoredRef.current = true;
-            }
+            if (savedCfi) { setLocation(savedCfi); progressRestoredRef.current = true; }
           }
         } catch {}
 
@@ -249,109 +231,44 @@ export default function EbookViewerPage() {
           const body = await fileRes.json().catch(() => ({}));
           throw new Error(body?.error?.message ?? 'EPUB 파일을 불러올 수 없습니다.');
         }
-        const buf = await fileRes.arrayBuffer();
-        setEpubData(buf);
+        setEpubData(await fileRes.arrayBuffer());
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
       } finally {
         setIsFileLoading(false);
       }
     }
-
     loadEbook();
   }, [token, id]);
 
-  // Apply font size whenever it changes
   useEffect(() => {
     renditionRef.current?.themes.fontSize(`${fontSize}%`);
   }, [fontSize]);
 
-  // Sync page counter when locations finish generating
   useEffect(() => {
     if (totalPages === 0) return;
     const cfi = renditionRef.current?.location?.start?.cfi ?? currentLocationRef.current;
     if (typeof cfi === 'string') {
       const pageNum = renditionRef.current?.book?.locations?.locationFromCfi(cfi);
-      if (pageNum >= 0) setCurrentPage(pageNum + 1);
+      if (pageNum >= 0) {
+        setCurrentPage(pageNum + 1);
+        prevPageRef.current = pageNum + 1;
+      }
     }
   }, [totalPages]);
 
-  // flipEnabledRef 동기화
-  useEffect(() => { flipEnabledRef.current = flipEnabled; }, [flipEnabled]);
+  // ── 토스트 ──────────────────────────────────────────────────────────────────
+  function showToast(msg: string) {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
+  }
 
-  // flipTriggerRef.current를 매 렌더마다 최신 상태로 갱신
-  // handleGetRendition은 빈 dep로 고정되므로 ref를 통해 최신값 전달
-  useEffect(() => {
-    flipTriggerRef.current = (dir: 'forward' | 'backward') => {
-      // 첫/마지막 페이지 경계 처리 (렌디션 패치 경로에서만 토스트 표시)
-      if (dir === 'backward' && currentPage <= 1) {
-        showToast('첫 페이지입니다');
-        return;
-      }
-      if (dir === 'forward' && totalPages > 0 && currentPage >= totalPages) {
-        showToast('마지막 페이지입니다');
-        return;
-      }
-      startFlip(dir);
-    };
-  });
-
-  const handleGetRendition = useCallback((rendition: any) => {
-    renditionRef.current = rendition;
-
-    rendition.themes.fontSize(`${fontSize}%`);
-
-    const SELECTION_CSS = `
-      html body *::selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
-      html body *::-moz-selection { background: rgba(74, 158, 255, 0.35) !important; color: inherit !important; }
-      * { -webkit-tap-highlight-color: rgba(74, 158, 255, 0.2) !important; }
-      a:link, a:visited, a:hover, a:active { color: inherit !important; text-decoration: none !important; }
-    `;
-
-    function injectStyle(contents: any) {
-      const doc = contents?.document;
-      if (!doc) return;
-      if (doc.getElementById('cc-selection-style')) return;
-      const style = doc.createElement('style');
-      style.id = 'cc-selection-style';
-      style.innerHTML = SELECTION_CSS;
-      (doc.body ?? doc.head)?.appendChild(style);
-    }
-
-    rendition.hooks.content.register(injectStyle);
-    rendition.getContents().forEach(injectStyle);
-
-    rendition.book.ready.then(() => {
-      rendition.book.locations.generate(1024).then(() => {
-        setTotalPages(rendition.book.locations.length());
-      });
-    });
-
-    // rendition.next / prev 를 패치해 페이지 넘김 효과를 단일 진입점에서 처리
-    // (ReactReader 화살표 버튼, 키보드, epub.js 스와이프 모두 여기를 통과)
-    const origNext = rendition.next.bind(rendition);
-    const origPrev = rendition.prev.bind(rendition);
-    rendition.next = () => {
-      flipTriggerRef.current('forward');
-      const p = origNext();
-      // epub 이동 실패 시 isAnimatingRef 잠금 해제
-      Promise.resolve(p).catch(() => { isAnimatingRef.current = false; setFlipDir(null); });
-      return p;
-    };
-    rendition.prev = () => {
-      flipTriggerRef.current('backward');
-      const p = origPrev();
-      Promise.resolve(p).catch(() => { isAnimatingRef.current = false; setFlipDir(null); });
-      return p;
-    };
-  }, []);
-
-  // epub iframe 엘리먼트 경계를 캔버스 좌표계로 변환해 캐시
+  // ── iframe 경계 캐시 ─────────────────────────────────────────────────────────
   function cacheIframeBounds() {
     if (!readerContainerRef.current) return;
     const iframe = readerContainerRef.current.querySelector('iframe') as HTMLIFrameElement | null;
     if (!iframe) { iframeBoundsRef.current = null; return; }
-
     const pr = readerContainerRef.current.getBoundingClientRect();
     const ir = iframe.getBoundingClientRect();
     iframeBoundsRef.current = {
@@ -362,14 +279,7 @@ export default function EbookViewerPage() {
     };
   }
 
-  // 토스트 표시 (2초 후 자동 닫힘)
-  function showToast(msg: string) {
-    setToast(msg);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
-  }
-
-  // 애니메이션 시작 — 모든 트리거 경로의 단일 진입점
+  // ── 애니메이션 시작 — 단일 진입점 ───────────────────────────────────────────
   function startFlip(dir: 'forward' | 'backward') {
     if (isAnimatingRef.current) return;
     if (!flipEnabledRef.current) return;
@@ -379,7 +289,8 @@ export default function EbookViewerPage() {
     setFlipDir(dir);
 
     // 안전장치: 750ms 후에도 onDone이 안 불렸으면 강제 해제
-    setTimeout(() => {
+    if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
+    safetyTimerRef.current = setTimeout(() => {
       if (isAnimatingRef.current) {
         isAnimatingRef.current = false;
         setFlipDir(null);
@@ -387,8 +298,55 @@ export default function EbookViewerPage() {
     }, 750);
   }
 
+  // ── 렌디션 설정 ─────────────────────────────────────────────────────────────
+  const handleGetRendition = useCallback((rendition: any) => {
+    renditionRef.current = rendition;
+    rendition.themes.fontSize(`${fontSize}%`);
+
+    const SELECTION_CSS = `
+      html body *::selection { background: rgba(74,158,255,0.35) !important; color: inherit !important; }
+      html body *::-moz-selection { background: rgba(74,158,255,0.35) !important; color: inherit !important; }
+      * { -webkit-tap-highlight-color: rgba(74,158,255,0.2) !important; }
+      a:link, a:visited, a:hover, a:active { color: inherit !important; text-decoration: none !important; }
+    `;
+    function injectStyle(contents: any) {
+      const doc = contents?.document;
+      if (!doc || doc.getElementById('cc-selection-style')) return;
+      const style = doc.createElement('style');
+      style.id = 'cc-selection-style';
+      style.innerHTML = SELECTION_CSS;
+      (doc.body ?? doc.head)?.appendChild(style);
+    }
+    rendition.hooks.content.register(injectStyle);
+    rendition.getContents().forEach(injectStyle);
+
+    rendition.book.ready.then(() => {
+      rendition.book.locations.generate(1024).then(() => {
+        setTotalPages(rendition.book.locations.length());
+      });
+    });
+
+    // 첫/마지막 페이지 경계 토스트만 담당 (애니메이션은 locationChanged에서)
+    const origNext = rendition.next.bind(rendition);
+    const origPrev = rendition.prev.bind(rendition);
+    rendition.next = () => {
+      if (currentPageRef.current >= totalPagesRef.current && totalPagesRef.current > 0) {
+        showToast('마지막 페이지입니다');
+        return Promise.resolve();
+      }
+      return origNext();
+    };
+    rendition.prev = () => {
+      if (currentPageRef.current <= 1) {
+        showToast('첫 페이지입니다');
+        return Promise.resolve();
+      }
+      return origPrev();
+    };
+  }, []);
+
+  // ── 위치 변경 — 애니메이션 트리거 단일 경로 ─────────────────────────────────
   const handleLocationChanged = useCallback((loc: string | number) => {
-    // TOC href 형태 → rendition.display() 로 직접 이동
     if (typeof loc === 'string' && !loc.startsWith('epubcfi(')) {
       renditionRef.current?.display(loc);
       return;
@@ -397,19 +355,15 @@ export default function EbookViewerPage() {
     currentLocationRef.current = loc;
     setLocation(loc);
 
-    // 페이지 번호 업데이트 + 애니메이션 폴백
-    // rendition 패치가 잡지 못한 경로(스와이프, 키보드 등)도 여기서 커버
     if (typeof loc === 'string' && renditionRef.current) {
       const locs = renditionRef.current.book?.locations;
       if (locs?.length() > 0) {
         const pageNum = locs.locationFromCfi(loc) + 1;
         if (pageNum > 0) {
           if (!isFirstLocationRef.current && prevPageRef.current > 0 && pageNum !== prevPageRef.current) {
-            // 렌디션 패치가 이미 트리거했으면(isAnimatingRef=true) 폴백 스킵
-            if (!isAnimatingRef.current) {
-              const dir: 'forward' | 'backward' = pageNum > prevPageRef.current ? 'forward' : 'backward';
-              startFlip(dir);
-            }
+            // 페이지가 실제로 바뀌었을 때만 애니메이션
+            const dir: 'forward' | 'backward' = pageNum > prevPageRef.current ? 'forward' : 'backward';
+            startFlip(dir);
           }
           prevPageRef.current = pageNum;
           setCurrentPage(pageNum);
@@ -422,7 +376,6 @@ export default function EbookViewerPage() {
       return;
     }
 
-    // 진행 상황 저장
     if (!token || !id) return;
     if (!progressRestoredRef.current) { progressRestoredRef.current = true; return; }
     const cfi = typeof loc === 'string' ? loc : null;
@@ -486,23 +439,17 @@ export default function EbookViewerPage() {
           {meta.title}
         </h1>
 
-        {/* Font size controls */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => changeFontSize(-10)}
             className="w-10 h-10 flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-base font-bold"
-          >
-            A−
-          </button>
+          >A−</button>
           <span className="text-sm text-cc-muted w-12 text-center font-mono">{fontSize}%</span>
           <button
             onClick={() => changeFontSize(10)}
             className="w-10 h-10 flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-text hover:bg-white/10 transition-colors text-base font-bold"
-          >
-            A+
-          </button>
+          >A+</button>
 
-          {/* 페이지 넘김 효과 토글 */}
           <button
             onClick={() => {
               const next = !flipEnabled;
@@ -512,9 +459,7 @@ export default function EbookViewerPage() {
             }}
             title={flipEnabled ? '넘김 효과 끄기' : '넘김 효과 켜기'}
             className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors text-lg ${
-              flipEnabled
-                ? 'text-cc-accent hover:bg-white/10'
-                : 'text-cc-muted hover:bg-white/10'
+              flipEnabled ? 'text-cc-accent hover:bg-white/10' : 'text-cc-muted hover:bg-white/10'
             }`}
           >
             {flipEnabled ? '📖' : '📄'}
@@ -522,9 +467,6 @@ export default function EbookViewerPage() {
         </div>
       </header>
 
-      {/* Reader with page-flip overlay
-          min-h-0: flex-1 child가 overflow하지 않도록 강제
-          overflow-hidden: canvas가 header/footer 영역으로 삐져나가는 것 차단 */}
       <div
         ref={readerContainerRef}
         className="flex-1 min-h-0 overflow-hidden relative"
@@ -543,16 +485,18 @@ export default function EbookViewerPage() {
           }}
         />
 
-        {/* Canvas 페이지 넘김 애니메이션 */}
         {flipDir && (
           <PageTurnCanvas
             direction={flipDir}
             clipBounds={iframeBoundsRef.current}
-            onDone={() => { isAnimatingRef.current = false; setFlipDir(null); }}
+            onDone={() => {
+              if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
+              isAnimatingRef.current = false;
+              setFlipDir(null);
+            }}
           />
         )}
 
-        {/* 첫/마지막 페이지 토스트 */}
         {toast && (
           <div className="absolute inset-x-0 bottom-6 flex justify-center pointer-events-none" style={{ zIndex: 20 }}>
             <div className="bg-black/70 text-white text-sm font-medium px-5 py-2.5 rounded-full backdrop-blur-sm animate-fade-in">
@@ -562,7 +506,6 @@ export default function EbookViewerPage() {
         )}
       </div>
 
-      {/* Bottom bar: page indicator */}
       <div className="shrink-0 flex items-center justify-center py-3 bg-[#12122a] border-t border-white/10">
         <span className="text-sm font-medium text-cc-muted tracking-wide">
           {totalPages > 0 ? `${currentPage} / ${totalPages} 페이지` : '읽는 중...'}
