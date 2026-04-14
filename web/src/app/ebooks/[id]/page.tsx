@@ -172,6 +172,8 @@ export default function EbookViewerPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [flipDir, setFlipDir] = useState<'forward' | 'backward' | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveDebounceRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
@@ -307,9 +309,25 @@ export default function EbookViewerPage() {
     };
   }
 
+  // 토스트 표시 (2초 후 자동 닫힘)
+  function showToast(msg: string) {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2000);
+  }
+
   // 애니메이션 트리거 — 클릭/스와이프 시 현재 페이지 위에서 즉시 시작
+  // 첫/마지막 페이지 경계에서는 토스트만 표시
   function triggerFlip(dir: 'forward' | 'backward') {
-    if (flipFiredRef.current) return; // 이미 진행 중
+    if (flipFiredRef.current) return;
+    if (dir === 'backward' && currentPage <= 1) {
+      showToast('첫 페이지입니다');
+      return;
+    }
+    if (dir === 'forward' && totalPages > 0 && currentPage >= totalPages) {
+      showToast('마지막 페이지입니다');
+      return;
+    }
     flipFiredRef.current = true;
     cacheIframeBounds();
     setFlipDir(dir);
@@ -321,7 +339,6 @@ export default function EbookViewerPage() {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = e.clientX - rect.left;
     const w = rect.width;
-    // ReactReader 화살표 버튼 영역 (~64px 좌우 엣지)
     if (x < 64) triggerFlip('backward');
     else if (x > w - 64) triggerFlip('forward');
   }
@@ -467,15 +484,22 @@ export default function EbookViewerPage() {
           }}
         />
 
-        {/* Canvas 페이지 넘김 애니메이션
-            clipBounds: debounce 후 계산된 iframe 실제 영역
-            inset:0 + 부모 overflow:hidden 으로 2중 경계 보장 */}
+        {/* Canvas 페이지 넘김 애니메이션 */}
         {flipDir && (
           <PageTurnCanvas
             direction={flipDir}
             clipBounds={iframeBoundsRef.current}
             onDone={() => { flipFiredRef.current = false; setFlipDir(null); }}
           />
+        )}
+
+        {/* 첫/마지막 페이지 토스트 */}
+        {toast && (
+          <div className="absolute inset-x-0 bottom-6 flex justify-center pointer-events-none" style={{ zIndex: 20 }}>
+            <div className="bg-black/70 text-white text-sm font-medium px-5 py-2.5 rounded-full backdrop-blur-sm animate-fade-in">
+              {toast}
+            </div>
+          </div>
         )}
       </div>
 
