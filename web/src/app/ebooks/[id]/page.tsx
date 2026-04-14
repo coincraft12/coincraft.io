@@ -195,6 +195,10 @@ export default function EbookViewerPage() {
   const flipTriggerRef      = useRef<(dir: 'forward' | 'backward') => void>(() => {});
   // 애니메이션 진행 중 여부 — 중복 트리거 방지
   const isAnimatingRef      = useRef(false);
+  // locationChanged fallback용 이전 페이지 추적
+  const prevPageRef         = useRef(0);
+  // 최신 flipEnabled 값을 locationChanged 콜백에서 읽기 위한 ref
+  const flipEnabledRef      = useRef(flipEnabled);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -272,13 +276,14 @@ export default function EbookViewerPage() {
     }
   }, [totalPages]);
 
+  // flipEnabledRef 동기화
+  useEffect(() => { flipEnabledRef.current = flipEnabled; }, [flipEnabled]);
+
   // flipTriggerRef.current를 매 렌더마다 최신 상태로 갱신
   // handleGetRendition은 빈 dep로 고정되므로 ref를 통해 최신값 전달
   useEffect(() => {
     flipTriggerRef.current = (dir: 'forward' | 'backward') => {
-      // 애니메이션 진행 중이면 무시 (중복 트리거 차단)
-      if (isAnimatingRef.current) return;
-
+      // 첫/마지막 페이지 경계 처리 (렌디션 패치 경로에서만 토스트 표시)
       if (dir === 'backward' && currentPage <= 1) {
         showToast('첫 페이지입니다');
         return;
@@ -287,11 +292,7 @@ export default function EbookViewerPage() {
         showToast('마지막 페이지입니다');
         return;
       }
-      if (!flipEnabled) return;
-
-      isAnimatingRef.current = true;
-      cacheIframeBounds();
-      setFlipDir(dir);
+      startFlip(dir);
     };
   });
 
@@ -345,33 +346,14 @@ export default function EbookViewerPage() {
     };
   }, []);
 
-  // epub 흰 콘텐츠 영역을 정확히 계산
-  // iframe.contentDocument.body 기준 → 실제 흰 페이지 영역만 클리핑
+  // epub iframe 엘리먼트 경계를 캔버스 좌표계로 변환해 캐시
   function cacheIframeBounds() {
     if (!readerContainerRef.current) return;
     const iframe = readerContainerRef.current.querySelector('iframe') as HTMLIFrameElement | null;
-    if (!iframe) return;
+    if (!iframe) { iframeBoundsRef.current = null; return; }
 
     const pr = readerContainerRef.current.getBoundingClientRect();
     const ir = iframe.getBoundingClientRect();
-
-    // epub body 경계: iframe 뷰포트 기준 → 메인 뷰포트 기준으로 변환
-    try {
-      const body = iframe.contentDocument?.body;
-      if (body) {
-        const br = body.getBoundingClientRect(); // iframe 내부 뷰포트 기준
-        const x = ir.left + br.left - pr.left;
-        const y = ir.top  + br.top  - pr.top;
-        const w = br.width;
-        const h = br.height;
-        if (w > 0 && h > 0) {
-          iframeBoundsRef.current = { x, y, w, h };
-          return;
-        }
-      }
-    } catch {}
-
-    // 폴백: iframe 엘리먼트 경계
     iframeBoundsRef.current = {
       x: ir.left - pr.left,
       y: ir.top  - pr.top,
@@ -387,6 +369,24 @@ export default function EbookViewerPage() {
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }
 
+  // 애니메이션 시작 — 모든 트리거 경로의 단일 진입점
+  function startFlip(dir: 'forward' | 'backward') {
+    if (isAnimatingRef.current) return;
+    if (!flipEnabledRef.current) return;
+
+    isAnimatingRef.current = true;
+    cacheIframeBounds();
+    setFlipDir(dir);
+
+    // 안전장치: 750ms 후에도 onDone이 안 불렸으면 강제 해제
+    setTimeout(() => {
+      if (isAnimatingRef.current) {
+        isAnimatingRef.current = false;
+        setFlipDir(null);
+      }
+    }, 750);
+  }
+
   const handleLocationChanged = useCallback((loc: string | number) => {
     // TOC href 형태 → rendition.display() 로 직접 이동
     if (typeof loc === 'string' && !loc.startsWith('epubcfi(')) {
@@ -397,12 +397,23 @@ export default function EbookViewerPage() {
     currentLocationRef.current = loc;
     setLocation(loc);
 
-    // 페이지 번호 업데이트만 담당 — 애니메이션은 pointerDown/touchEnd에서 처리
+    // 페이지 번호 업데이트 + 애니메이션 폴백
+    // rendition 패치가 잡지 못한 경로(스와이프, 키보드 등)도 여기서 커버
     if (typeof loc === 'string' && renditionRef.current) {
       const locs = renditionRef.current.book?.locations;
       if (locs?.length() > 0) {
-        const pageNum = locs.locationFromCfi(loc);
-        if (pageNum >= 0) setCurrentPage(pageNum + 1);
+        const pageNum = locs.locationFromCfi(loc) + 1;
+        if (pageNum > 0) {
+          if (!isFirstLocationRef.current && prevPageRef.current > 0 && pageNum !== prevPageRef.current) {
+            // 렌디션 패치가 이미 트리거했으면(isAnimatingRef=true) 폴백 스킵
+            if (!isAnimatingRef.current) {
+              const dir: 'forward' | 'backward' = pageNum > prevPageRef.current ? 'forward' : 'backward';
+              startFlip(dir);
+            }
+          }
+          prevPageRef.current = pageNum;
+          setCurrentPage(pageNum);
+        }
       }
     }
 
