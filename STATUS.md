@@ -138,6 +138,19 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 **시드 데이터:**
 - Basic 레벨 블록체인 기초 시험 5문항 (api/src/db/seed-exam.ts)
 
+## 2026-04-14 작업 내역
+**전자책 뷰어 (`/ebooks/[id]`) UI 개선:**
+- 페이지 넘김 Canvas 애니메이션 구현 (forward/backward, 흰 종이 접힘 효과)
+- 넘김 효과 토글 버튼 추가 (localStorage 영구 저장)
+- 첫/마지막 페이지 토스트 알림
+- epub.js 흰 flash 차단: 렌디션 패치로 navigation 전에 애니메이션 즉시 시작
+- canvas clipBounds clamping으로 경계 이탈 방지
+- RAF deps 최소화로 리렌더 시 애니메이션 중단 방지
+- ⚠️ 미완: 일부 환경/페이지에서 애니메이션 누락 발생 가능 (추후 개선 여지)
+
+**To-Do (다음 세션):**
+- `api-client` 401 자동 refresh + 재시도 로직 추가 (현재 액세스 토큰 15분 만료 시 강제 로그아웃됨)
+
 ## 다음 작업 (Phase 5 — 모바일 앱 또는 강사 포털)
 Phase 5~8 중 우선순위 결정 필요:
 - Phase 5: 모바일 앱 (Expo)
