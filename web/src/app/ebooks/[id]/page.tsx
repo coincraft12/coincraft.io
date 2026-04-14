@@ -24,6 +24,20 @@ function PageTurnCanvas({ onDone, direction }: { onDone: () => void; direction: 
 
     const W = canvas.width;
     const H = canvas.height;
+
+    // epub iframe 의 실제 위치를 찾아 클리핑 영역으로 사용
+    // ReactReader 내부엔 타이틀바 등이 있어 iframe이 전체를 차지하지 않는다
+    const iframe = parent.querySelector('iframe') as HTMLElement | null;
+    let clipX = 0, clipY = 0, clipW = W, clipH = H;
+    if (iframe) {
+      const iframeRect = iframe.getBoundingClientRect();
+      const parentRect = parent.getBoundingClientRect();
+      clipX = iframeRect.left - parentRect.left;
+      clipY = iframeRect.top  - parentRect.top;
+      clipW = iframeRect.width;
+      clipH = iframeRect.height;
+    }
+
     const DURATION = 650;
     const start = performance.now();
     let rafId: number;
@@ -36,71 +50,79 @@ function PageTurnCanvas({ onDone, direction }: { onDone: () => void; direction: 
       const raw = Math.min((now - start) / DURATION, 1);
       const t   = easeInOut(raw);
 
-      // forward: 오른쪽→왼쪽 (foldX: W→0)
-      // backward: 왼쪽→오른쪽 (foldX: 0→W, 즉 페이지 우측에서 진행)
-      const foldX = direction === 'forward' ? W * (1 - t) : W * t;
+      // fold 위치는 클리핑 영역(clipW) 기준으로 계산
+      // forward: 오른쪽→왼쪽 / backward: 왼쪽→오른쪽
+      const foldX = clipX + (direction === 'forward' ? clipW * (1 - t) : clipW * t);
 
       ctx.clearRect(0, 0, W, H);
 
+      // 클리핑: epub iframe 영역 바깥으로 그림이 나가지 않도록
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(clipX, clipY, clipW, clipH);
+      ctx.clip();
+
       if (direction === 'forward') {
-        // 페이지 면: 0 ~ foldX (반투명, 콘텐츠 살짝 비침)
-        if (foldX > 0) {
-          const pg = ctx.createLinearGradient(0, 0, foldX, 0);
+        // 페이지 면: clipX ~ foldX
+        if (foldX > clipX) {
+          const pg = ctx.createLinearGradient(clipX, 0, foldX, 0);
           pg.addColorStop(0,    'rgba(252, 248, 244, 0.60)');
           pg.addColorStop(0.80, 'rgba(252, 248, 244, 0.60)');
           pg.addColorStop(1,    'rgba(200, 190, 174, 0.75)');
           ctx.fillStyle = pg;
-          ctx.fillRect(0, 0, foldX, H);
+          ctx.fillRect(clipX, clipY, foldX - clipX, clipH);
 
-          // fold 그림자 (접히는 선)
-          const foldW = Math.min(70, foldX);
+          // fold 그림자
+          const foldW = Math.min(70, foldX - clipX);
           const fs = ctx.createLinearGradient(foldX - foldW, 0, foldX, 0);
-          fs.addColorStop(0, 'rgba(0,0,0,0)');
+          fs.addColorStop(0,   'rgba(0,0,0,0)');
           fs.addColorStop(0.6, 'rgba(0,0,0,0.06)');
-          fs.addColorStop(1, 'rgba(0,0,0,0.32)');
+          fs.addColorStop(1,   'rgba(0,0,0,0.32)');
           ctx.fillStyle = fs;
-          ctx.fillRect(Math.max(0, foldX - foldW), 0, foldW, H);
+          ctx.fillRect(Math.max(clipX, foldX - foldW), clipY, foldW, clipH);
 
-          // cast shadow (fold 오른쪽 콘텐츠 위)
-          const castW = Math.min(40, W - foldX);
+          // cast shadow (fold 오른쪽)
+          const castW = Math.min(40, clipX + clipW - foldX);
           if (castW > 0) {
             const cs = ctx.createLinearGradient(foldX, 0, foldX + castW, 0);
             cs.addColorStop(0, 'rgba(0,0,0,0.18)');
             cs.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = cs;
-            ctx.fillRect(foldX, 0, castW, H);
+            ctx.fillRect(foldX, clipY, castW, clipH);
           }
         }
       } else {
-        // backward: foldX ~ W 영역이 페이지 면
-        if (foldX < W) {
-          const pg = ctx.createLinearGradient(foldX, 0, W, 0);
+        // backward: foldX ~ clipX+clipW 영역이 페이지 면
+        if (foldX < clipX + clipW) {
+          const pg = ctx.createLinearGradient(foldX, 0, clipX + clipW, 0);
           pg.addColorStop(0,    'rgba(200, 190, 174, 0.75)');
           pg.addColorStop(0.20, 'rgba(252, 248, 244, 0.60)');
           pg.addColorStop(1,    'rgba(252, 248, 244, 0.60)');
           ctx.fillStyle = pg;
-          ctx.fillRect(foldX, 0, W - foldX, H);
+          ctx.fillRect(foldX, clipY, clipX + clipW - foldX, clipH);
 
-          // fold 그림자 (왼쪽 접히는 선)
-          const foldW = Math.min(70, W - foldX);
+          // fold 그림자
+          const foldW = Math.min(70, clipX + clipW - foldX);
           const fs = ctx.createLinearGradient(foldX, 0, foldX + foldW, 0);
-          fs.addColorStop(0, 'rgba(0,0,0,0.32)');
+          fs.addColorStop(0,   'rgba(0,0,0,0.32)');
           fs.addColorStop(0.4, 'rgba(0,0,0,0.06)');
-          fs.addColorStop(1, 'rgba(0,0,0,0)');
+          fs.addColorStop(1,   'rgba(0,0,0,0)');
           ctx.fillStyle = fs;
-          ctx.fillRect(foldX, 0, foldW, H);
+          ctx.fillRect(foldX, clipY, foldW, clipH);
 
-          // cast shadow (fold 왼쪽 콘텐츠 위)
-          const castW = Math.min(40, foldX);
+          // cast shadow (fold 왼쪽)
+          const castW = Math.min(40, foldX - clipX);
           if (castW > 0) {
             const cs = ctx.createLinearGradient(foldX - castW, 0, foldX, 0);
             cs.addColorStop(0, 'rgba(0,0,0,0)');
             cs.addColorStop(1, 'rgba(0,0,0,0.18)');
             ctx.fillStyle = cs;
-            ctx.fillRect(foldX - castW, 0, castW, H);
+            ctx.fillRect(foldX - castW, clipY, castW, clipH);
           }
         }
       }
+
+      ctx.restore(); // 클리핑 해제
 
       if (raw < 1) {
         rafId = requestAnimationFrame(draw);
