@@ -174,14 +174,15 @@ export default function EbookViewerPage() {
   const [flipDir, setFlipDir] = useState<'forward' | 'backward' | null>(null);
 
   const saveDebounceRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const animTriggerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const renditionRef        = useRef<any>(null);
   const isFirstLocationRef  = useRef(true);
   const currentLocationRef  = useRef<string | number>(0);
-  const prevPageNumRef      = useRef<number>(-1);
   const readerContainerRef  = useRef<HTMLDivElement>(null);
   const iframeBoundsRef     = useRef<ClipBounds | null>(null);
+  // 클릭/스와이프 시 이미 애니메이션이 트리거됐는지 추적 (locationChanged 중복 방지)
+  const flipFiredRef        = useRef(false);
+  const touchStartXRef      = useRef(0);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -291,6 +292,51 @@ export default function EbookViewerPage() {
     });
   }, []);
 
+  // iframe 바운드를 클릭 시점에 계산해서 캐시 (DOM이 안정된 시점)
+  function cacheIframeBounds() {
+    if (!readerContainerRef.current) return;
+    const iframe = readerContainerRef.current.querySelector('iframe') as HTMLElement | null;
+    if (!iframe) return;
+    const ir = iframe.getBoundingClientRect();
+    const pr = readerContainerRef.current.getBoundingClientRect();
+    iframeBoundsRef.current = {
+      x: ir.left - pr.left,
+      y: ir.top  - pr.top,
+      w: ir.width,
+      h: ir.height,
+    };
+  }
+
+  // 애니메이션 트리거 — 클릭/스와이프 시 현재 페이지 위에서 즉시 시작
+  function triggerFlip(dir: 'forward' | 'backward') {
+    if (flipFiredRef.current) return; // 이미 진행 중
+    flipFiredRef.current = true;
+    cacheIframeBounds();
+    setFlipDir(dir);
+  }
+
+  // 버튼 클릭 처리: reader container의 좌/우 엣지 클릭을 감지
+  function handleReaderPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const w = rect.width;
+    // ReactReader 화살표 버튼 영역 (~64px 좌우 엣지)
+    if (x < 64) triggerFlip('backward');
+    else if (x > w - 64) triggerFlip('forward');
+  }
+
+  // 스와이프 처리
+  function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    touchStartXRef.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+    const dx = e.changedTouches[0].clientX - touchStartXRef.current;
+    if (Math.abs(dx) > 40) {
+      triggerFlip(dx < 0 ? 'forward' : 'backward');
+    }
+  }
+
   const handleLocationChanged = useCallback((loc: string | number) => {
     // TOC href 형태 → rendition.display() 로 직접 이동
     if (typeof loc === 'string' && !loc.startsWith('epubcfi(')) {
@@ -301,53 +347,19 @@ export default function EbookViewerPage() {
     currentLocationRef.current = loc;
     setLocation(loc);
 
-    // 페이지 번호 업데이트 (locationFromCfi 단일 호출)
-    let newPageNum = -1;
+    // 페이지 번호 업데이트만 담당 — 애니메이션은 pointerDown/touchEnd에서 처리
     if (typeof loc === 'string' && renditionRef.current) {
       const locs = renditionRef.current.book?.locations;
       if (locs?.length() > 0) {
-        newPageNum = locs.locationFromCfi(loc);
-        if (newPageNum >= 0) setCurrentPage(newPageNum + 1);
+        const pageNum = locs.locationFromCfi(loc);
+        if (pageNum >= 0) setCurrentPage(pageNum + 1);
       }
     }
 
-    // 최초 렌더 이벤트는 무시
     if (isFirstLocationRef.current) {
       isFirstLocationRef.current = false;
-      if (newPageNum >= 0) prevPageNumRef.current = newPageNum;
       return;
     }
-
-    // epub.js는 한 번 페이지 넘길 때 locationChanged를 여러 번 발사한다.
-    // 50ms debounce로 마지막 이벤트만 사용 → 이중 애니메이션 방지
-    if (animTriggerRef.current) clearTimeout(animTriggerRef.current);
-    const capturedPageNum = newPageNum; // 클로저 캡처
-    animTriggerRef.current = setTimeout(() => {
-      // 방향 판별: 새 페이지 번호 < 이전 페이지 번호 → backward
-      const dir: 'forward' | 'backward' =
-        capturedPageNum >= 0 && prevPageNumRef.current >= 0 && capturedPageNum < prevPageNumRef.current
-          ? 'backward'
-          : 'forward';
-      // 비교 완료 후 갱신
-      if (capturedPageNum >= 0) prevPageNumRef.current = capturedPageNum;
-
-      // epub iframe bounds 계산 — 페이지 전환 완료 후(debounce) DOM이 안정된 시점
-      if (readerContainerRef.current) {
-        const iframe = readerContainerRef.current.querySelector('iframe') as HTMLElement | null;
-        if (iframe) {
-          const ir = iframe.getBoundingClientRect();
-          const pr = readerContainerRef.current.getBoundingClientRect();
-          iframeBoundsRef.current = {
-            x: ir.left - pr.left,
-            y: ir.top  - pr.top,
-            w: ir.width,
-            h: ir.height,
-          };
-        }
-      }
-
-      setFlipDir(dir);
-    }, 50);
 
     // 진행 상황 저장
     if (!token || !id) return;
@@ -434,7 +446,13 @@ export default function EbookViewerPage() {
       {/* Reader with page-flip overlay
           min-h-0: flex-1 child가 overflow하지 않도록 강제
           overflow-hidden: canvas가 header/footer 영역으로 삐져나가는 것 차단 */}
-      <div ref={readerContainerRef} className="flex-1 min-h-0 overflow-hidden relative">
+      <div
+        ref={readerContainerRef}
+        className="flex-1 min-h-0 overflow-hidden relative"
+        onPointerDown={handleReaderPointerDown}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <ReactReader
           url={epubData}
           title={meta.title}
@@ -456,7 +474,7 @@ export default function EbookViewerPage() {
           <PageTurnCanvas
             direction={flipDir}
             clipBounds={iframeBoundsRef.current}
-            onDone={() => setFlipDir(null)}
+            onDone={() => { flipFiredRef.current = false; setFlipDir(null); }}
           />
         )}
       </div>
