@@ -23,6 +23,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') ?? '/';
+  const oauthError = searchParams.get('error');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +50,10 @@ function LoginForm() {
     <div className="cc-glass p-8">
       <h1 className="text-2xl font-bold text-cc-text mb-2">로그인</h1>
       <p className="text-cc-muted text-sm mb-8">CoinCraft 계정으로 로그인하세요.</p>
+
+      {oauthError === 'cancelled' && (
+        <p className="text-cc-muted text-sm mb-4 bg-white/5 rounded px-3 py-2">소셜 로그인이 취소되었습니다.</p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input

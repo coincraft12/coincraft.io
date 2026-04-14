@@ -117,7 +117,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   // GET /api/v1/auth/google/callback
   app.get('/google/callback', async (request, reply) => {
     const { code } = request.query as { code?: string };
-    if (!code) return reply.code(400).send({ success: false, error: { code: 'MISSING_CODE', message: 'code 파라미터가 없습니다.' } });
+    if (!code) return reply.redirect(`${env.FRONTEND_URL}/login?error=cancelled`);
 
     const result = await authService.handleGoogleCallback(code);
     reply.setCookie('refresh_token', result.refreshToken, {
@@ -141,7 +141,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   // GET /api/v1/auth/kakao/callback
   app.get('/kakao/callback', async (request, reply) => {
     const { code } = request.query as { code?: string };
-    if (!code) return reply.code(400).send({ success: false, error: { code: 'MISSING_CODE', message: 'code 파라미터가 없습니다.' } });
+    if (!code) return reply.redirect(`${env.FRONTEND_URL}/login?error=cancelled`);
 
     const result = await authService.handleKakaoCallback(code);
     reply.setCookie('refresh_token', result.refreshToken, {
