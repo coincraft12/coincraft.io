@@ -384,6 +384,22 @@ export async function prepareExamPayment(
     throw makeError('무료 시험은 결제가 필요하지 않습니다.', 'BAD_REQUEST', 400);
   }
 
+  // 이름 + 생년월일 중복 접수 차단
+  if (name?.trim() && birthdate) {
+    const [dup] = await db
+      .select({ id: examRegistrations.id })
+      .from(examRegistrations)
+      .where(and(
+        eq(examRegistrations.examId, examId),
+        eq(examRegistrations.applicantName, name.trim()),
+        eq(examRegistrations.applicantBirthdate, birthdate),
+      ))
+      .limit(1);
+    if (dup) {
+      throw makeError('이미 접수된 수험자입니다. (이름 + 생년월일 중복)', 'ALREADY_REGISTERED', 409);
+    }
+  }
+
   const orderId = generateOrderId(examId);
 
   await db.insert(payments).values({

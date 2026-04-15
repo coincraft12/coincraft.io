@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, index, unique } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { certExams } from './cert-exams';
 import { payments } from './payments';
@@ -16,4 +16,5 @@ export const examRegistrations = pgTable('exam_registrations', {
   userIdx: index('exam_registrations_user_idx').on(table.userId),
   examIdx: index('exam_registrations_exam_idx').on(table.examId),
   regNumIdx: index('exam_registrations_reg_num_idx').on(table.registrationNumber),
+  applicantUniq: unique('exam_registrations_applicant_uniq').on(table.examId, table.applicantName, table.applicantBirthdate),
 }));
