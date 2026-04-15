@@ -36,6 +36,7 @@ declare global {
           amount: number;
           buyer_email?: string;
           buyer_name?: string;
+          buyer_tel?: string;
         },
         callback: (rsp: { success: boolean; imp_uid?: string; error_msg?: string }) => void
       ) => void;
