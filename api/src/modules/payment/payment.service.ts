@@ -365,7 +365,8 @@ export async function confirmEbookPayment(
 export async function prepareExamPayment(
   userId: string,
   examId: string,
-  phone?: string
+  phone?: string,
+  name?: string
 ): Promise<PrepareExamPaymentResult> {
   const [exam] = await db
     .select({ id: certExams.id, title: certExams.title, examFee: certExams.examFee, isActive: certExams.isActive })
@@ -411,12 +412,15 @@ export async function prepareExamPayment(
     metadata: { orderId },
   });
 
-  // 전화번호 제공 시 사용자 레코드에 저장
+  // 이름/전화번호 제공 시 사용자 레코드에 저장
+  const updates: { phone?: string; name?: string } = {};
   if (phone) {
     const cleaned = phone.replace(/[^0-9]/g, '');
-    if (cleaned.length >= 10) {
-      await db.update(users).set({ phone: cleaned }).where(eq(users.id, userId));
-    }
+    if (cleaned.length >= 10) updates.phone = cleaned;
+  }
+  if (name?.trim()) updates.name = name.trim();
+  if (Object.keys(updates).length > 0) {
+    await db.update(users).set(updates).where(eq(users.id, userId));
   }
 
   return { orderId, amount, examTitle: exam.title };
