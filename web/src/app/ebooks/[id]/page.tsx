@@ -183,6 +183,8 @@ export default function EbookViewerPage() {
   const currentLocationRef  = useRef<string | number>(0);
   const readerContainerRef  = useRef<HTMLDivElement>(null);
   const iframeBoundsRef     = useRef<ClipBounds | null>(null);
+  // 수동 페이지 추적 — locationFromCfi 대신 nav 횟수 × spread 크기로 계산
+  const manualPageRef       = useRef(false); // 첫 nav 이후 수동 추적 전환
   const isAnimatingRef      = useRef(false);
   const prevPageRef         = useRef(0);
   // refs for values used inside stable callbacks
@@ -340,6 +342,13 @@ export default function EbookViewerPage() {
       });
     });
 
+    // 현재 스프레드 크기(iframe 수)를 반환 — 2페이지 스프레드면 2, 단일이면 1
+    function getPageStep(): number {
+      const c = readerContainerRef.current;
+      if (!c) return 1;
+      return Math.max(1, c.querySelectorAll('iframe').length);
+    }
+
     // 클릭 즉시 애니메이션 시작 (navigation 전) → epub.js 흰 화면 flash 가림
     const origNext = rendition.next.bind(rendition);
     const origPrev = rendition.prev.bind(rendition);
@@ -353,6 +362,12 @@ export default function EbookViewerPage() {
         setShowPaywallRef.current(true);
         return Promise.resolve();
       }
+      // 수동 페이지 추적: nav 횟수 × step으로 일정하게 증가
+      manualPageRef.current = true;
+      const step = getPageStep();
+      const newPage = Math.min(currentPageRef.current + step, totalPagesRef.current || Infinity);
+      currentPageRef.current = newPage;
+      setCurrentPage(newPage);
       startFlip('forward');
       return origNext();
     };
@@ -361,6 +376,12 @@ export default function EbookViewerPage() {
         showToast('첫 페이지입니다');
         return Promise.resolve();
       }
+      // 수동 페이지 추적
+      manualPageRef.current = true;
+      const step = getPageStep();
+      const newPage = Math.max(currentPageRef.current - step, 1);
+      currentPageRef.current = newPage;
+      setCurrentPage(newPage);
       startFlip('backward');
       return origPrev();
     };
@@ -376,12 +397,14 @@ export default function EbookViewerPage() {
     currentLocationRef.current = loc;
     setLocation(loc);
 
-    if (typeof loc === 'string' && renditionRef.current) {
+    // 수동 추적 전환 전(초기 로드·진도 복원)에만 locationFromCfi로 현재 페이지 설정
+    if (!manualPageRef.current && typeof loc === 'string' && renditionRef.current) {
       const locs = renditionRef.current.book?.locations;
       if (locs?.length() > 0) {
         const pageNum = locs.locationFromCfi(loc) + 1;
         if (pageNum > 0) {
           prevPageRef.current = pageNum;
+          currentPageRef.current = pageNum;
           setCurrentPage(pageNum);
         }
       }
