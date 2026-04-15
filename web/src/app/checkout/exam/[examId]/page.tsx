@@ -68,6 +68,11 @@ export default function ExamCheckoutPage() {
         totalAmount: amount,
         currency: 'KRW',
         payMethod: 'CARD',
+        customer: {
+          fullName: user.name,
+          email: user.email,
+        },
+        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/result`,
       });
 
       if (payResponse.code) { setError(payResponse.message ?? '결제가 취소되었습니다.'); setPaying(false); return; }
