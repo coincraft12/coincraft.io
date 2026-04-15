@@ -228,11 +228,11 @@ export default function EbookCheckoutPage() {
             <div className="text-sm text-cc-muted border-t border-white/10 pt-4">
               <div className="flex justify-between">
                 <span>구매자</span>
-                <span className="text-cc-text">{user.name}</span>
+                <span className="text-cc-text">{user?.name}</span>
               </div>
               <div className="flex justify-between mt-1">
                 <span>이메일</span>
-                <span className="text-cc-text">{user.email}</span>
+                <span className="text-cc-text">{user?.email}</span>
               </div>
             </div>
 
