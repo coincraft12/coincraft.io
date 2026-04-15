@@ -390,6 +390,8 @@ export default function EbookViewerPage() {
   // ── 위치 변경 — 애니메이션 트리거 단일 경로 ─────────────────────────────────
   const handleLocationChanged = useCallback((loc: string | number) => {
     if (typeof loc === 'string' && !loc.startsWith('epubcfi(')) {
+      // 목차/북마크 이동: 수동 페이지 추적 초기화 → 이동 후 CFI로 페이지 번호 재계산
+      manualPageRef.current = false;
       renditionRef.current?.display(loc);
       return;
     }
