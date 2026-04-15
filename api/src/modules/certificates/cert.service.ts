@@ -10,6 +10,7 @@ import {
   users,
 } from '../../db/schema';
 import { notifyExamResult, notifyCertIssued } from '../../lib/notifications';
+import { sendExamResultEmail, sendCertIssuedEmail } from '../../lib/email';
 import { redis } from '../../lib/redis';
 import type { CreateExamDto, AddQuestionDto } from './cert.schema';
 import { hasExamPayment } from '../payment/payment.service';
@@ -335,15 +336,18 @@ export async function submitExam(
     certificate = await issueCertificate(userId, attempt.examId, exam.level);
   }
 
-  // 알림톡 — 합격/불합격 통보
+  // 알림톡 + 이메일 — 합격/불합격 통보
   const [[eu], [ex]] = await Promise.all([
-    db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1),
+    db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1),
     db.select({ title: certExams.title }).from(certExams).where(eq(certExams.id, attempt.examId)).limit(1),
   ]);
-  if (eu?.phone && ex?.title) {
-    notifyExamResult(eu.phone, eu.name, ex.title, isPassed ? '합격' : '불합격', score).catch(() => {});
+  if (ex?.title) {
+    const result = isPassed ? '합격' : '불합격';
+    if (eu?.phone) notifyExamResult(eu.phone, eu.name, ex.title, result, score).catch(() => {});
+    if (eu?.email) sendExamResultEmail(eu.email, eu.name, ex.title, result, score).catch(() => {});
     if (isPassed && certificate) {
-      notifyCertIssued(eu.phone, eu.name, ex.title, certificate.certNumber, certificate.issuedAt).catch(() => {});
+      if (eu?.phone) notifyCertIssued(eu.phone, eu.name, ex.title, certificate.certNumber, certificate.issuedAt).catch(() => {});
+      if (eu?.email) sendCertIssuedEmail(eu.email, eu.name, ex.title, certificate.certNumber, certificate.issuedAt).catch(() => {});
     }
   }
 

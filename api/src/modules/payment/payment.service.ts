@@ -4,6 +4,7 @@ import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subs
 import { redis } from '../../lib/redis';
 import { env } from '../../config/env';
 import { notifyEnroll, notifyExamRegistration, notifyEbookPurchase } from '../../lib/notifications';
+import { sendEnrollEmail, sendExamRegistrationEmail, sendEbookPurchaseEmail } from '../../lib/email';
 
 // ─── Subscription plans ───────────────────────────────────────────────────────
 export const SUBSCRIPTION_PLANS: Record<string, { label: string; amount: number; months: number }> = {
@@ -225,9 +226,10 @@ export async function confirmPayment(
     });
   }
 
-  // 알림톡 — 수강신청 완료 (실패해도 결제 흐름에 영향 없음)
-  const [u] = await db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1);
+  // 알림톡 + 이메일 — 수강신청 완료 (실패해도 결제 흐름에 영향 없음)
+  const [u] = await db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
   if (u?.phone) notifyEnroll(u.phone, u.name, course.title).catch(() => {});
+  if (u?.email) sendEnrollEmail(u.email, u.name, course.title).catch(() => {});
 
   return { courseId: course.id, courseSlug: course.slug };
 }
@@ -349,10 +351,11 @@ export async function confirmEbookPayment(
     });
   }
 
-  // 알림톡 — 전자책 구매 완료
+  // 알림톡 + 이메일 — 전자책 구매 완료
   const [eb] = await db.select({ title: ebooks.title }).from(ebooks).where(eq(ebooks.id, ebookId)).limit(1);
-  const [uu] = await db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1);
+  const [uu] = await db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
   if (uu?.phone && eb?.title) notifyEbookPurchase(uu.phone, uu.name, eb.title, pendingPayment.id).catch(() => {});
+  if (uu?.email && eb?.title) sendEbookPurchaseEmail(uu.email, uu.name, eb.title, pendingPayment.id).catch(() => {});
 
   return { ebookId };
 }
@@ -446,7 +449,7 @@ export async function confirmExamPayment(
 
   // 수험번호 생성 + 등록 테이블 저장
   const [[eu], [ex]] = await Promise.all([
-    db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1),
+    db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1),
     db.select({ title: certExams.title, level: certExams.level }).from(certExams).where(eq(certExams.id, examId)).limit(1),
   ]);
 
@@ -469,14 +472,14 @@ export async function confirmExamPayment(
     });
   }
 
-  // 알림톡 — 시험 접수 완료
+  // 알림톡 + 이메일 — 시험 접수 완료
+  const examDateTime = '2026년 5월 2일 (토) 오후 2시';
+  const rulesUrl = `${env.FRONTEND_URL}/cert/exam-rules`;
   if (eu?.phone && ex?.title && registrationNumber) {
-    notifyExamRegistration(
-      eu.phone, eu.name, ex.title,
-      '2026년 5월 2일 (토) 오후 2시',
-      registrationNumber,
-      `${env.FRONTEND_URL}/cert/exam-rules`
-    ).catch(() => {});
+    notifyExamRegistration(eu.phone, eu.name, ex.title, examDateTime, registrationNumber, rulesUrl).catch(() => {});
+  }
+  if (eu?.email && ex?.title && registrationNumber) {
+    sendExamRegistrationEmail(eu.email, eu.name, ex.title, examDateTime, registrationNumber, rulesUrl).catch(() => {});
   }
 
   return { examId, registrationNumber };

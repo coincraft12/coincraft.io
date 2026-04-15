@@ -6,7 +6,7 @@ import { users } from '../../db/schema';
 import { redis } from '../../lib/redis';
 import { hashPassword, verifyPassword } from '../../utils/hash';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../lib/jwt';
-import { sendVerificationEmail, sendPasswordResetEmail } from '../../lib/email';
+import { sendVerificationEmail, sendPasswordResetEmail, sendJoinEmail } from '../../lib/email';
 import { notifyJoin } from '../../lib/notifications';
 import { getGoogleAuthUrl, exchangeGoogleCode } from '../../lib/google-oauth';
 import { getKakaoAuthUrl, exchangeKakaoCode } from '../../lib/kakao-oauth';
@@ -81,6 +81,7 @@ export async function register(dto: RegisterDto): Promise<SafeUser> {
   await redis.set(VERIFY_KEY(token), user.id, 'EX', 24 * 3600);
   await sendVerificationEmail(user.email, token).catch((e) => console.error('sendVerificationEmail error:', e));
   if (user.phone) notifyJoin(user.phone, user.name).catch(() => {});
+  sendJoinEmail(user.email, user.name).catch(() => {});
 
   return toSafeUser(user);
 }
