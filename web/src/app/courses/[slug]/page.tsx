@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-import CurriculumAccordion from '@/components/courses/curriculum-accordion';
+import CurriculumWithProgress from '@/components/courses/curriculum-with-progress';
 import EnrollButton from '@/components/courses/enroll-button';
 import MarkdownContent from '@/components/ui/MarkdownContent';
 
@@ -142,9 +142,10 @@ export default async function CourseDetailPage({
               {course.chapters.length > 0 && (
                 <div>
                   <h2 className="text-xl font-bold text-cc-text mb-4">커리큘럼</h2>
-                  <CurriculumAccordion
+                  <CurriculumWithProgress
                     chapters={course.chapters}
                     courseSlug={course.slug}
+                    courseId={course.id}
                     isEnrolled={course.isEnrolled}
                   />
                 </div>

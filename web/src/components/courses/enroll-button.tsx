@@ -27,23 +27,37 @@ export default function EnrollButton({
   const token = useAuthStore((s) => s.accessToken);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
   const [enrolled, setEnrolled] = useState(isEnrolled);
+  const [continueLessonId, setContinueLessonId] = useState<string | undefined>(firstLessonId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 서버 컴포넌트는 토큰 없이 fetch하므로 클라이언트에서 수강 여부 재확인
+  // 서버 컴포넌트는 토큰 없이 fetch하므로 클라이언트에서 수강 여부 + 진도 재확인
   useEffect(() => {
-    if (isAuthLoading || !token || enrolled) return;
-    apiClient.get<{ success: boolean; data: { isEnrolled: boolean } }>(
-      `/api/v1/courses/${courseSlug}`,
-      { token }
-    ).then((res) => {
-      if (res.data.isEnrolled) setEnrolled(true);
+    if (isAuthLoading || !token) return;
+    Promise.all([
+      apiClient.get<{ success: boolean; data: { isEnrolled: boolean; chapters: { lessons: { id: string }[] }[] } }>(
+        `/api/v1/courses/${courseSlug}`,
+        { token }
+      ),
+      apiClient.get<{ success: boolean; data: Record<string, boolean> }>(
+        `/api/v1/courses/${courseId}/progress`,
+        { token }
+      ).catch(() => ({ data: {} as Record<string, boolean> })),
+    ]).then(([courseRes, progressRes]) => {
+      if (!courseRes.data.isEnrolled) return;
+      setEnrolled(true);
+
+      // 진도 기반으로 첫 미완료 강의 찾기
+      const progress = (progressRes as { data: Record<string, boolean> }).data;
+      const allLessons = courseRes.data.chapters.flatMap((ch) => ch.lessons);
+      const nextLesson = allLessons.find((l) => !progress[l.id]);
+      setContinueLessonId(nextLesson?.id ?? firstLessonId);
     }).catch(() => {});
-  }, [token, isAuthLoading, courseSlug, enrolled]);
+  }, [token, isAuthLoading, courseSlug, courseId, firstLessonId]);
 
   if (enrolled) {
-    const href = firstLessonId
-      ? `/courses/${courseSlug}/lessons/${firstLessonId}`
+    const href = continueLessonId
+      ? `/courses/${courseSlug}/lessons/${continueLessonId}`
       : `/courses/${courseSlug}`;
     return (
       <Button
