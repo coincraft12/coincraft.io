@@ -178,6 +178,7 @@ export default function EbookViewerPage() {
   const toastTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFlipTimeRef     = useRef(0);
+  const lastNavTimeRef      = useRef(0);
   const saveDebounceRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const renditionRef        = useRef<any>(null);
@@ -356,6 +357,23 @@ export default function EbookViewerPage() {
     rendition.hooks.content.register(injectStyle);
     rendition.getContents().forEach(injectStyle);
 
+    // epub.js 내부 클릭 내비게이션 차단 — 우리 overlay가 단독으로 처리
+    // 원인: 2페이지 스프레드에서 우측 iframe의 좌반부 클릭 시
+    //       overlay는 "combined 기준 오른쪽 = next()", epub.js는 "iframe 기준 왼쪽 = prev()" → 왔다갔다
+    function injectNavBlock(contents: any) {
+      const doc = contents?.document;
+      if (!doc || (doc as any).__ccNavBlocked) return;
+      (doc as any).__ccNavBlocked = true;
+      doc.addEventListener('click', (e: MouseEvent) => {
+        const target = e.target as HTMLElement | null;
+        if (target?.closest('a[href]')) return; // epub 내부 링크는 허용
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }, true); // capture phase — epub.js bubble 핸들러보다 먼저 실행
+    }
+    rendition.hooks.content.register(injectNavBlock);
+    rendition.getContents().forEach(injectNavBlock);
+
     rendition.book.ready.then(() => {
       rendition.book.locations.generate(1024).then(() => {
         setTotalPages(rendition.book.locations.length());
@@ -366,6 +384,11 @@ export default function EbookViewerPage() {
     const origNext = rendition.next.bind(rendition);
     const origPrev = rendition.prev.bind(rendition);
     rendition.next = () => {
+      // 이중 호출 방지 — epub.js 내부 + overlay 동시 호출 시 두 번째는 무시
+      const now = Date.now();
+      if (now - lastNavTimeRef.current < 600) return Promise.resolve();
+      lastNavTimeRef.current = now;
+
       if (currentPageRef.current >= totalPagesRef.current && totalPagesRef.current > 0) {
         showToast('마지막 페이지입니다');
         return Promise.resolve();
@@ -379,6 +402,11 @@ export default function EbookViewerPage() {
       return origNext();
     };
     rendition.prev = () => {
+      // 이중 호출 방지
+      const now = Date.now();
+      if (now - lastNavTimeRef.current < 600) return Promise.resolve();
+      lastNavTimeRef.current = now;
+
       if (currentPageRef.current <= 1) {
         showToast('첫 페이지입니다');
         return Promise.resolve();
