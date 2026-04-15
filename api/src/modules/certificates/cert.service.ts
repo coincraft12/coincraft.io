@@ -343,7 +343,7 @@ export async function submitExam(
   if (eu?.phone && ex?.title) {
     notifyExamResult(eu.phone, eu.name, ex.title, isPassed ? '합격' : '불합격', score).catch(() => {});
     if (isPassed && certificate) {
-      notifyCertIssued(eu.phone, eu.name, ex.title, certificate.certNumber).catch(() => {});
+      notifyCertIssued(eu.phone, eu.name, ex.title, certificate.certNumber, certificate.issuedAt).catch(() => {});
     }
   }
 
@@ -355,7 +355,7 @@ export async function submitExam(
 export async function issueCertificate(userId: string, examId: string, level: string) {
   // Check if already has certificate for this exam
   const [existing] = await db
-    .select({ id: certificates.id, certNumber: certificates.certNumber })
+    .select({ id: certificates.id, certNumber: certificates.certNumber, level: certificates.level, issuedAt: certificates.issuedAt })
     .from(certificates)
     .where(and(eq(certificates.userId, userId), eq(certificates.examId, examId)))
     .limit(1);
@@ -378,6 +378,7 @@ export async function issueCertificate(userId: string, examId: string, level: st
       level: certificates.level,
       issuedAt: certificates.issuedAt,
     });
+
 
   return cert;
 }

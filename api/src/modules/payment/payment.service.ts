@@ -340,7 +340,7 @@ export async function confirmEbookPayment(
   // 알림톡 — 전자책 구매 완료
   const [eb] = await db.select({ title: ebooks.title }).from(ebooks).where(eq(ebooks.id, ebookId)).limit(1);
   const [uu] = await db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1);
-  if (uu?.phone && eb?.title) notifyEbookPurchase(uu.phone, uu.name, eb.title).catch(() => {});
+  if (uu?.phone && eb?.title) notifyEbookPurchase(uu.phone, uu.name, eb.title, pendingPayment.id).catch(() => {});
 
   return { ebookId };
 }
@@ -438,7 +438,7 @@ export async function confirmExamPayment(
     db.select({ title: certExams.title }).from(certExams).where(eq(certExams.id, examId)).limit(1),
   ]);
   if (eu?.phone && ex?.title) {
-    notifyExamRegistration(eu.phone, eu.name, ex.title, '2026년 5월 2일 (토) 오후 2시', '30,000원').catch(() => {});
+    notifyExamRegistration(eu.phone, eu.name, ex.title, '2026년 5월 2일 (토) 오후 2시').catch(() => {});
   }
 
   return { examId };
