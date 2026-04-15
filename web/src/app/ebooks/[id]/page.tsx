@@ -380,6 +380,36 @@ export default function EbookViewerPage() {
       });
     });
 
+    // ── Manager-level 단일 게이트 ────────────────────────────────────────────
+    // epub.js는 rendition.next() → manager.next() 체인으로 내비게이션함.
+    // 그러나 epub.js 내부 클릭 핸들러가 manager.next/prev를 직접 호출할 수 있어
+    // rendition.next/prev debounce를 우회한다. → manager 레벨에서 게이트 추가.
+    let lastActualNavTs = 0;
+    function gateNav(): boolean {
+      const now = Date.now();
+      if (now - lastActualNavTs < 700) return false;
+      lastActualNavTs = now;
+      return true;
+    }
+
+    const manager = rendition.manager;
+    if (manager) {
+      const origMgrNext = manager.next?.bind(manager);
+      const origMgrPrev = manager.prev?.bind(manager);
+      if (origMgrNext) manager.next = () => { if (!gateNav()) return; return origMgrNext(); };
+      if (origMgrPrev) manager.prev = () => { if (!gateNav()) return; return origMgrPrev(); };
+
+      // epub.js container의 capture phase 핸들러도 차단
+      // — epub.js가 container에 등록한 click 핸들러가 manager.next/prev를 부르는 경우 대비
+      const epubContainer: HTMLElement | null = manager.container ?? null;
+      if (epubContainer) {
+        epubContainer.addEventListener('click', (e: Event) => {
+          const t = e.target as HTMLElement | null;
+          if (!t?.closest('a[href]')) e.stopImmediatePropagation();
+        }, true);
+      }
+    }
+
     // 클릭 즉시 애니메이션 시작 (navigation 전) → epub.js 흰 화면 flash 가림
     const origNext = rendition.next.bind(rendition);
     const origPrev = rendition.prev.bind(rendition);
@@ -580,6 +610,7 @@ export default function EbookViewerPage() {
                 else renditionRef.current?.prev();
               }
             }}
+            onClick={(e) => { e.stopPropagation(); }}
           />
         )}
 
