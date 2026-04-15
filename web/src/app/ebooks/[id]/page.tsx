@@ -166,8 +166,6 @@ export default function EbookViewerPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages]   = useState(0);
   const [flipDir, setFlipDir]         = useState<'forward' | 'backward' | null>(null);
-  const [flipClipBounds, setFlipClipBounds] = useState<ClipBounds | null>(null);
-  const [iframeOverlay, setIframeOverlay] = useState<{l:number;t:number;w:number;h:number}|null>(null);
   const [toast, setToast]             = useState<string | null>(null);
   const [showPaywall, setShowPaywall]   = useState(false);
   const [flipEnabled, setFlipEnabled] = useState<boolean>(() => {
@@ -178,16 +176,15 @@ export default function EbookViewerPage() {
   const toastTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safetyTimerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFlipTimeRef     = useRef(0);
-  const lastNavTimeRef      = useRef(0);
   const saveDebounceRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const renditionRef        = useRef<any>(null);
   const isFirstLocationRef  = useRef(true);
   const currentLocationRef  = useRef<string | number>(0);
   const readerContainerRef  = useRef<HTMLDivElement>(null);
+  const iframeBoundsRef     = useRef<ClipBounds | null>(null);
   const isAnimatingRef      = useRef(false);
   const prevPageRef         = useRef(0);
-  const touchStartXRef      = useRef(0);
   // refs for values used inside stable callbacks
   const flipEnabledRef      = useRef(flipEnabled);
   const metaRef             = useRef<EbookMeta | null>(null);
@@ -200,34 +197,6 @@ export default function EbookViewerPage() {
   useEffect(() => { currentPageRef.current    = currentPage; },   [currentPage]);
   useEffect(() => { metaRef.current           = meta; },          [meta]);
   useEffect(() => { setShowPaywallRef.current = setShowPaywall; }, [setShowPaywall]);
-
-  // ── 전역 이벤트 차단 ─────────────────────────────────────────────────────────
-  // 우리가 nav 호출 후 700ms 동안 document/window 레벨의 epub.js·react-swipeable
-  // 핸들러가 click/mouseup을 받아 역방향 nav를 트리거하는 것을 막음.
-  // capture phase(window) 이므로 어떤 핸들러보다 먼저 실행됨.
-  useEffect(() => {
-    function shouldBlock(e: MouseEvent) {
-      if (Date.now() - lastNavTimeRef.current >= 700) return false;
-      const t = e.target as HTMLElement | null;
-      if (t?.closest('a[href]')) return false; // epub 링크 허용
-      // reader container 내부 이벤트만 차단 (UI 버튼 등 외부는 허용)
-      if (readerContainerRef.current && !readerContainerRef.current.contains(t))
-        return false;
-      return true;
-    }
-    const blockClick = (e: MouseEvent) => {
-      if (shouldBlock(e)) e.stopImmediatePropagation();
-    };
-    const blockMouseUp = (e: MouseEvent) => {
-      if (shouldBlock(e)) e.stopImmediatePropagation();
-    };
-    window.addEventListener('click',   blockClick,   true);
-    window.addEventListener('mouseup', blockMouseUp, true);
-    return () => {
-      window.removeEventListener('click',   blockClick,   true);
-      window.removeEventListener('mouseup', blockMouseUp, true);
-    };
-  }, []);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -306,37 +275,34 @@ export default function EbookViewerPage() {
     toastTimerRef.current = setTimeout(() => setToast(null), 2000);
   }
 
-  // ── iframe 오버레이 동기화 — 2페이지 스프레드 포함 모든 iframe을 감싸는 박스
-  const syncIframeOverlay = useCallback(() => {
-    const container = readerContainerRef.current;
-    if (!container) return;
-    const iframes = Array.from(container.querySelectorAll('iframe'));
-    if (iframes.length === 0) return;
-    const cr = container.getBoundingClientRect();
-    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-    iframes.forEach((f) => {
-      const r = f.getBoundingClientRect();
-      left   = Math.min(left,   r.left);
-      top    = Math.min(top,    r.top);
-      right  = Math.max(right,  r.right);
-      bottom = Math.max(bottom, r.bottom);
-    });
-    const bounds = { l: left - cr.left, t: top - cr.top, w: right - left, h: bottom - top };
-    setIframeOverlay(bounds);
-    setFlipClipBounds({ x: bounds.l, y: bounds.t, w: bounds.w, h: bounds.h });
-  }, []);
+  // ── iframe 경계 캐시 ─────────────────────────────────────────────────────────
+  function cacheIframeBounds() {
+    if (!readerContainerRef.current) return;
+    const iframe = readerContainerRef.current.querySelector('iframe') as HTMLIFrameElement | null;
+    if (!iframe) { iframeBoundsRef.current = null; return; }
+    const pr = readerContainerRef.current.getBoundingClientRect();
+    const ir = iframe.getBoundingClientRect();
+    iframeBoundsRef.current = {
+      x: ir.left - pr.left,
+      y: ir.top  - pr.top,
+      w: ir.width,
+      h: ir.height,
+    };
+  }
 
   // ── 애니메이션 시작 — 단일 진입점 ───────────────────────────────────────────
   function startFlip(dir: 'forward' | 'backward') {
     const now = Date.now();
-    if (now - lastFlipTimeRef.current < 800) return;
+    if (now - lastFlipTimeRef.current < 800) return; // 이중 넘김 방지
     if (isAnimatingRef.current) return;
     if (!flipEnabledRef.current) return;
 
     lastFlipTimeRef.current = now;
     isAnimatingRef.current = true;
+    cacheIframeBounds();
     setFlipDir(dir);
 
+    // 안전장치: 750ms 후에도 onDone이 안 불렸으면 강제 해제
     if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
     safetyTimerRef.current = setTimeout(() => {
       if (isAnimatingRef.current) {
@@ -350,23 +316,6 @@ export default function EbookViewerPage() {
   const handleGetRendition = useCallback((rendition: any) => {
     renditionRef.current = rendition;
     rendition.themes.fontSize(`${fontSize}%`);
-
-    // epub.js 컨테이너를 전체 너비로 확장
-    if (!document.getElementById('epub-fill-style')) {
-      const s = document.createElement('style');
-      s.id = 'epub-fill-style';
-      s.textContent = '.epub-container{width:100%!important;left:0!important;margin:0!important;}';
-      document.head.appendChild(s);
-    }
-    // 초기화 후 리사이즈 → 오버레이 동기화
-    setTimeout(() => {
-      const c = readerContainerRef.current;
-      if (c) renditionRef.current?.resize(c.offsetWidth, c.offsetHeight);
-      setTimeout(syncIframeOverlay, 50);
-    }, 150);
-
-    // 페이지 전환 후 오버레이 위치 재동기화
-    rendition.on('rendered', () => setTimeout(syncIframeOverlay, 50));
 
     const SELECTION_CSS = `
       html body *::selection { background: rgba(74,158,255,0.35) !important; color: inherit !important; }
@@ -385,68 +334,16 @@ export default function EbookViewerPage() {
     rendition.hooks.content.register(injectStyle);
     rendition.getContents().forEach(injectStyle);
 
-    // epub.js 내부 클릭 내비게이션 차단 — 우리 overlay가 단독으로 처리
-    // 원인: 2페이지 스프레드에서 우측 iframe의 좌반부 클릭 시
-    //       overlay는 "combined 기준 오른쪽 = next()", epub.js는 "iframe 기준 왼쪽 = prev()" → 왔다갔다
-    function injectNavBlock(contents: any) {
-      const doc = contents?.document;
-      if (!doc || (doc as any).__ccNavBlocked) return;
-      (doc as any).__ccNavBlocked = true;
-      doc.addEventListener('click', (e: MouseEvent) => {
-        const target = e.target as HTMLElement | null;
-        if (target?.closest('a[href]')) return; // epub 내부 링크는 허용
-        e.stopImmediatePropagation();
-        e.preventDefault();
-      }, true); // capture phase — epub.js bubble 핸들러보다 먼저 실행
-    }
-    rendition.hooks.content.register(injectNavBlock);
-    rendition.getContents().forEach(injectNavBlock);
-
     rendition.book.ready.then(() => {
       rendition.book.locations.generate(1024).then(() => {
         setTotalPages(rendition.book.locations.length());
       });
     });
 
-    // ── Manager-level 단일 게이트 ────────────────────────────────────────────
-    // epub.js는 rendition.next() → manager.next() 체인으로 내비게이션함.
-    // 그러나 epub.js 내부 클릭 핸들러가 manager.next/prev를 직접 호출할 수 있어
-    // rendition.next/prev debounce를 우회한다. → manager 레벨에서 게이트 추가.
-    let lastActualNavTs = 0;
-    function gateNav(): boolean {
-      const now = Date.now();
-      if (now - lastActualNavTs < 700) return false;
-      lastActualNavTs = now;
-      return true;
-    }
-
-    const manager = rendition.manager;
-    if (manager) {
-      const origMgrNext = manager.next?.bind(manager);
-      const origMgrPrev = manager.prev?.bind(manager);
-      if (origMgrNext) manager.next = () => { if (!gateNav()) return; return origMgrNext(); };
-      if (origMgrPrev) manager.prev = () => { if (!gateNav()) return; return origMgrPrev(); };
-
-      // epub.js container의 capture phase 핸들러도 차단
-      // — epub.js가 container에 등록한 click 핸들러가 manager.next/prev를 부르는 경우 대비
-      const epubContainer: HTMLElement | null = manager.container ?? null;
-      if (epubContainer) {
-        epubContainer.addEventListener('click', (e: Event) => {
-          const t = e.target as HTMLElement | null;
-          if (!t?.closest('a[href]')) e.stopImmediatePropagation();
-        }, true);
-      }
-    }
-
     // 클릭 즉시 애니메이션 시작 (navigation 전) → epub.js 흰 화면 flash 가림
     const origNext = rendition.next.bind(rendition);
     const origPrev = rendition.prev.bind(rendition);
     rendition.next = () => {
-      // 이중 호출 방지 — epub.js 내부 + overlay 동시 호출 시 두 번째는 무시
-      const now = Date.now();
-      if (now - lastNavTimeRef.current < 600) return Promise.resolve();
-      lastNavTimeRef.current = now;
-
       if (currentPageRef.current >= totalPagesRef.current && totalPagesRef.current > 0) {
         showToast('마지막 페이지입니다');
         return Promise.resolve();
@@ -460,11 +357,6 @@ export default function EbookViewerPage() {
       return origNext();
     };
     rendition.prev = () => {
-      // 이중 호출 방지
-      const now = Date.now();
-      if (now - lastNavTimeRef.current < 600) return Promise.resolve();
-      lastNavTimeRef.current = now;
-
       if (currentPageRef.current <= 1) {
         showToast('첫 페이지입니다');
         return Promise.resolve();
@@ -605,42 +497,9 @@ export default function EbookViewerPage() {
             ...ReactReaderStyle,
             container: { ...ReactReaderStyle.container, background: '#1a1a2e' },
             readerArea: { ...ReactReaderStyle.readerArea, background: '#1a1a2e' },
-            prev: { display: 'none' },
-            next: { display: 'none' },
+            arrow: { ...ReactReaderStyle.arrow, color: '#e2b84e' },
           }}
         />
-
-        {/* 클릭/스와이프 오버레이 — iframe 위치에 딱 맞게 배치 (목차 버튼 등 외부 영역 제외) */}
-        {iframeOverlay && (
-          <div
-            style={{
-              position: 'absolute',
-              left: iframeOverlay.l,
-              top: iframeOverlay.t,
-              width: iframeOverlay.w,
-              height: iframeOverlay.h,
-              zIndex: 5,
-              cursor: 'pointer',
-            }}
-            onPointerDown={(e) => {
-              touchStartXRef.current = e.clientX;
-            }}
-            onPointerUp={(e) => {
-              const dx = e.clientX - touchStartXRef.current;
-              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-              if (Math.abs(dx) > 30) {
-                // 스와이프: 왼쪽 = 다음, 오른쪽 = 이전
-                if (dx < 0) renditionRef.current?.next();
-                else renditionRef.current?.prev();
-              } else {
-                // 탭: 오른쪽 절반 = 다음, 왼쪽 절반 = 이전
-                if (e.clientX > rect.left + rect.width / 2) renditionRef.current?.next();
-                else renditionRef.current?.prev();
-              }
-            }}
-            onClick={(e) => { e.stopPropagation(); }}
-          />
-        )}
 
         {/* 미리보기 종료 — 결제 유도 오버레이 */}
         {showPaywall && (
@@ -672,7 +531,7 @@ export default function EbookViewerPage() {
         {flipDir && (
           <PageTurnCanvas
             direction={flipDir}
-            clipBounds={flipClipBounds}
+            clipBounds={iframeBoundsRef.current}
             onDone={() => {
               if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
               isAnimatingRef.current = false;
