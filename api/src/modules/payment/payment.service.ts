@@ -474,7 +474,7 @@ export async function confirmExamPayment(
       eu.phone, eu.name, ex.title,
       '2026년 5월 2일 (토) 오후 2시',
       registrationNumber,
-      'https://coincraft.io/cert/exam-rules'
+      `${env.FRONTEND_URL}/cert/exam-rules`
     ).catch(() => {});
   }
 
