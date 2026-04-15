@@ -149,7 +149,7 @@ export default function CheckoutPage() {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('결제 처리 중 오류가 발생했습니다.');
+        setError(`결제 처리 중 오류가 발생했습니다. [${err instanceof Error ? err.message : String(err)}]`);
       }
       setPaying(false);
     }
