@@ -112,11 +112,6 @@ export default function EbookCheckoutPage() {
         totalAmount: amount,
         currency: 'KRW',
         payMethod: 'CARD',
-        customer: {
-          fullName: user?.name,
-          email: user?.email,
-        },
-        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/result`,
       });
 
       if (payResponse.code) {
