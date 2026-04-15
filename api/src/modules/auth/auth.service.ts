@@ -72,6 +72,7 @@ export async function register(dto: RegisterDto): Promise<SafeUser> {
     email: dto.email,
     passwordHash,
     name: dto.name,
+    phone: dto.phone ?? null,
   }).returning();
 
   // 이메일 인증 토큰 발급
@@ -217,13 +218,22 @@ export async function handleKakaoCallback(code: string): Promise<AuthTokens & { 
   const name = kakaoUser.kakao_account?.profile?.nickname ?? '사용자';
   const avatarUrl = kakaoUser.kakao_account?.profile?.profile_image_url ?? null;
 
+  // +82 10-1234-5678 → 01012345678
+  const rawPhone = kakaoUser.kakao_account?.phone_number;
+  const phone = rawPhone
+    ? rawPhone.replace(/\D/g, '').replace(/^82/, '0')
+    : undefined;
+
   let [user] = await db.select().from(users).where(eq(users.kakaoId, kakaoId)).limit(1);
 
   if (!user) {
     if (email) {
       [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       if (user) {
-        [user] = await db.update(users).set({ kakaoId }).where(eq(users.id, user.id)).returning();
+        [user] = await db.update(users)
+          .set({ kakaoId, ...(phone && !user.phone ? { phone } : {}) })
+          .where(eq(users.id, user.id))
+          .returning();
       }
     }
     if (!user) {
@@ -233,9 +243,13 @@ export async function handleKakaoCallback(code: string): Promise<AuthTokens & { 
         name,
         avatarUrl,
         kakaoId,
+        phone: phone ?? null,
         emailVerified: !!email,
       }).returning();
     }
+  } else if (phone && !user.phone) {
+    // 기존 카카오 유저인데 phone이 없으면 업데이트
+    [user] = await db.update(users).set({ phone }).where(eq(users.id, user.id)).returning();
   }
 
   const safeUser = toSafeUser(user);

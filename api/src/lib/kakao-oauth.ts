@@ -8,6 +8,7 @@ export interface KakaoUser {
   id: number;
   kakao_account?: {
     email?: string;
+    phone_number?: string; // e.g. "+82 10-1234-5678"
     profile?: {
       nickname?: string;
       profile_image_url?: string;
@@ -20,7 +21,7 @@ export function getKakaoAuthUrl(state: string): string {
     client_id: env.KAKAO_REST_API_KEY!,
     redirect_uri: env.KAKAO_REDIRECT_URI!,
     response_type: 'code',
-    scope: 'profile_nickname,profile_image',
+    scope: 'profile_nickname,profile_image,phone_number',
     state,
   });
   return `${AUTH_URL}?${params}`;

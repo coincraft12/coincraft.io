@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -24,8 +25,14 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
 
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
     try {
-      await apiClient.post('/api/v1/auth/register', { name, email, password });
+      await apiClient.post('/api/v1/auth/register', {
+        name,
+        email,
+        password,
+        ...(cleanPhone.length >= 10 ? { phone: cleanPhone } : {}),
+      });
       setSuccess(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '회원가입에 실패했습니다.');
@@ -94,6 +101,17 @@ export default function RegisterPage() {
                 required
                 autoComplete="new-password"
               />
+              <div>
+                <Input
+                  label="연락처 (선택)"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="010-0000-0000"
+                  autoComplete="tel"
+                />
+                <p className="text-xs text-cc-muted mt-1">카카오톡 알림 수신에 사용됩니다.</p>
+              </div>
 
               {error && <p className="text-red-400 text-sm">{error}</p>}
 
