@@ -71,12 +71,14 @@ export default function CertRegisterPage() {
 
   // Form fields
   const [name, setName] = useState('');
+  const [birthdate, setBirthdate] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
 
   // Form errors
   const [nameError, setNameError] = useState('');
+  const [birthdateError, setBirthdateError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [agreeError, setAgreeError] = useState('');
 
@@ -116,6 +118,9 @@ export default function CertRegisterPage() {
   const validate = (): boolean => {
     let valid = true;
     if (!name.trim()) { setNameError('이름을 입력해주세요.'); valid = false; } else setNameError('');
+    if (!/^\d{8}$/.test(birthdate.replace(/-/g, ''))) {
+      setBirthdateError('생년월일 8자리를 입력해주세요. (예: 19900101)'); valid = false;
+    } else setBirthdateError('');
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailError('올바른 이메일 주소를 입력해주세요.'); valid = false;
     } else setEmailError('');
@@ -276,6 +281,21 @@ export default function CertRegisterPage() {
                 placeholder="홍길동"
                 error={nameError}
               />
+              <Input
+                label="생년월일"
+                type="text"
+                value={birthdate}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
+                  setBirthdate(v);
+                }}
+                placeholder="19900101"
+                maxLength={8}
+                error={birthdateError}
+              />
+              <p className="text-xs text-cc-muted -mt-2">
+                인증서 발급 시 본인 확인에 사용됩니다. 숫자 8자리로 입력해주세요.
+              </p>
               <Input
                 label="이메일"
                 type="email"
