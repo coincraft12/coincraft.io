@@ -1,7 +1,8 @@
-import ComingSoon from '@/components/ui/ComingSoon'
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: '검정 신청 — CoinCraft' }
+export const metadata = { title: '검정 신청 — CoinCraft' };
 
+// /cert/apply → /exams (시험 목록에서 신청)
 export default function CertApplyPage() {
-  return <ComingSoon title="검정 신청" description="자격 검정 신청 페이지를 준비 중입니다." />
+  redirect('/exams');
 }

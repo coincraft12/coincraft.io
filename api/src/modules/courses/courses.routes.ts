@@ -15,10 +15,13 @@ export async function coursesRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(paginated(result.data, result.meta));
   });
 
-  // GET /api/v1/courses/:slug
+  // GET /api/v1/courses/:slugOrId  — slug 또는 UUID 모두 허용
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   app.get('/:slug', { preHandler: [optionalAuth] }, async (request, reply) => {
     const { slug } = request.params as { slug: string };
-    const course = await coursesService.getCourseBySlug(slug, request.user?.id);
+    const course = UUID_RE.test(slug)
+      ? await coursesService.getCourseById(slug, request.user?.id)
+      : await coursesService.getCourseBySlug(slug, request.user?.id);
     return reply.send(ok(course));
   });
 }

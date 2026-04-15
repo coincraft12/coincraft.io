@@ -130,10 +130,10 @@ export default async function ExamDetailPage({ params }: { params: { id: string 
 
           {/* CTA */}
           <Link
-            href={`/exams/${exam.id}/attempt`}
+            href={isFree ? `/exams/${exam.id}/attempt` : `/checkout/exam/${exam.id}`}
             className="block w-full text-center px-6 py-3.5 bg-cc-accent text-[#1a1a2e] font-bold rounded-cc hover:opacity-90 transition-opacity text-base"
           >
-            시험 시작하기
+            {isFree ? '시험 시작하기' : `₩${Number(exam.examFee).toLocaleString()} 결제 후 응시`}
           </Link>
           <p className="text-xs text-cc-muted text-center mt-3">
             시험 시작 전 로그인이 필요합니다.

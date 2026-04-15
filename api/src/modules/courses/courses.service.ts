@@ -114,6 +114,16 @@ export async function listCourses(query: CoursesQuery, userId?: string): Promise
   return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
 }
 
+export async function getCourseById(id: string, userId?: string): Promise<CourseDetail> {
+  const [course] = await db
+    .select({ id: courses.id, slug: courses.slug })
+    .from(courses)
+    .where(and(eq(courses.id, id), eq(courses.isPublished, true)))
+    .limit(1);
+  if (!course) throw Object.assign(new Error('강좌를 찾을 수 없습니다.'), { code: 'NOT_FOUND', status: 404 });
+  return getCourseBySlug(course.slug, userId);
+}
+
 export async function getCourseBySlug(slug: string, userId?: string): Promise<CourseDetail> {
   const [course] = await db
     .select({
