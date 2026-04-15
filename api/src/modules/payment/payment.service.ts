@@ -383,22 +383,6 @@ export async function prepareExamPayment(
     throw makeError('무료 시험은 결제가 필요하지 않습니다.', 'BAD_REQUEST', 400);
   }
 
-  // 이미 결제 완료 여부 확인
-  const existingPaid = await db
-    .select({ id: payments.id })
-    .from(payments)
-    .where(and(
-      eq(payments.userId, userId),
-      eq(payments.productType, 'exam'),
-      eq(payments.productId, examId),
-      eq(payments.status, 'paid'),
-    ))
-    .limit(1);
-
-  if (existingPaid.length > 0) {
-    throw makeError('이미 결제한 시험입니다.', 'ALREADY_PAID', 409);
-  }
-
   const orderId = generateOrderId(examId);
 
   await db.insert(payments).values({
@@ -458,15 +442,7 @@ export async function confirmExamPayment(
   ]);
 
   let registrationNumber = '';
-  const existing = await db
-    .select({ registrationNumber: examRegistrations.registrationNumber })
-    .from(examRegistrations)
-    .where(and(eq(examRegistrations.userId, userId), eq(examRegistrations.examId, examId)))
-    .limit(1);
-
-  if (existing.length > 0) {
-    registrationNumber = existing[0].registrationNumber;
-  } else if (ex?.level) {
+  if (ex?.level) {
     registrationNumber = await generateRegistrationNumber(ex.level);
     await db.insert(examRegistrations).values({
       userId,
