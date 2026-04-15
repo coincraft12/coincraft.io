@@ -413,15 +413,12 @@ export async function prepareExamPayment(
     metadata: { orderId, applicantName: name?.trim() ?? null, applicantBirthdate: birthdate ?? null },
   });
 
-  // 이름/전화번호 제공 시 사용자 레코드에 저장
-  const updates: { phone?: string; name?: string } = {};
+  // 전화번호만 사용자 레코드에 저장 (이름은 examRegistrations에 저장)
   if (phone) {
     const cleaned = phone.replace(/[^0-9]/g, '');
-    if (cleaned.length >= 10) updates.phone = cleaned;
-  }
-  if (name?.trim()) updates.name = name.trim();
-  if (Object.keys(updates).length > 0) {
-    await db.update(users).set(updates).where(eq(users.id, userId));
+    if (cleaned.length >= 10) {
+      await db.update(users).set({ phone: cleaned }).where(eq(users.id, userId));
+    }
   }
 
   return { orderId, amount, examTitle: exam.title };
