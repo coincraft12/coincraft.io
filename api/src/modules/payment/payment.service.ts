@@ -86,13 +86,14 @@ async function verifyIamportPayment(impUid: string, expectedAmount: number): Pro
 }
 
 async function generateRegistrationNumber(level: string): Promise<string> {
-  const levelCode = level.toUpperCase().slice(0, 3); // e.g. BAS
+  // level: 'basic' → 'B', 'associate' → 'A', 'professional' → 'P'
+  const levelCode = level.charAt(0).toUpperCase();
   const now = new Date();
   const dateStr = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const key = `exam:reg:${levelCode}:${dateStr}`;
+  const key = `exam:reg:WEB3-${levelCode}:${dateStr}`;
   const seq = await redis.incr(key);
   await redis.expire(key, 7 * 24 * 3600); // 7일 TTL
-  return `${levelCode}-${dateStr}-${String(seq).padStart(4, '0')}`;
+  return `WEB3-${levelCode}-${dateStr}-${String(seq).padStart(4, '0')}`;
 }
 
 function generateOrderId(productId: string): string {
