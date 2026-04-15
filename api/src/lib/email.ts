@@ -10,9 +10,13 @@ interface EmailOptions {
 function createTransporter() {
   if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) return null;
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587 as number,
+    secure: false,
+    family: 4 as number,
     auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
-  });
+    tls: { rejectUnauthorized: false },
+  } as Parameters<typeof nodemailer.createTransport>[0]);
 }
 
 export async function sendEmail({ to, subject, html }: EmailOptions): Promise<void> {
