@@ -30,8 +30,8 @@ const envSchema = z.object({
   SOLAPI_API_KEY: z.string().optional(),
   SOLAPI_API_SECRET: z.string().optional(),
   SOLAPI_SENDER_KEY: z.string().optional(),
-  SENDGRID_API_KEY: z.string().optional(),
-  SENDGRID_FROM_EMAIL: z.string().email().default('noreply@coincraft.io'),
+  GMAIL_USER: z.string().email().optional(),
+  GMAIL_APP_PASSWORD: z.string().optional(),
   VIMEO_ACCESS_TOKEN: z.string().optional(),
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
 });

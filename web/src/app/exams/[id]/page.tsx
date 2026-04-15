@@ -48,8 +48,9 @@ function getLevelLabel(level: string): string {
   return map[level] ?? level.toUpperCase();
 }
 
-export default async function ExamDetailPage({ params }: { params: { id: string } }) {
-  const exam = await getExam(params.id);
+export default async function ExamDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const exam = await getExam(id);
 
   if (!exam || !exam.isActive) {
     notFound();

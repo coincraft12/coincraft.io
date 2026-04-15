@@ -45,8 +45,9 @@ function getLevelVariant(level: string): 'basic' | 'associate' | 'expert' | 'def
   return 'default';
 }
 
-export default async function VerifyCertPage({ params }: { params: { certNumber: string } }) {
-  const cert = await verifyCert(params.certNumber);
+export default async function VerifyCertPage({ params }: { params: Promise<{ certNumber: string }> }) {
+  const { certNumber } = await params;
+  const cert = await verifyCert(certNumber);
 
   if (!cert) {
     notFound();

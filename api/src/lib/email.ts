@@ -1,3 +1,4 @@
+import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
 interface EmailOptions {
@@ -6,28 +7,26 @@ interface EmailOptions {
   html: string;
 }
 
+function createTransporter() {
+  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) return null;
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
+  });
+}
+
 export async function sendEmail({ to, subject, html }: EmailOptions): Promise<void> {
-  if (!env.SENDGRID_API_KEY) {
+  const transporter = createTransporter();
+  if (!transporter) {
     console.log(`[Email stub] To: ${to} | Subject: ${subject}`);
     return;
   }
-  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: env.SENDGRID_FROM_EMAIL },
-      subject,
-      content: [{ type: 'text/html', value: html }],
-    }),
+  await transporter.sendMail({
+    from: `"CoinCraft" <${env.GMAIL_USER}>`,
+    to,
+    subject,
+    html,
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SendGrid error ${res.status}: ${text}`);
-  }
 }
 
 // ─── 공통 HTML 래퍼 ─────────────────────────────────────────────────────────
