@@ -22,6 +22,7 @@ export const confirmEbookPaymentSchema = z.object({
 
 export const prepareExamPaymentSchema = z.object({
   examId: z.string().uuid(),
+  phone: z.string().optional(),
 });
 
 export const confirmExamPaymentSchema = z.object({

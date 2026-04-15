@@ -12,6 +12,7 @@ export const users = pgTable('users', {
   naverId: varchar('naver_id', { length: 100 }),
   walletAddress: varchar('wallet_address', { length: 42 }).unique(),
   walletNonce: varchar('wallet_nonce', { length: 100 }),
+  phone: varchar('phone', { length: 20 }),
   expoPushToken: text('expo_push_token'),
   emailVerified: boolean('email_verified').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),

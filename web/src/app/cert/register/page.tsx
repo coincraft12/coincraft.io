@@ -80,6 +80,7 @@ export default function CertRegisterPage() {
   const [nameError, setNameError] = useState('');
   const [birthdateError, setBirthdateError] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [agreeError, setAgreeError] = useState('');
 
   const [paying, setPaying] = useState(false);
@@ -124,6 +125,9 @@ export default function CertRegisterPage() {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailError('올바른 이메일 주소를 입력해주세요.'); valid = false;
     } else setEmailError('');
+    if (!phone.replace(/[^0-9]/g, '') || phone.replace(/[^0-9]/g, '').length < 10) {
+      setPhoneError('연락처를 입력해주세요. (카카오톡 알림 발송에 사용됩니다)'); valid = false;
+    } else setPhoneError('');
     if (!agreed) { setAgreeError('신청 내용에 동의해주세요.'); valid = false; } else setAgreeError('');
     return valid;
   };
@@ -142,7 +146,7 @@ export default function CertRegisterPage() {
     try {
       const prepareRes = await apiClient.post<{ success: boolean; data: PrepareResult }>(
         '/api/v1/payments/exams/prepare',
-        { examId: exam.id },
+        { examId: exam.id, phone: phone.replace(/[^0-9]/g, '') || undefined },
         { token }
       );
       const { orderId, amount, examTitle } = prepareRes.data;
@@ -308,12 +312,16 @@ export default function CertRegisterPage() {
                 시험 링크, 수험번호, 강의 자료 PDF가 이 이메일로 발송됩니다. 정확하게 입력해주세요.
               </p>
               <Input
-                label="연락처 (선택)"
+                label="연락처"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="010-0000-0000"
+                error={phoneError}
               />
+              <p className="text-xs text-cc-muted -mt-2">
+                결제 완료 후 카카오톡 알림이 발송됩니다.
+              </p>
             </div>
 
             {/* 환불 정책 */}

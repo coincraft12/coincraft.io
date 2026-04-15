@@ -82,7 +82,7 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/v1/payments/exams/prepare', { preHandler: [authenticate] }, async (request, reply) => {
     const body = prepareExamPaymentSchema.safeParse(request.body);
     if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
-    const result = await paymentService.prepareExamPayment(request.user!.id, body.data.examId);
+    const result = await paymentService.prepareExamPayment(request.user!.id, body.data.examId, body.data.phone);
     return reply.code(201).send(created(result, '결제 준비가 완료되었습니다.'));
   });
 

@@ -1,7 +1,8 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../../db';
-import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subscriptions } from '../../db/schema';
+import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subscriptions, users } from '../../db/schema';
 import { env } from '../../config/env';
+import { notifyEnroll, notifyExamRegistration, notifyEbookPurchase } from '../../lib/notifications';
 
 // ─── Subscription plans ───────────────────────────────────────────────────────
 export const SUBSCRIPTION_PLANS: Record<string, { label: string; amount: number; months: number }> = {
@@ -177,7 +178,7 @@ export async function confirmPayment(
 
   // Check course exists
   const [course] = await db
-    .select({ id: courses.id, slug: courses.slug })
+    .select({ id: courses.id, slug: courses.slug, title: courses.title })
     .from(courses)
     .where(eq(courses.id, courseId))
     .limit(1);
@@ -211,6 +212,10 @@ export async function confirmPayment(
       paymentId: pendingPayment.id,
     });
   }
+
+  // 알림톡 — 수강신청 완료 (실패해도 결제 흐름에 영향 없음)
+  const [u] = await db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1);
+  if (u?.phone) notifyEnroll(u.phone, u.name, course.title).catch(() => {});
 
   return { courseId: course.id, courseSlug: course.slug };
 }
@@ -332,6 +337,11 @@ export async function confirmEbookPayment(
     });
   }
 
+  // 알림톡 — 전자책 구매 완료
+  const [eb] = await db.select({ title: ebooks.title }).from(ebooks).where(eq(ebooks.id, ebookId)).limit(1);
+  const [uu] = await db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1);
+  if (uu?.phone && eb?.title) notifyEbookPurchase(uu.phone, uu.name, eb.title).catch(() => {});
+
   return { ebookId };
 }
 
@@ -339,7 +349,8 @@ export async function confirmEbookPayment(
 
 export async function prepareExamPayment(
   userId: string,
-  examId: string
+  examId: string,
+  phone?: string
 ): Promise<PrepareExamPaymentResult> {
   const [exam] = await db
     .select({ id: certExams.id, title: certExams.title, examFee: certExams.examFee, isActive: certExams.isActive })
@@ -385,6 +396,14 @@ export async function prepareExamPayment(
     metadata: { orderId },
   });
 
+  // 전화번호 제공 시 사용자 레코드에 저장
+  if (phone) {
+    const cleaned = phone.replace(/[^0-9]/g, '');
+    if (cleaned.length >= 10) {
+      await db.update(users).set({ phone: cleaned }).where(eq(users.id, userId));
+    }
+  }
+
   return { orderId, amount, examTitle: exam.title };
 }
 
@@ -411,7 +430,18 @@ export async function confirmExamPayment(
     .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
     .where(eq(payments.id, pendingPayment.id));
 
-  return { examId: pendingPayment.productId };
+  const examId = pendingPayment.productId;
+
+  // 알림톡 — 시험 접수 완료
+  const [[eu], [ex]] = await Promise.all([
+    db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1),
+    db.select({ title: certExams.title }).from(certExams).where(eq(certExams.id, examId)).limit(1),
+  ]);
+  if (eu?.phone && ex?.title) {
+    notifyExamRegistration(eu.phone, eu.name, ex.title, '2026년 5월 2일 (토) 오후 2시', '30,000원').catch(() => {});
+  }
+
+  return { examId };
 }
 
 // ─── Subscription payment ─────────────────────────────────────────────────────
