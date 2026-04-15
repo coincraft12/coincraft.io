@@ -201,6 +201,34 @@ export default function EbookViewerPage() {
   useEffect(() => { metaRef.current           = meta; },          [meta]);
   useEffect(() => { setShowPaywallRef.current = setShowPaywall; }, [setShowPaywall]);
 
+  // ── 전역 이벤트 차단 ─────────────────────────────────────────────────────────
+  // 우리가 nav 호출 후 700ms 동안 document/window 레벨의 epub.js·react-swipeable
+  // 핸들러가 click/mouseup을 받아 역방향 nav를 트리거하는 것을 막음.
+  // capture phase(window) 이므로 어떤 핸들러보다 먼저 실행됨.
+  useEffect(() => {
+    function shouldBlock(e: MouseEvent) {
+      if (Date.now() - lastNavTimeRef.current >= 700) return false;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('a[href]')) return false; // epub 링크 허용
+      // reader container 내부 이벤트만 차단 (UI 버튼 등 외부는 허용)
+      if (readerContainerRef.current && !readerContainerRef.current.contains(t))
+        return false;
+      return true;
+    }
+    const blockClick = (e: MouseEvent) => {
+      if (shouldBlock(e)) e.stopImmediatePropagation();
+    };
+    const blockMouseUp = (e: MouseEvent) => {
+      if (shouldBlock(e)) e.stopImmediatePropagation();
+    };
+    window.addEventListener('click',   blockClick,   true);
+    window.addEventListener('mouseup', blockMouseUp, true);
+    return () => {
+      window.removeEventListener('click',   blockClick,   true);
+      window.removeEventListener('mouseup', blockMouseUp, true);
+    };
+  }, []);
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthLoading && !token) {
