@@ -492,7 +492,7 @@ export async function confirmSubscriptionPayment(
     status: 'active',
     currentPeriodStart: now,
     currentPeriodEnd: periodEnd,
-    providerSubscriptionId: paymentId,
+    providerSubscriptionId: impUid,
   });
 
   return { plan, currentPeriodEnd: periodEnd };
