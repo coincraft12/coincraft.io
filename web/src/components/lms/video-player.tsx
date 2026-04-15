@@ -4,10 +4,26 @@ import { useEffect, useRef, useCallback } from 'react';
 import Script from 'next/script';
 import { apiClient } from '@/lib/api-client';
 
+// ─── localStorage helpers (동기 저장 - 어떤 이탈에서도 안전) ─────────────────
+
+function localKey(lessonId: string) { return `vpos-${lessonId}`; }
+
+function readLocal(lessonId: string): number {
+  try { return parseInt(localStorage.getItem(localKey(lessonId)) ?? '0', 10) || 0; } catch { return 0; }
+}
+
+function writeLocal(lessonId: string, seconds: number) {
+  try { if (seconds > 1) localStorage.setItem(localKey(lessonId), String(Math.floor(seconds))); } catch { /* ignore */ }
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface VimeoPlayerInstance {
   setCurrentTime(s: number): Promise<void>;
   getCurrentTime(): Promise<number>;
+  on(event: 'timeupdate', cb: (data: { seconds: number }) => void): void;
   on(event: string, cb: () => void): void;
+  off(event: string, cb?: () => void): void;
 }
 
 interface YTPlayerInstance {
@@ -24,23 +40,22 @@ declare global {
   }
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface Props {
   lessonId: string;
   embedUrl: string;
   videoProvider: string | null;
-  initialSeconds: number;
+  initialSeconds: number; // from API (DB)
   token: string;
 }
 
 export default function VideoPlayer(props: Props) {
-  const { videoProvider, embedUrl } = props;
-
-  if (videoProvider === 'vimeo') return <VimeoPlayer {...props} />;
-  if (videoProvider === 'youtube') return <YouTubePlayer {...props} />;
-
+  if (props.videoProvider === 'vimeo') return <VimeoPlayer {...props} />;
+  if (props.videoProvider === 'youtube') return <YouTubePlayer {...props} />;
   return (
     <iframe
-      src={embedUrl}
+      src={props.embedUrl}
       className="absolute inset-0 w-full h-full"
       allow="autoplay; fullscreen; picture-in-picture"
       sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
@@ -55,17 +70,19 @@ export default function VideoPlayer(props: Props) {
 function VimeoPlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<VimeoPlayerInstance | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const currentTimeRef = useRef(0);   // 동기적으로 항상 최신 재생 위치 유지
+  const apiIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  const saveProgress = useCallback(async () => {
-    if (!playerRef.current) return;
-    try {
-      const seconds = await playerRef.current.getCurrentTime();
-      if (seconds > 1) {
-        apiClient.post(`/api/v1/lessons/${lessonId}/progress`,
-          { watchedSeconds: Math.floor(seconds) }, { token }).catch(() => {});
-      }
-    } catch { /* ignore */ }
+  // 효과적인 시작 위치: API 값과 localStorage 중 큰 값
+  const effectiveStart = Math.max(initialSeconds, readLocal(lessonId));
+
+  const saveAll = useCallback(() => {
+    const s = currentTimeRef.current;
+    writeLocal(lessonId, s);  // 동기 - 항상 성공
+    if (s > 1) {
+      apiClient.post(`/api/v1/lessons/${lessonId}/progress`,
+        { watchedSeconds: Math.floor(s) }, { token }).catch(() => {});
+    }
   }, [lessonId, token]);
 
   const initPlayer = useCallback(() => {
@@ -73,18 +90,38 @@ function VimeoPlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
     const player = new window.Vimeo.Player(iframeRef.current);
     playerRef.current = player;
 
-    player.on('loaded', () => {
-      if (initialSeconds > 5) player.setCurrentTime(initialSeconds);
-      intervalRef.current = setInterval(saveProgress, 5000);
+    // timeupdate: 약 250ms마다 호출 → currentTimeRef 항상 최신
+    player.on('timeupdate', ({ seconds }) => {
+      currentTimeRef.current = seconds;
+      writeLocal(lessonId, seconds);  // localStorage 매번 동기 저장
     });
-  }, [initialSeconds, saveProgress]);
+
+    // 로드 완료 후 저장된 위치로 이동
+    player.on('loaded', () => {
+      if (effectiveStart > 5) player.setCurrentTime(effectiveStart);
+    });
+
+    // API는 10초마다 (DB 부하 감소)
+    apiIntervalRef.current = setInterval(() => {
+      const s = currentTimeRef.current;
+      if (s > 1) {
+        apiClient.post(`/api/v1/lessons/${lessonId}/progress`,
+          { watchedSeconds: Math.floor(s) }, { token }).catch(() => {});
+      }
+    }, 10000);
+  }, [lessonId, effectiveStart, token]);
 
   useEffect(() => {
+    // 탭 전환 / 브라우저 최소화 / 뒤로가기 직전에 저장
+    const onHide = () => { if (document.visibilityState === 'hidden') saveAll(); };
+    document.addEventListener('visibilitychange', onHide);
+
     return () => {
-      clearInterval(intervalRef.current);
-      saveProgress();
+      document.removeEventListener('visibilitychange', onHide);
+      clearInterval(apiIntervalRef.current);
+      saveAll();  // 언마운트 시: localStorage는 동기라 항상 저장됨
     };
-  }, [saveProgress]);
+  }, [saveAll]);
 
   return (
     <>
@@ -106,17 +143,19 @@ function VimeoPlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
 function YouTubePlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayerInstance | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const currentTimeRef = useRef(0);
+  const apiIntervalRef = useRef<ReturnType<typeof setInterval>>();
+  const localIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  const saveProgress = useCallback(() => {
-    if (!playerRef.current) return;
-    try {
-      const seconds = playerRef.current.getCurrentTime();
-      if (seconds > 1) {
-        apiClient.post(`/api/v1/lessons/${lessonId}/progress`,
-          { watchedSeconds: Math.floor(seconds) }, { token }).catch(() => {});
-      }
-    } catch { /* ignore */ }
+  const effectiveStart = Math.max(initialSeconds, readLocal(lessonId));
+
+  const saveAll = useCallback(() => {
+    const s = currentTimeRef.current;
+    writeLocal(lessonId, s);
+    if (s > 1) {
+      apiClient.post(`/api/v1/lessons/${lessonId}/progress`,
+        { watchedSeconds: Math.floor(s) }, { token }).catch(() => {});
+    }
   }, [lessonId, token]);
 
   useEffect(() => {
@@ -127,11 +166,27 @@ function YouTubePlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
       if (!containerRef.current || !window.YT?.Player) return;
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId,
-        playerVars: { start: Math.floor(initialSeconds), rel: 0 },
+        playerVars: { rel: 0 },
         events: {
           onReady: () => {
-            if (initialSeconds > 5) playerRef.current!.seekTo(initialSeconds, true);
-            intervalRef.current = setInterval(saveProgress, 5000);
+            if (effectiveStart > 5) playerRef.current!.seekTo(effectiveStart, true);
+
+            // YouTube는 timeupdate 이벤트 없음 → 1초 폴링
+            localIntervalRef.current = setInterval(() => {
+              if (!playerRef.current) return;
+              const s = playerRef.current.getCurrentTime();
+              currentTimeRef.current = s;
+              writeLocal(lessonId, s);  // localStorage 1초마다 동기 저장
+            }, 1000);
+
+            // API는 10초마다
+            apiIntervalRef.current = setInterval(() => {
+              const s = currentTimeRef.current;
+              if (s > 1) {
+                apiClient.post(`/api/v1/lessons/${lessonId}/progress`,
+                  { watchedSeconds: Math.floor(s) }, { token }).catch(() => {});
+              }
+            }, 10000);
           },
         },
       });
@@ -149,12 +204,17 @@ function YouTubePlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
       }
     }
 
+    const onHide = () => { if (document.visibilityState === 'hidden') saveAll(); };
+    document.addEventListener('visibilitychange', onHide);
+
     return () => {
-      clearInterval(intervalRef.current);
-      saveProgress();
+      document.removeEventListener('visibilitychange', onHide);
+      clearInterval(localIntervalRef.current);
+      clearInterval(apiIntervalRef.current);
+      saveAll();
       playerRef.current?.destroy();
     };
-  }, [embedUrl, initialSeconds, saveProgress]);
+  }, [embedUrl, effectiveStart, lessonId, token, saveAll]);
 
   return <div ref={containerRef} className="absolute inset-0 w-full h-full" />;
 }
