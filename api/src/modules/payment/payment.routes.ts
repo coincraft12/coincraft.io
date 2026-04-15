@@ -34,7 +34,7 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
     }
     const result = await paymentService.confirmPayment(
       request.user!.id,
-      body.data.paymentId,
+      body.data.impUid,
       body.data.orderId,
       body.data.amount
     );
@@ -71,7 +71,7 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
     }
     const result = await paymentService.confirmEbookPayment(
       request.user!.id,
-      body.data.paymentId,
+      body.data.impUid,
       body.data.orderId,
       body.data.amount
     );
@@ -90,7 +90,7 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/v1/payments/exams/confirm', { preHandler: [authenticate] }, async (request, reply) => {
     const body = confirmExamPaymentSchema.safeParse(request.body);
     if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
-    const result = await paymentService.confirmExamPayment(request.user!.id, body.data.paymentId, body.data.orderId, body.data.amount);
+    const result = await paymentService.confirmExamPayment(request.user!.id, body.data.impUid, body.data.orderId, body.data.amount);
     return reply.send(ok(result, '결제가 완료되었습니다.'));
   });
 
@@ -111,7 +111,7 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/v1/payments/subscriptions/confirm', { preHandler: [authenticate] }, async (request, reply) => {
     const body = confirmSubscriptionPaymentSchema.safeParse(request.body);
     if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
-    const result = await paymentService.confirmSubscriptionPayment(request.user!.id, body.data.paymentId, body.data.orderId, body.data.amount);
+    const result = await paymentService.confirmSubscriptionPayment(request.user!.id, body.data.impUid, body.data.orderId, body.data.amount);
     return reply.send(ok(result, '구독이 시작되었습니다.'));
   });
 }

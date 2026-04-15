@@ -54,6 +54,35 @@ function makeError(message: string, code: string, status: number): Error {
   return Object.assign(new Error(message), { code, status });
 }
 
+async function verifyIamportPayment(impUid: string, expectedAmount: number): Promise<void> {
+  if (!env.PORTONE_IMP_KEY || !env.PORTONE_IMP_SECRET) {
+    throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);
+  }
+
+  // 1. Get access token
+  const tokenRes = await fetch('https://api.iamport.kr/users/getToken', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imp_key: env.PORTONE_IMP_KEY, imp_secret: env.PORTONE_IMP_SECRET }),
+  });
+  const tokenData = await tokenRes.json() as { code: number; response: { access_token: string } };
+  if (tokenData.code !== 0) throw makeError('결제 검증 토큰 발급에 실패했습니다.', 'TOKEN_ERROR', 500);
+
+  // 2. Verify payment
+  const payRes = await fetch(`https://api.iamport.kr/payments/${encodeURIComponent(impUid)}`, {
+    headers: { 'Authorization': tokenData.response.access_token },
+  });
+  if (!payRes.ok) throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
+
+  const payData = await payRes.json() as { code: number; response: { status: string; amount: number } };
+  if (payData.code !== 0 || payData.response.status !== 'paid') {
+    throw makeError('결제가 완료되지 않았습니다.', 'PAYMENT_NOT_PAID', 400);
+  }
+  if (payData.response.amount !== expectedAmount) {
+    throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
+  }
+}
+
 function generateOrderId(productId: string): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -116,39 +145,11 @@ export async function preparePayment(
 
 export async function confirmPayment(
   userId: string,
-  paymentId: string,
+  impUid: string,
   orderId: string,
   amount: number
 ): Promise<{ courseId: string; courseSlug: string }> {
-  if (!env.PORTONE_API_SECRET) {
-    throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);
-  }
-
-  // Verify payment with PortOne V2
-  const portoneRes = await fetch(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `PortOne ${env.PORTONE_API_SECRET}`,
-    },
-  });
-
-  if (!portoneRes.ok) {
-    throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
-  }
-
-  const portoneData = await portoneRes.json() as {
-    status: string;
-    amount: { total: number };
-    customData?: string;
-  };
-
-  if (portoneData.status !== 'PAID') {
-    throw makeError('결제가 완료되지 않았습니다.', 'PAYMENT_NOT_PAID', 400);
-  }
-
-  if (portoneData.amount.total !== amount) {
-    throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
-  }
+  await verifyIamportPayment(impUid, amount);
 
   // Find the pending payment record by metadata orderId
   const allPending = await db
@@ -190,7 +191,7 @@ export async function confirmPayment(
     .update(payments)
     .set({
       status: 'paid',
-      providerPaymentId: paymentId,
+      providerPaymentId: impUid,
       paidAt: new Date(),
     })
     .where(eq(payments.id, pendingPayment.id));
@@ -283,35 +284,11 @@ export async function prepareEbookPayment(
 
 export async function confirmEbookPayment(
   userId: string,
-  paymentId: string,
+  impUid: string,
   orderId: string,
   amount: number
 ): Promise<{ ebookId: string }> {
-  if (!env.PORTONE_API_SECRET) {
-    throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);
-  }
-
-  const portoneRes = await fetch(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, {
-    method: 'GET',
-    headers: { 'Authorization': `PortOne ${env.PORTONE_API_SECRET}` },
-  });
-
-  if (!portoneRes.ok) {
-    throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
-  }
-
-  const portoneData = await portoneRes.json() as {
-    status: string;
-    amount: { total: number };
-  };
-
-  if (portoneData.status !== 'PAID') {
-    throw makeError('결제가 완료되지 않았습니다.', 'PAYMENT_NOT_PAID', 400);
-  }
-
-  if (portoneData.amount.total !== amount) {
-    throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
-  }
+  await verifyIamportPayment(impUid, amount);
 
   const allPending = await db
     .select()
@@ -338,7 +315,7 @@ export async function confirmEbookPayment(
 
   await db
     .update(payments)
-    .set({ status: 'paid', providerPaymentId: paymentId, paidAt: new Date() })
+    .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
     .where(eq(payments.id, pendingPayment.id));
 
   const [existingPurchase] = await db
@@ -413,25 +390,11 @@ export async function prepareExamPayment(
 
 export async function confirmExamPayment(
   userId: string,
-  paymentId: string,
+  impUid: string,
   orderId: string,
   amount: number
 ): Promise<{ examId: string }> {
-  if (!env.PORTONE_API_SECRET) {
-    throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);
-  }
-
-  const portoneRes = await fetch(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, {
-    method: 'GET',
-    headers: { 'Authorization': `PortOne ${env.PORTONE_API_SECRET}` },
-  });
-
-  if (!portoneRes.ok) throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
-
-  const portoneData = await portoneRes.json() as { status: string; amount: { total: number } };
-
-  if (portoneData.status !== 'PAID') throw makeError('결제가 완료되지 않았습니다.', 'PAYMENT_NOT_PAID', 400);
-  if (portoneData.amount.total !== amount) throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
+  await verifyIamportPayment(impUid, amount);
 
   const allPending = await db.select().from(payments).where(
     and(eq(payments.userId, userId), eq(payments.productType, 'exam'), eq(payments.status, 'pending'), eq(payments.provider, 'portone'))
@@ -445,7 +408,7 @@ export async function confirmExamPayment(
   if (!pendingPayment) throw makeError('결제 정보를 찾을 수 없습니다.', 'PAYMENT_NOT_FOUND', 404);
 
   await db.update(payments)
-    .set({ status: 'paid', providerPaymentId: paymentId, paidAt: new Date() })
+    .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
     .where(eq(payments.id, pendingPayment.id));
 
   return { examId: pendingPayment.productId };
@@ -494,25 +457,11 @@ export async function prepareSubscriptionPayment(
 
 export async function confirmSubscriptionPayment(
   userId: string,
-  paymentId: string,
+  impUid: string,
   orderId: string,
   amount: number
 ): Promise<{ plan: string; currentPeriodEnd: Date }> {
-  if (!env.PORTONE_API_SECRET) {
-    throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);
-  }
-
-  const portoneRes = await fetch(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, {
-    method: 'GET',
-    headers: { 'Authorization': `PortOne ${env.PORTONE_API_SECRET}` },
-  });
-
-  if (!portoneRes.ok) throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
-
-  const portoneData = await portoneRes.json() as { status: string; amount: { total: number } };
-
-  if (portoneData.status !== 'PAID') throw makeError('결제가 완료되지 않았습니다.', 'PAYMENT_NOT_PAID', 400);
-  if (portoneData.amount.total !== amount) throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
+  await verifyIamportPayment(impUid, amount);
 
   const allPending = await db.select().from(payments).where(
     and(eq(payments.userId, userId), eq(payments.productType, 'subscription'), eq(payments.status, 'pending'), eq(payments.provider, 'portone'))
@@ -530,7 +479,7 @@ export async function confirmSubscriptionPayment(
   if (!planInfo) throw makeError('플랜 정보가 올바르지 않습니다.', 'INVALID_PLAN', 400);
 
   await db.update(payments)
-    .set({ status: 'paid', providerPaymentId: paymentId, paidAt: new Date() })
+    .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
     .where(eq(payments.id, pendingPayment.id));
 
   const now = new Date();

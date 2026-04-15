@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import Script from 'next/script';
 import Header from '@/components/ui/Header';
@@ -25,18 +25,20 @@ interface CourseInfo {
 
 declare global {
   interface Window {
-    PortOne?: {
-      requestPayment: (params: {
-        storeId: string;
-        channelKey: string;
-        paymentId: string;
-        orderName: string;
-        totalAmount: number;
-        currency: string;
-        payMethod: string;
-        customer?: { fullName?: string; email?: string };
-        redirectUrl?: string;
-      }) => Promise<{ paymentId?: string; code?: string; message?: string }>;
+    IMP?: {
+      init: (impCode: string) => void;
+      request_pay: (
+        params: {
+          pg?: string;
+          pay_method?: string;
+          merchant_uid: string;
+          name: string;
+          amount: number;
+          buyer_email?: string;
+          buyer_name?: string;
+        },
+        callback: (rsp: { success: boolean; imp_uid?: string; error_msg?: string }) => void
+      ) => void;
     };
   }
 }
@@ -57,7 +59,6 @@ export default function CheckoutPage() {
   const [courseFetchError, setCourseFetchError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const sdkReady = useRef(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -87,16 +88,12 @@ export default function CheckoutPage() {
 
   const handlePayment = async () => {
     if (!token || !course) return;
-    if (!window.PortOne) {
-      setError('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
-      return;
-    }
+    if (!window.IMP) { setError('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.'); return; }
 
     setError(null);
     setPaying(true);
 
     try {
-      // Step 1: Prepare payment (get orderId + amount)
       const prepareRes = await apiClient.post<{ success: boolean; data: PrepareResult }>(
         '/api/v1/payments/prepare',
         { courseId: course.id },
@@ -104,48 +101,36 @@ export default function CheckoutPage() {
       );
       const { orderId, amount, courseName } = prepareRes.data;
 
-      // Step 2: Open PortOne payment modal
-      const payResponse = await window.PortOne.requestPayment({
-        storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
-        paymentId: orderId,
-        orderName: courseName,
-        totalAmount: amount,
-        currency: 'KRW',
-        payMethod: 'CARD',
+      const impUid = await new Promise<string>((resolve, reject) => {
+        window.IMP!.request_pay(
+          {
+            pg: 'kcp',
+            pay_method: 'card',
+            merchant_uid: orderId,
+            name: courseName,
+            amount,
+            buyer_email: user?.email ?? undefined,
+            buyer_name: user?.name ?? undefined,
+          },
+          (rsp) => {
+            if (rsp.success && rsp.imp_uid) {
+              resolve(rsp.imp_uid);
+            } else {
+              reject(new Error(rsp.error_msg ?? '결제가 취소되었습니다.'));
+            }
+          }
+        );
       });
 
-      if (payResponse.code) {
-        setError(payResponse.message ?? '결제가 취소되었습니다.');
-        setPaying(false);
-        return;
-      }
-
-      if (!payResponse.paymentId) {
-        setError('결제 ID를 받지 못했습니다.');
-        setPaying(false);
-        return;
-      }
-
-      // Step 3: Confirm payment on server
       const confirmRes = await apiClient.post<{ success: boolean; data: { courseId: string; courseSlug: string } }>(
         '/api/v1/payments/confirm',
-        {
-          paymentId: payResponse.paymentId,
-          orderId,
-          amount,
-        },
+        { impUid, orderId, amount },
         { token }
       );
 
-      // Step 4: Redirect to course
       router.push(`/courses/${confirmRes.data.courseSlug}`);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError(`결제 처리 중 오류가 발생했습니다. [${err instanceof Error ? err.message : String(err)}]`);
-      }
+      setError(err instanceof ApiError ? err.message : (err instanceof Error ? err.message : '결제 처리 중 오류가 발생했습니다.'));
       setPaying(false);
     }
   };
@@ -186,8 +171,8 @@ export default function CheckoutPage() {
   return (
     <>
       <Script
-        src="https://cdn.portone.io/v2/browser-sdk.js"
-        onLoad={() => { sdkReady.current = true; }}
+        src="https://cdn.iamport.kr/v1/iamport.js"
+        onLoad={() => { window.IMP!.init('imp56544661'); }}
       />
       <Header />
       <main className="min-h-screen bg-cc-primary pt-24 pb-16">

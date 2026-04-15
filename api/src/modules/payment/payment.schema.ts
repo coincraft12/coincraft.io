@@ -5,7 +5,7 @@ export const preparePaymentSchema = z.object({
 });
 
 export const confirmPaymentSchema = z.object({
-  paymentId: z.string().min(1),
+  impUid: z.string().min(1),
   orderId: z.string().min(1),
   amount: z.number().int().positive(),
 });
@@ -15,7 +15,7 @@ export const prepareEbookPaymentSchema = z.object({
 });
 
 export const confirmEbookPaymentSchema = z.object({
-  paymentId: z.string().min(1),
+  impUid: z.string().min(1),
   orderId: z.string().min(1),
   amount: z.number().int().positive(),
 });
@@ -25,7 +25,7 @@ export const prepareExamPaymentSchema = z.object({
 });
 
 export const confirmExamPaymentSchema = z.object({
-  paymentId: z.string().min(1),
+  impUid: z.string().min(1),
   orderId: z.string().min(1),
   amount: z.number().int().positive(),
 });
@@ -35,7 +35,7 @@ export const prepareSubscriptionPaymentSchema = z.object({
 });
 
 export const confirmSubscriptionPaymentSchema = z.object({
-  paymentId: z.string().min(1),
+  impUid: z.string().min(1),
   orderId: z.string().min(1),
   amount: z.number().int().positive(),
 });
@@ -48,3 +48,4 @@ export type PrepareExamPaymentDto = z.infer<typeof prepareExamPaymentSchema>;
 export type ConfirmExamPaymentDto = z.infer<typeof confirmExamPaymentSchema>;
 export type PrepareSubscriptionPaymentDto = z.infer<typeof prepareSubscriptionPaymentSchema>;
 export type ConfirmSubscriptionPaymentDto = z.infer<typeof confirmSubscriptionPaymentSchema>;
+
