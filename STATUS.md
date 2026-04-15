@@ -4,8 +4,8 @@
 > 다음 작업자가 이 파일 하나만 읽어도 현재 상태를 파악할 수 있어야 한다.
 
 ## 현재 상태
-- **단계**: Phase 4 완료 — 자격증 시스템 (시험/채점/인증서 발급/공개 검증) 구현 완료, 스테이징 배포 완료
-- **마지막 업데이트**: 2026-04-13
+- **단계**: Phase 4 완료 + 검정 접수·알림 시스템 운영 중
+- **마지막 업데이트**: 2026-04-16
 - **결정 근거**: CIO-003 (WordPress 완전 제거 — 자체 풀스택 플랫폼)
 
 ## 아키텍처 (CIO-003 확정)
@@ -138,6 +138,25 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 **시드 데이터:**
 - Basic 레벨 블록체인 기초 시험 5문항 (api/src/db/seed-exam.ts)
 
+## 2026-04-16 작업 내역
+
+**검정 접수 시스템 고도화 (스테이징 배포 완료):**
+- 레슨 영상 페이지 X 닫기 버튼 추가
+- 에러 핸들러 버그 수정: `err.status` → `err.statusCode` 매핑 누락으로 모든 커스텀 에러가 500으로 반환되던 문제 수정
+- API: `GET /api/v1/users/me/exam-registrations` 신규 endpoint 추가
+- 헤더 '검정' 메뉴에 '나의 검정' 동적 서브메뉴 추가 (접수자에게만 표시, 해당 시험 페이지 링크)
+- 로컬 개발 환경 정비: `.env.local`에 `API_INTERNAL_URL`, `NEXT_PUBLIC_API_URL` 추가
+- `deploy-staging.sh` 신규 생성 (tar.gz 방식, scp 개별 업로드 금지)
+- `web/CLAUDE.md` 생성 — 배포 규칙 고정
+- 배포 규칙: `NEXT_PUBLIC_API_URL= npm run build`로 스테이징 빌드 시 nginx 프록시 사용
+
+**배포 규칙 (필수):**
+- 웹 배포: Sharon 명시 요청 시에만 `bash web/deploy-staging.sh` 실행
+- API 배포: Sharon 명시 요청 시에만 개별 파일 scp
+
+**스테이징 DB 직접 삽입 항목 (운영 반영 불필요):**
+- 김응준 / coincraft.press@gmail.com 시험 접수 (WEB3-B-260416-0001)
+
 ## 2026-04-14 작업 내역
 **전자책 뷰어 (`/ebooks/[id]`) UI 개선:**
 - 페이지 넘김 Canvas 애니메이션 구현 (forward/backward, 흰 종이 접힘 효과)
@@ -149,6 +168,8 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 - ⚠️ 미완: 일부 환경/페이지에서 애니메이션 누락 발생 가능 (추후 개선 여지)
 
 **To-Do (다음 세션):**
+- 솔라피 알림톡 새 템플릿 승인 후 `notifications.ts`의 `TEMPLATES.EXAM` 업데이트 (수험번호 + 시험규정 변수 포함)
+- 검정료 DB 복원: 현재 100원 → 30,000원 (테스트용으로 낮춘 것)
 - `api-client` 401 자동 refresh + 재시도 로직 추가 (현재 액세스 토큰 15분 만료 시 강제 로그아웃됨)
 - 전자책 뷰어 페이지 넘김 효과 가끔 두 번 넘어가는 현상 추가 개선
 - `/my` 내 계정 페이지: 구매한 전자책 리스트 추가 (현재 강좌만 표시됨)

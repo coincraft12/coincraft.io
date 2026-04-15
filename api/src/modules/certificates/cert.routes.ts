@@ -74,6 +74,12 @@ export async function certRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(ok(result));
   });
 
+  // GET /api/v1/users/me/exam-registrations — 내 시험 접수 목록 (authenticate)
+  app.get('/api/v1/users/me/exam-registrations', { preHandler: [authenticate] }, async (request, reply) => {
+    const registrations = await certService.getMyExamRegistrations(request.user!.id);
+    return reply.send(ok(registrations));
+  });
+
   // GET /api/v1/users/me/certificates — 내 자격증 (authenticate)
   app.get('/api/v1/users/me/certificates', { preHandler: [authenticate] }, async (request, reply) => {
     const certs = await certService.getMyCertificates(request.user!.id);

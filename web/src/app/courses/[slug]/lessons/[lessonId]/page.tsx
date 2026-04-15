@@ -184,9 +184,18 @@ export default function LessonPage() {
       {/* Main content (3/4) */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-          {/* Lesson title */}
-          <div>
+          {/* Lesson title + close */}
+          <div className="flex items-start justify-between gap-4">
             <h1 className="text-2xl md:text-3xl font-bold text-cc-text">{lesson.title}</h1>
+            <button
+              onClick={() => router.push(`/courses/${slug}`)}
+              className="shrink-0 mt-1 text-cc-muted hover:text-cc-text transition-colors"
+              aria-label="강좌로 나가기"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
 
           {/* Video or text content */}

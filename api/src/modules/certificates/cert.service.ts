@@ -4,6 +4,7 @@ import {
   certExams,
   examQuestions,
   examAttempts,
+  examRegistrations,
   certificates,
   enrollments,
   courses,
@@ -396,6 +397,24 @@ export async function generateCertNumber(level: string): Promise<string> {
   await redis.expire(key, 172800);
   const seqStr = String(seq).padStart(4, '0');
   return `CC-${levelCode}-${dateStr}-${seqStr}`;
+}
+
+export async function getMyExamRegistrations(userId: string) {
+  const rows = await db
+    .select({
+      id: examRegistrations.id,
+      examId: examRegistrations.examId,
+      registrationNumber: examRegistrations.registrationNumber,
+      registeredAt: examRegistrations.registeredAt,
+      examTitle: certExams.title,
+      examLevel: certExams.level,
+    })
+    .from(examRegistrations)
+    .innerJoin(certExams, eq(examRegistrations.examId, certExams.id))
+    .where(eq(examRegistrations.userId, userId))
+    .orderBy(examRegistrations.registeredAt);
+
+  return rows;
 }
 
 export async function getMyCertificates(userId: string) {

@@ -1,11 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { apiClient } from '@/lib/api-client'
 
-const nav = [
+const BASE_NAV = [
   { label: 'HOME', href: '/' },
   { label: 'ABOUT', href: '/about' },
   {
@@ -35,12 +35,39 @@ const nav = [
   },
 ]
 
+interface ExamRegistration {
+  id: string;
+  examId: string;
+  registrationNumber: string;
+  examTitle: string;
+  examLevel: string;
+}
+
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openSub, setOpenSub] = useState<string | null>(null)
+  const [myExams, setMyExams] = useState<ExamRegistration[]>([])
   const { user, accessToken, logout, isLoading } = useAuthStore()
   const pathname = usePathname()
   const loginHref = `/login?redirect=${encodeURIComponent(pathname)}`
+
+  useEffect(() => {
+    if (!accessToken) { setMyExams([]); return; }
+    apiClient.get<{ success: boolean; data: ExamRegistration[] }>(
+      '/api/v1/users/me/exam-registrations',
+      { token: accessToken }
+    ).then((res) => setMyExams(res.data)).catch(() => {})
+  }, [accessToken])
+
+  const nav = BASE_NAV.map((item) => {
+    if (item.label !== '검정' || !item.children) return item;
+    const certChildren: { label: string; href: string; disabled?: boolean }[] = [...item.children];
+    if (myExams.length > 0) {
+      const latest = myExams[myExams.length - 1];
+      certChildren.unshift({ label: '나의 검정', href: `/exams/${latest.examId}` });
+    }
+    return { ...item, children: certChildren };
+  })
 
   async function handleLogout() {
     try {
