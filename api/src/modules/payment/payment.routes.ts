@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../../middleware/authenticate';
 import { ok, created } from '../../utils/response';
-import { preparePaymentSchema, confirmPaymentSchema } from './payment.schema';
+import { preparePaymentSchema, confirmPaymentSchema, prepareEbookPaymentSchema, confirmEbookPaymentSchema } from './payment.schema';
 import * as paymentService from './payment.service';
 
 export async function paymentRoutes(app: FastifyInstance): Promise<void> {
@@ -40,5 +40,36 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/v1/payments/history', { preHandler: [authenticate] }, async (request, reply) => {
     const history = await paymentService.getPaymentHistory(request.user!.id);
     return reply.send(ok(history));
+  });
+
+  // POST /api/v1/payments/ebooks/prepare
+  app.post('/api/v1/payments/ebooks/prepare', { preHandler: [authenticate] }, async (request, reply) => {
+    const body = prepareEbookPaymentSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message },
+      });
+    }
+    const result = await paymentService.prepareEbookPayment(request.user!.id, body.data.ebookId);
+    return reply.code(201).send(created(result, '결제 준비가 완료되었습니다.'));
+  });
+
+  // POST /api/v1/payments/ebooks/confirm
+  app.post('/api/v1/payments/ebooks/confirm', { preHandler: [authenticate] }, async (request, reply) => {
+    const body = confirmEbookPaymentSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message },
+      });
+    }
+    const result = await paymentService.confirmEbookPayment(
+      request.user!.id,
+      body.data.paymentId,
+      body.data.orderId,
+      body.data.amount
+    );
+    return reply.send(ok(result, '결제가 완료되었습니다.'));
   });
 }

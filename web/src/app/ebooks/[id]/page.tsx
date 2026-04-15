@@ -542,7 +542,7 @@ export default function EbookViewerPage() {
                 <p className="text-cc-accent font-bold text-lg">{Number(meta.price).toLocaleString()}원</p>
               )}
               <div className="flex flex-col gap-3">
-                <Button onClick={() => router.push(`/ebooks`)}>
+                <Button onClick={() => router.push(`/checkout/ebook/${meta?.id ?? id}`)}>
                   구매하러 가기
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setShowPaywall(false)}>

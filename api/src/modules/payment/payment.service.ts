@@ -1,6 +1,6 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../../db';
-import { courses, enrollments, payments } from '../../db/schema';
+import { courses, enrollments, payments, ebooks, ebookPurchases } from '../../db/schema';
 import { env } from '../../config/env';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -9,6 +9,12 @@ export interface PreparePaymentResult {
   orderId: string;
   amount: number;
   courseName: string;
+}
+
+export interface PrepareEbookPaymentResult {
+  orderId: string;
+  amount: number;
+  ebookTitle: string;
 }
 
 export interface PaymentHistoryItem {
@@ -29,10 +35,10 @@ function makeError(message: string, code: string, status: number): Error {
   return Object.assign(new Error(message), { code, status });
 }
 
-function generateOrderId(courseId: string): string {
+function generateOrderId(productId: string): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  const shortId = courseId.replace(/-/g, '').substring(0, 8).toUpperCase();
+  const shortId = productId.replace(/-/g, '').substring(0, 8).toUpperCase();
   return `CC-${shortId}-${timestamp}-${random}`;
 }
 
@@ -207,4 +213,128 @@ export async function getPaymentHistory(userId: string): Promise<PaymentHistoryI
     .orderBy(desc(payments.createdAt));
 
   return rows;
+}
+
+// ─── Ebook payment ────────────────────────────────────────────────────────────
+
+export async function prepareEbookPayment(
+  userId: string,
+  ebookId: string
+): Promise<PrepareEbookPaymentResult> {
+  const [ebook] = await db
+    .select({ id: ebooks.id, title: ebooks.title, price: ebooks.price, isFree: ebooks.isFree, isPublished: ebooks.isPublished })
+    .from(ebooks)
+    .where(eq(ebooks.id, ebookId))
+    .limit(1);
+
+  if (!ebook || !ebook.isPublished) {
+    throw makeError('전자책을 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  }
+
+  if (ebook.isFree) {
+    throw makeError('무료 전자책은 결제가 필요하지 않습니다.', 'BAD_REQUEST', 400);
+  }
+
+  const [existing] = await db
+    .select({ id: ebookPurchases.id })
+    .from(ebookPurchases)
+    .where(and(eq(ebookPurchases.userId, userId), eq(ebookPurchases.ebookId, ebookId)))
+    .limit(1);
+
+  if (existing) {
+    throw makeError('이미 구매한 전자책입니다.', 'ALREADY_PURCHASED', 409);
+  }
+
+  const orderId = generateOrderId(ebookId);
+  const amount = Math.round(Number(ebook.price));
+
+  await db.insert(payments).values({
+    userId,
+    productType: 'ebook',
+    productId: ebookId,
+    amount: String(amount),
+    currency: 'KRW',
+    status: 'pending',
+    provider: 'portone',
+    metadata: { orderId },
+  });
+
+  return { orderId, amount, ebookTitle: ebook.title };
+}
+
+export async function confirmEbookPayment(
+  userId: string,
+  paymentId: string,
+  orderId: string,
+  amount: number
+): Promise<{ ebookId: string }> {
+  if (!env.PORTONE_API_SECRET) {
+    throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);
+  }
+
+  const portoneRes = await fetch(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, {
+    method: 'GET',
+    headers: { 'Authorization': `PortOne ${env.PORTONE_API_SECRET}` },
+  });
+
+  if (!portoneRes.ok) {
+    throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
+  }
+
+  const portoneData = await portoneRes.json() as {
+    status: string;
+    amount: { total: number };
+  };
+
+  if (portoneData.status !== 'PAID') {
+    throw makeError('결제가 완료되지 않았습니다.', 'PAYMENT_NOT_PAID', 400);
+  }
+
+  if (portoneData.amount.total !== amount) {
+    throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
+  }
+
+  const allPending = await db
+    .select()
+    .from(payments)
+    .where(
+      and(
+        eq(payments.userId, userId),
+        eq(payments.productType, 'ebook'),
+        eq(payments.status, 'pending'),
+        eq(payments.provider, 'portone')
+      )
+    );
+
+  const pendingPayment = allPending.find((p) => {
+    const meta = p.metadata as { orderId?: string } | null;
+    return meta?.orderId === orderId;
+  });
+
+  if (!pendingPayment) {
+    throw makeError('결제 정보를 찾을 수 없습니다.', 'PAYMENT_NOT_FOUND', 404);
+  }
+
+  const ebookId = pendingPayment.productId;
+
+  await db
+    .update(payments)
+    .set({ status: 'paid', providerPaymentId: paymentId, paidAt: new Date() })
+    .where(eq(payments.id, pendingPayment.id));
+
+  const [existingPurchase] = await db
+    .select({ id: ebookPurchases.id })
+    .from(ebookPurchases)
+    .where(and(eq(ebookPurchases.userId, userId), eq(ebookPurchases.ebookId, ebookId)))
+    .limit(1);
+
+  if (!existingPurchase) {
+    await db.insert(ebookPurchases).values({
+      userId,
+      ebookId,
+      paymentId: pendingPayment.id,
+    });
+  }
+
+  return { ebookId };
 }
