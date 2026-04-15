@@ -23,6 +23,7 @@ export const confirmEbookPaymentSchema = z.object({
 export const prepareExamPaymentSchema = z.object({
   examId: z.string().uuid(),
   name: z.string().optional(),
+  birthdate: z.string().regex(/^\d{8}$/).optional(),
   phone: z.string().optional(),
 });
 

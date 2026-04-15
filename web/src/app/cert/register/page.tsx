@@ -146,7 +146,7 @@ export default function CertRegisterPage() {
     try {
       const prepareRes = await apiClient.post<{ success: boolean; data: PrepareResult }>(
         '/api/v1/payments/exams/prepare',
-        { examId: exam.id, name: name.trim() || undefined, phone: phone.replace(/[^0-9]/g, '') || undefined },
+        { examId: exam.id, name: name.trim() || undefined, birthdate: birthdate.replace(/-/g, '') || undefined, phone: phone.replace(/[^0-9]/g, '') || undefined },
         { token }
       );
       const { orderId, amount, examTitle } = prepareRes.data;

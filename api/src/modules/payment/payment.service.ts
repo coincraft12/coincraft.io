@@ -366,7 +366,8 @@ export async function prepareExamPayment(
   userId: string,
   examId: string,
   phone?: string,
-  name?: string
+  name?: string,
+  birthdate?: string
 ): Promise<PrepareExamPaymentResult> {
   const [exam] = await db
     .select({ id: certExams.id, title: certExams.title, examFee: certExams.examFee, isActive: certExams.isActive })
@@ -393,7 +394,7 @@ export async function prepareExamPayment(
     currency: 'KRW',
     status: 'pending',
     provider: 'portone',
-    metadata: { orderId },
+    metadata: { orderId, applicantName: name?.trim() ?? null, applicantBirthdate: birthdate ?? null },
   });
 
   // 이름/전화번호 제공 시 사용자 레코드에 저장
@@ -434,6 +435,9 @@ export async function confirmExamPayment(
     .where(eq(payments.id, pendingPayment.id));
 
   const examId = pendingPayment.productId;
+  const meta = pendingPayment.metadata as { orderId?: string; applicantName?: string | null; applicantBirthdate?: string | null } | null;
+  const applicantName = meta?.applicantName ?? null;
+  const applicantBirthdate = meta?.applicantBirthdate ?? null;
 
   // 수험번호 생성 + 등록 테이블 저장
   const [[eu], [ex]] = await Promise.all([
@@ -449,17 +453,20 @@ export async function confirmExamPayment(
       examId,
       paymentId: pendingPayment.id,
       registrationNumber,
+      applicantName,
+      applicantBirthdate,
     });
   }
 
   // 알림톡 + 이메일 — 시험 접수 완료
+  const displayName = applicantName ?? eu?.name ?? '';
   const examDateTime = '2026년 5월 2일 (토) 오후 2시';
   const rulesUrl = `${env.FRONTEND_URL}/cert/exam-rules`;
   if (eu?.phone && ex?.title && registrationNumber) {
-    notifyExamRegistration(eu.phone, eu.name, ex.title, examDateTime, registrationNumber, rulesUrl).catch(() => {});
+    notifyExamRegistration(eu.phone, displayName, ex.title, examDateTime, registrationNumber, rulesUrl).catch(() => {});
   }
   if (eu?.email && ex?.title && registrationNumber) {
-    sendExamRegistrationEmail(eu.email, eu.name, ex.title, examDateTime, registrationNumber, rulesUrl).catch(() => {});
+    sendExamRegistrationEmail(eu.email, displayName, ex.title, examDateTime, registrationNumber, rulesUrl).catch(() => {});
   }
 
   return { examId, registrationNumber };
