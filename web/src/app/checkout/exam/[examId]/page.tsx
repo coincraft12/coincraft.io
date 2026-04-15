@@ -13,7 +13,7 @@ interface ExamInfo { id: string; title: string; level: string; description: stri
 
 declare global {
   interface Window {
-    PortOne?: { requestPayment: (p: { storeId: string; channelKey: string; paymentId: string; orderName: string; totalAmount: number; currency: string; payMethod: string; }) => Promise<{ paymentId?: string; code?: string; message?: string }>; };
+    PortOne?: { requestPayment: (p: { storeId: string; channelKey: string; paymentId: string; orderName: string; totalAmount: number; currency: string; payMethod: string; customer?: { fullName?: string; email?: string }; redirectUrl?: string; }) => Promise<{ paymentId?: string; code?: string; message?: string }>; };
   }
 }
 

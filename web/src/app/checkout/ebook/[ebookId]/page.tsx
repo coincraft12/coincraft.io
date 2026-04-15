@@ -33,6 +33,8 @@ declare global {
         totalAmount: number;
         currency: string;
         payMethod: string;
+        customer?: { fullName?: string; email?: string };
+        redirectUrl?: string;
       }) => Promise<{ paymentId?: string; code?: string; message?: string }>;
     };
   }
