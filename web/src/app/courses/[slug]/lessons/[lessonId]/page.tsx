@@ -7,6 +7,7 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import LessonSidebar from '@/components/lms/lesson-sidebar';
+import VideoPlayer from '@/components/lms/video-player';
 
 interface Lesson {
   id: string;
@@ -19,6 +20,7 @@ interface Lesson {
   isPreview: boolean;
   courseId: string;
   chapterId: string;
+  watchedSeconds: number;
 }
 
 interface LessonSimple {
@@ -190,13 +192,12 @@ export default function LessonPage() {
           {/* Video or text content */}
           {lesson.type === 'video' && lesson.embedUrl ? (
             <div className="relative w-full aspect-video bg-black rounded-cc overflow-hidden">
-              <iframe
-                src={lesson.embedUrl}
-                className="absolute inset-0 w-full h-full"
-                allow="autoplay; fullscreen; picture-in-picture"
-                sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
-                allowFullScreen
-                title={lesson.title}
+              <VideoPlayer
+                lessonId={lesson.id}
+                embedUrl={lesson.embedUrl}
+                videoProvider={lesson.videoProvider}
+                initialSeconds={lesson.watchedSeconds}
+                token={token!}
               />
             </div>
           ) : lesson.type === 'text' && lesson.textContent ? (

@@ -16,6 +16,7 @@ export interface LessonDetail {
   isPreview: boolean;
   courseId: string;
   chapterId: string;
+  watchedSeconds: number;
 }
 
 export interface EnrollmentItem {
@@ -31,8 +32,8 @@ export interface EnrollmentItem {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeError(message: string, code: string, status: number): Error {
-  return Object.assign(new Error(message), { code, status });
+function makeError(message: string, code: string, statusCode: number): Error {
+  return Object.assign(new Error(message), { code, statusCode });
 }
 
 // ─── Service functions ────────────────────────────────────────────────────────
@@ -125,6 +126,16 @@ export async function getLessonDetail(lessonId: string, userId?: string): Promis
     }
   }
 
+  let watchedSeconds = 0;
+  if (userId) {
+    const [prog] = await db
+      .select({ watchedSeconds: lessonProgress.watchedSeconds })
+      .from(lessonProgress)
+      .where(and(eq(lessonProgress.userId, userId), eq(lessonProgress.lessonId, lessonId)))
+      .limit(1);
+    watchedSeconds = prog?.watchedSeconds ?? 0;
+  }
+
   return {
     id: lesson.id,
     title: lesson.title,
@@ -136,6 +147,7 @@ export async function getLessonDetail(lessonId: string, userId?: string): Promis
     isPreview: lesson.isPreview,
     courseId: lesson.courseId,
     chapterId: lesson.chapterId,
+    watchedSeconds,
   };
 }
 
