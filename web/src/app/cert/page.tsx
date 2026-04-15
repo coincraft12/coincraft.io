@@ -1,42 +1,49 @@
 import Link from 'next/link';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-import Badge from '@/components/ui/Badge';
 
-export const metadata = { title: '자격 검정 — CoinCraft' };
+export const metadata = { title: 'WEB3 구조 설계자 검정 — CoinCraft' };
 
 const LEVELS = [
   {
     key: 'basic',
     label: 'Basic',
-    variant: 'basic' as const,
-    desc: '블록체인 핵심 개념과 Web3 생태계 기초를 검증합니다.',
-    topics: ['블록체인 원리', '암호화폐 기초', 'DeFi 개요', 'NFT & 토큰 이코노미'],
-    target: '블록체인 입문자 / 투자자',
+    available: true,
+    desc: '중앙화 구조와 분산 신뢰 구조의 차이를 설명하고, 지갑·주소·트랜잭션 등 기본 요소를 이해하여 WEB3 구조를 읽을 수 있다.',
+    eligibility: '응시 자격: 제한 없음',
   },
   {
     key: 'associate',
     label: 'Associate',
-    variant: 'associate' as const,
-    desc: '스마트 컨트랙트, 온체인 분석, DeFi 프로토콜 심화 역량을 검증합니다.',
-    topics: ['스마트 컨트랙트', '온체인 분석', 'DeFi 프로토콜', 'Layer 2 & 브릿지'],
-    target: '개발자 / 애널리스트',
+    available: false,
+    desc: '서비스/프로젝트의 구조를 WEB3 관점에서 해석하고, 사용자 온보딩·자산흐름·권한/책임 구조를 점검하여 위험요소를 식별할 수 있다.',
+    eligibility: '응시 자격: Basic 취득자',
   },
   {
-    key: 'expert',
-    label: 'Expert',
-    variant: 'expert' as const,
-    desc: '블록체인 아키텍처 설계, 보안, 고급 프로토콜 이해를 검증합니다.',
-    topics: ['아키텍처 설계', '보안 & 감사', '거버넌스', 'Cross-chain'],
-    target: '시니어 개발자 / 컨설턴트',
+    key: 'professional',
+    label: 'Professional',
+    available: false,
+    desc: '목표에 맞춰 WEB3 구조를 설계·개선하고, 핵심 리스크를 통제하는 설계안을 제시할 수 있다.',
+    eligibility: '응시 자격: Associate 취득자',
   },
 ];
 
-const BENEFITS = [
-  { icon: '🏆', title: '공식 자격증 발급', desc: '고유 자격증 번호와 공개 검증 링크 제공' },
-  { icon: '🔍', title: '온라인 검증', desc: '누구나 verify 링크로 진위 확인 가능' },
-  { icon: '📈', title: '경력 증빙', desc: 'LinkedIn 등 프로필에 자격증 번호 기재 가능' },
-  { icon: '🎓', title: '3단계 성장 트랙', desc: 'Basic → Associate → Expert 단계적 역량 개발' },
+const INFO_LINKS = [
+  {
+    href: '/cert/apply',
+    title: '검정 신청 안내',
+    desc: '수험료 납부 방법, 신청 폼, 유의사항',
+  },
+  {
+    href: '/cert/policy',
+    title: '자격 관리·운영 규정',
+    desc: '등급 체계, 검정 기준, 합격 기준, 자격증 교부',
+  },
+  {
+    href: '/cert/exam-rules',
+    title: '시험 관리 세부 규정',
+    desc: '부정행위 처리, 이의신청, 환불, 개인정보 보관',
+  },
 ];
 
 export default function CertPage() {
@@ -44,111 +51,135 @@ export default function CertPage() {
     <>
       <Header />
       <main className="min-h-screen bg-cc-primary pt-24 pb-16">
-        <div className="cc-container">
+        <div className="cc-container max-w-2xl">
 
-          {/* Hero */}
-          <div className="mb-16 text-center">
-            <p className="cc-label mb-2">CERTIFICATION</p>
-            <h1 className="text-3xl md:text-5xl font-bold text-cc-text mb-6">
-              CoinCraft 자격 검정
-            </h1>
-            <p className="text-cc-muted max-w-2xl mx-auto text-lg leading-relaxed">
-              블록체인·Web3 전문성을 공식 자격증으로 증명하세요.
-              Basic부터 Expert까지 3단계 트랙으로 역량을 체계적으로 검증합니다.
+          {/* 자격 배지 */}
+          <p className="text-center mb-3">
+            <span className="inline-block bg-[#0a2463] text-white text-xs px-4 py-1 rounded-full tracking-wide">
+              과학기술정보통신부 주무부처 · 정부 등록 민간자격 · 등록번호 2026-002589
+            </span>
+          </p>
+
+          {/* 타이틀 */}
+          <h1 className="text-center text-3xl md:text-4xl font-extrabold text-cc-text mt-4 mb-2">
+            WEB3 구조 설계자 검정
+          </h1>
+          <p className="text-center text-cc-muted mb-5">CoinCraft 주관 | 주식회사 코인크래프트</p>
+          <p className="text-center text-base font-bold text-[#93b4ff] leading-relaxed mb-12">
+            블록체인과 WEB3를 이해하는 수준을 넘어,<br />
+            구조를 읽고 판단할 수 있는 사람을 검증합니다.
+          </p>
+
+          {/* 소개 문구 */}
+          <div className="mb-12 space-y-4 text-sm text-cc-muted leading-relaxed">
+            <p>
+              WEB3 구조 설계자 검정은 지갑, 주소, 트랜잭션, 스마트컨트랙트, 토큰 등 WEB3의 핵심 요소를 단편적으로 아는 수준이 아니라,
+              각 요소가 어떤 구조로 연결되고 어떤 책임과 위험을 만드는지까지 읽어낼 수 있는 역량을 검증하는 자격입니다.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
-              <Link
-                href="/exams"
-                className="px-6 py-3 bg-cc-accent text-[#1a1a2e] font-bold rounded-cc hover:opacity-90 transition-opacity"
+            <p>
+              본 검정은 <strong className="text-cc-text">과학기술정보통신부를 주무부처로 하는 정부 등록 민간자격</strong>으로,
+              단순 암기보다 <strong className="text-cc-text">구조 이해, 해석, 판단 능력</strong>을 중심으로 평가합니다.
+              합격자에게는 등록 민간자격 인증서가 발급되며, 향후 온체인 기반 검증 체계로도 확장될 예정입니다.
+            </p>
+          </div>
+
+          {/* 정부 등록증 이미지 */}
+          <div className="mb-12 text-center">
+            <p className="text-sm font-bold text-cc-text mb-3">정부 등록 민간자격 등록증</p>
+            <a href="https://coincraft.io/wp-content/uploads/2026/04/cert.png" target="_blank" rel="noreferrer">
+              <img
+                src="https://coincraft.io/wp-content/uploads/2026/04/cert.png"
+                alt="WEB3 구조 설계자 민간자격 등록증"
+                className="max-w-full mx-auto rounded-xl border border-white/10 shadow-lg"
+              />
+            </a>
+            <p className="mt-2 text-xs text-cc-muted">주무부처: 과학기술정보통신부 · 등록번호 2026-002589</p>
+          </div>
+
+          {/* 등급 체계 */}
+          <h2 className="text-xl font-bold text-cc-text mb-4">등급 체계</h2>
+          <div className="space-y-3 mb-12">
+            {LEVELS.map((lv) => (
+              <div
+                key={lv.key}
+                className={`border border-white/10 rounded-xl p-5 ${!lv.available ? 'opacity-60' : ''} bg-cc-secondary`}
               >
-                시험 목록 보기
-              </Link>
-              <Link
-                href="/cert/exam-rules"
-                className="px-6 py-3 border border-white/20 text-cc-muted rounded-cc hover:border-cc-accent/40 hover:text-cc-accent transition-colors"
-              >
-                시험 규정 확인
-              </Link>
-            </div>
-          </div>
-
-          {/* Level overview */}
-          <div className="mb-16">
-            <h2 className="text-2xl font-bold text-cc-text mb-8 text-center">3단계 자격 트랙</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {LEVELS.map((lv) => (
-                <div key={lv.key} className="bg-cc-secondary border border-white/10 rounded-cc p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Badge variant={lv.variant}>{lv.label}</Badge>
-                    <span className="text-xs text-cc-muted">{lv.target}</span>
-                  </div>
-                  <p className="text-cc-muted text-sm leading-relaxed">{lv.desc}</p>
-                  <ul className="space-y-1.5">
-                    {lv.topics.map((t) => (
-                      <li key={t} className="flex items-center gap-2 text-sm text-cc-muted">
-                        <span className="text-cc-accent">✓</span> {t}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href="/exams"
-                    className="block w-full text-center px-4 py-2 text-sm border border-white/20 text-cc-muted rounded hover:border-cc-accent/40 hover:text-cc-accent transition-colors"
-                  >
-                    {lv.label} 시험 보기 →
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Benefits */}
-          <div className="mb-16">
-            <h2 className="text-2xl font-bold text-cc-text mb-8 text-center">자격증 혜택</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {BENEFITS.map((b) => (
-                <div key={b.title} className="bg-cc-secondary border border-white/10 rounded-cc p-6 text-center space-y-3">
-                  <div className="text-3xl">{b.icon}</div>
-                  <p className="text-cc-text font-semibold">{b.title}</p>
-                  <p className="text-cc-muted text-sm">{b.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Process */}
-          <div className="mb-16">
-            <h2 className="text-2xl font-bold text-cc-text mb-8 text-center">응시 절차</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-0">
-              {[
-                { step: '01', title: '시험 선택', desc: '레벨에 맞는 시험 선택' },
-                { step: '02', title: '응시권 결제', desc: '유료 시험 응시권 구매' },
-                { step: '03', title: '시험 응시', desc: '온라인 시험 응시 (시간 제한)' },
-                { step: '04', title: '자격증 발급', desc: '합격 즉시 자격증 발급' },
-              ].map((p, i) => (
-                <div key={p.step} className="flex flex-col sm:flex-row items-center">
-                  <div className="flex-1 bg-cc-secondary border border-white/10 rounded-cc p-6 text-center space-y-2">
-                    <p className="text-cc-accent font-mono font-bold text-lg">{p.step}</p>
-                    <p className="text-cc-text font-semibold">{p.title}</p>
-                    <p className="text-cc-muted text-sm">{p.desc}</p>
-                  </div>
-                  {i < 3 && (
-                    <div className="text-cc-muted text-xl px-2 hidden sm:block">→</div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="bg-[#0a2463] text-white text-xs px-3 py-0.5 rounded-full font-bold">
+                    {lv.label}
+                  </span>
+                  {!lv.available && (
+                    <span className="text-xs text-cc-muted">준비 중</span>
                   )}
                 </div>
-              ))}
+                <p className="text-sm text-cc-muted leading-relaxed mb-1">{lv.desc}</p>
+                <p className="text-xs text-cc-muted">{lv.eligibility}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* 현재 진행 중인 검정 */}
+          <h2 className="text-xl font-bold text-cc-text mb-4">현재 진행 중인 검정</h2>
+          <div className="bg-cc-secondary border border-white/10 rounded-xl p-6 mb-12">
+            <p className="text-base font-bold text-cc-text mb-4">Basic 1회차 검정</p>
+            <div className="space-y-2 text-sm">
+              <div className="flex">
+                <span className="w-24 text-cc-muted shrink-0">접수 기간</span>
+                <span className="font-semibold text-cc-text">2026년 4월 14일(월) ~ 4월 20일(일)</span>
+              </div>
+              <div className="flex">
+                <span className="w-24 text-cc-muted shrink-0">시험일</span>
+                <span className="font-semibold text-cc-text">2026년 5월 2일(토) 오후 2시</span>
+              </div>
+              <div className="flex">
+                <span className="w-24 text-cc-muted shrink-0">수험료</span>
+                <span className="font-semibold text-cc-text">30,000원</span>
+              </div>
+            </div>
+            <div className="mt-6 text-center">
+              <Link
+                href="/cert/apply"
+                className="inline-block bg-[#0a2463] text-white text-sm font-bold px-10 py-3.5 rounded-lg hover:opacity-90 transition-opacity"
+              >
+                검정 신청하기
+              </Link>
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="text-center bg-cc-secondary border border-white/10 rounded-cc p-10 space-y-4">
-            <h2 className="text-2xl font-bold text-cc-text">지금 바로 시작하세요</h2>
-            <p className="text-cc-muted">CoinCraft Basic 자격증으로 Web3 커리어를 시작하세요.</p>
-            <Link
-              href="/exams"
-              className="inline-block px-8 py-3.5 bg-cc-accent text-[#1a1a2e] font-bold rounded-cc hover:opacity-90 transition-opacity"
-            >
-              시험 목록 보기 →
-            </Link>
+          {/* 안내 및 규정 링크 */}
+          <h2 className="text-xl font-bold text-cc-text mb-4">안내 및 규정</h2>
+          <div className="space-y-3 mb-12">
+            {INFO_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="block no-underline">
+                <div className="border border-white/10 rounded-xl p-5 flex items-center justify-between bg-cc-secondary hover:border-cc-accent/40 transition-colors">
+                  <div>
+                    <p className="text-sm font-bold text-cc-text mb-0.5">{link.title}</p>
+                    <p className="text-xs text-cc-muted">{link.desc}</p>
+                  </div>
+                  <span className="text-cc-muted text-lg ml-4">›</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* 문의 */}
+          <div className="text-center text-sm text-cc-muted space-y-2">
+            <p>
+              문의:{' '}
+              <a href="mailto:coincraft.edu@gmail.com" className="text-cc-accent hover:underline">
+                coincraft.edu@gmail.com
+              </a>
+            </p>
+            <p>
+              <a
+                href="http://pf.kakao.com/_xhPxdxgn/chat"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block mt-1 bg-[#FEE500] text-[#3A1D1D] text-sm font-bold px-7 py-2.5 rounded-md hover:opacity-90 transition-opacity"
+              >
+                카카오톡 빠른 상담
+              </a>
+            </p>
           </div>
 
         </div>
