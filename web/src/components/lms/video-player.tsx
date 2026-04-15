@@ -4,22 +4,22 @@ import { useEffect, useRef, useCallback } from 'react';
 import Script from 'next/script';
 import { apiClient } from '@/lib/api-client';
 
+interface VimeoPlayerInstance {
+  setCurrentTime(s: number): Promise<void>;
+  getCurrentTime(): Promise<number>;
+  on(event: string, cb: () => void): void;
+}
+
+interface YTPlayerInstance {
+  seekTo(s: number, allow: boolean): void;
+  getCurrentTime(): number;
+  destroy(): void;
+}
+
 declare global {
   interface Window {
-    Vimeo?: {
-      Player: new (el: HTMLIFrameElement) => {
-        setCurrentTime(s: number): Promise<void>;
-        getCurrentTime(): Promise<number>;
-        on(event: string, cb: () => void): void;
-      };
-    };
-    YT?: {
-      Player: new (el: HTMLElement, opts: object) => {
-        seekTo(s: number, allow: boolean): void;
-        getCurrentTime(): number;
-        destroy(): void;
-      };
-    };
+    Vimeo?: { Player: new (el: HTMLIFrameElement) => VimeoPlayerInstance };
+    YT?: { Player: new (el: HTMLElement, opts: object) => YTPlayerInstance };
     onYouTubeIframeAPIReady?: () => void;
   }
 }
@@ -54,7 +54,7 @@ export default function VideoPlayer(props: Props) {
 
 function VimeoPlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const playerRef = useRef<ReturnType<NonNullable<Window['Vimeo']>['Player']> | null>(null);
+  const playerRef = useRef<VimeoPlayerInstance | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
   const saveProgress = useCallback(async () => {
@@ -105,7 +105,7 @@ function VimeoPlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
 
 function YouTubePlayer({ lessonId, embedUrl, initialSeconds, token }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<ReturnType<NonNullable<Window['YT']>['Player']> | null>(null);
+  const playerRef = useRef<YTPlayerInstance | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
   const saveProgress = useCallback(() => {
