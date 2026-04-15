@@ -11,6 +11,7 @@ import {
 } from '../../db/schema';
 import { redis } from '../../lib/redis';
 import type { CreateExamDto, AddQuestionDto } from './cert.schema';
+import { hasExamPayment } from '../payment/payment.service';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ export async function startExam(userId: string, examId: string) {
       isActive: certExams.isActive,
       prerequisiteCourseId: certExams.prerequisiteCourseId,
       timeLimit: certExams.timeLimit,
+      examFee: certExams.examFee,
     })
     .from(certExams)
     .where(eq(certExams.id, examId))
@@ -106,6 +108,14 @@ export async function startExam(userId: string, examId: string) {
 
   if (!exam || !exam.isActive) {
     throw makeError('시험을 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  }
+
+  // Check exam payment (유료 시험인 경우 결제 확인)
+  if (Number(exam.examFee) > 0) {
+    const paid = await hasExamPayment(userId, examId);
+    if (!paid) {
+      throw makeError('시험 응시권이 없습니다. 결제 후 응시해주세요.', 'PAYMENT_REQUIRED', 402);
+    }
   }
 
   // Check prerequisite enrollment
