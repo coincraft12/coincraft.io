@@ -31,12 +31,16 @@ export function notifyExamRegistration(
   phone: string,
   name: string,
   examTitle: string,
-  examDateTime: string   // e.g. "2026년 5월 2일 (토) 오후 2시"
+  examDateTime: string,
+  registrationNumber: string,
+  rulesUrl: string
 ) {
   return sendAlimtalk(phone, TEMPLATES.EXAM, {
     '#{이름}': name,
     '#{시험명}': examTitle,
     '#{시험일시}': examDateTime,
+    '#{수험번호}': registrationNumber,
+    '#{시험규정}': rulesUrl,
   });
 }
 

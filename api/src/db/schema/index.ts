@@ -14,6 +14,7 @@ export * from './blog-posts';
 export * from './cert-exams';
 export * from './exam-questions';
 export * from './exam-attempts';
+export * from './exam-registrations';
 export * from './newsletter';
 export * from './reviews';
 export * from './coupons';

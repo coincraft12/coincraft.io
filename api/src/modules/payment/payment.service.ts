@@ -1,6 +1,7 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../../db';
-import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subscriptions, users } from '../../db/schema';
+import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subscriptions, users, examRegistrations } from '../../db/schema';
+import { redis } from '../../lib/redis';
 import { env } from '../../config/env';
 import { notifyEnroll, notifyExamRegistration, notifyEbookPurchase } from '../../lib/notifications';
 
@@ -82,6 +83,16 @@ async function verifyIamportPayment(impUid: string, expectedAmount: number): Pro
   if (payData.response.amount !== expectedAmount) {
     throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
   }
+}
+
+async function generateRegistrationNumber(level: string): Promise<string> {
+  const levelCode = level.toUpperCase().slice(0, 3); // e.g. BAS
+  const now = new Date();
+  const dateStr = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  const key = `exam:reg:${levelCode}:${dateStr}`;
+  const seq = await redis.incr(key);
+  await redis.expire(key, 7 * 24 * 3600); // 7일 TTL
+  return `${levelCode}-${dateStr}-${String(seq).padStart(4, '0')}`;
 }
 
 function generateOrderId(productId: string): string {
@@ -412,7 +423,7 @@ export async function confirmExamPayment(
   impUid: string,
   orderId: string,
   amount: number
-): Promise<{ examId: string }> {
+): Promise<{ examId: string; registrationNumber: string }> {
   await verifyIamportPayment(impUid, amount);
 
   const allPending = await db.select().from(payments).where(
@@ -432,16 +443,42 @@ export async function confirmExamPayment(
 
   const examId = pendingPayment.productId;
 
-  // 알림톡 — 시험 접수 완료
+  // 수험번호 생성 + 등록 테이블 저장
   const [[eu], [ex]] = await Promise.all([
     db.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, userId)).limit(1),
-    db.select({ title: certExams.title }).from(certExams).where(eq(certExams.id, examId)).limit(1),
+    db.select({ title: certExams.title, level: certExams.level }).from(certExams).where(eq(certExams.id, examId)).limit(1),
   ]);
-  if (eu?.phone && ex?.title) {
-    notifyExamRegistration(eu.phone, eu.name, ex.title, '2026년 5월 2일 (토) 오후 2시').catch(() => {});
+
+  let registrationNumber = '';
+  const existing = await db
+    .select({ registrationNumber: examRegistrations.registrationNumber })
+    .from(examRegistrations)
+    .where(and(eq(examRegistrations.userId, userId), eq(examRegistrations.examId, examId)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    registrationNumber = existing[0].registrationNumber;
+  } else if (ex?.level) {
+    registrationNumber = await generateRegistrationNumber(ex.level);
+    await db.insert(examRegistrations).values({
+      userId,
+      examId,
+      paymentId: pendingPayment.id,
+      registrationNumber,
+    });
   }
 
-  return { examId };
+  // 알림톡 — 시험 접수 완료
+  if (eu?.phone && ex?.title && registrationNumber) {
+    notifyExamRegistration(
+      eu.phone, eu.name, ex.title,
+      '2026년 5월 2일 (토) 오후 2시',
+      registrationNumber,
+      'https://coincraft.io/cert/exam-rules'
+    ).catch(() => {});
+  }
+
+  return { examId, registrationNumber };
 }
 
 // ─── Subscription payment ─────────────────────────────────────────────────────
