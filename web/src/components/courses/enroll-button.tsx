@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth.store';
@@ -25,10 +25,23 @@ export default function EnrollButton({
 }: EnrollButtonProps) {
   const router = useRouter();
   const token = useAuthStore((s) => s.accessToken);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
+  const [enrolled, setEnrolled] = useState(isEnrolled);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (isEnrolled) {
+  // 서버 컴포넌트는 토큰 없이 fetch하므로 클라이언트에서 수강 여부 재확인
+  useEffect(() => {
+    if (isAuthLoading || !token || enrolled) return;
+    apiClient.get<{ success: boolean; data: { isEnrolled: boolean } }>(
+      `/api/v1/courses/${courseSlug}`,
+      { token }
+    ).then((res) => {
+      if (res.data.isEnrolled) setEnrolled(true);
+    }).catch(() => {});
+  }, [token, isAuthLoading, courseSlug, enrolled]);
+
+  if (enrolled) {
     const href = firstLessonId
       ? `/courses/${courseSlug}/lessons/${firstLessonId}`
       : `/courses/${courseSlug}`;

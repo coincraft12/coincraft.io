@@ -50,8 +50,8 @@ export interface PaymentHistoryItem {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeError(message: string, code: string, status: number): Error {
-  return Object.assign(new Error(message), { code, status });
+function makeError(message: string, code: string, statusCode: number): Error {
+  return Object.assign(new Error(message), { code, statusCode });
 }
 
 async function verifyIamportPayment(impUid: string, expectedAmount: number): Promise<void> {

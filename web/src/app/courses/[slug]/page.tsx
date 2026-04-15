@@ -145,7 +145,7 @@ export default async function CourseDetailPage({
                   <CurriculumAccordion
                     chapters={course.chapters}
                     courseSlug={course.slug}
-                    isEnrolled={false}
+                    isEnrolled={course.isEnrolled}
                   />
                 </div>
               )}
@@ -179,7 +179,7 @@ export default async function CourseDetailPage({
                   courseId={course.id}
                   isFree={course.isFree}
                   price={Number(course.price).toLocaleString()}
-                  isEnrolled={false}
+                  isEnrolled={course.isEnrolled}
                   firstLessonId={firstLessonId}
                   courseSlug={course.slug}
                 />
