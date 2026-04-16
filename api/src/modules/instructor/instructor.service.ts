@@ -4,9 +4,12 @@ import {
   courses,
   chapters,
   lessons,
+  lessonProgress,
   enrollments,
   payments,
   users,
+  courseReviews,
+  wishlists,
 } from '../../db/schema';
 import { generateSlug } from '../../utils/slug';
 import type {
@@ -34,6 +37,7 @@ export interface InstructorCourse {
   thumbnailUrl: string | null;
   level: string;
   category: string | null;
+  originalPrice: string | null;
   price: string;
   isFree: boolean;
   isPublished: boolean;
@@ -55,6 +59,7 @@ export async function getInstructorCourses(instructorId: string): Promise<Instru
       thumbnailUrl: courses.thumbnailUrl,
       level: courses.level,
       category: courses.category,
+      originalPrice: courses.originalPrice,
       price: courses.price,
       isFree: courses.isFree,
       isPublished: courses.isPublished,
@@ -80,6 +85,7 @@ export async function getInstructorCourses(instructorId: string): Promise<Instru
     thumbnailUrl: r.thumbnailUrl ?? null,
     level: r.level,
     category: r.category ?? null,
+    originalPrice: r.originalPrice ?? null,
     price: r.price,
     isFree: r.isFree,
     isPublished: r.isPublished,
@@ -116,6 +122,7 @@ export async function createCourse(instructorId: string, input: CreateCourseInpu
       thumbnailUrl: input.thumbnailUrl ?? undefined,
       level: input.level,
       category: input.category ?? undefined,
+      originalPrice: input.originalPrice != null ? String(input.originalPrice) : undefined,
       price: String(input.price),
       isFree: input.isFree,
       instructorId,
@@ -130,6 +137,7 @@ export async function createCourse(instructorId: string, input: CreateCourseInpu
     thumbnailUrl: created.thumbnailUrl ?? null,
     level: created.level,
     category: created.category ?? null,
+    originalPrice: created.originalPrice ?? null,
     price: created.price,
     isFree: created.isFree,
     isPublished: created.isPublished,
@@ -177,6 +185,7 @@ export async function updateCourse(
   if (input.thumbnailUrl !== undefined) updateData.thumbnailUrl = input.thumbnailUrl;
   if (input.level !== undefined) updateData.level = input.level;
   if (input.category !== undefined) updateData.category = input.category;
+  if (input.originalPrice !== undefined) updateData.originalPrice = input.originalPrice != null ? String(input.originalPrice) : null;
   if (input.price !== undefined) updateData.price = String(input.price);
   if (input.isFree !== undefined) updateData.isFree = input.isFree;
   if (input.isPublished !== undefined) updateData.isPublished = input.isPublished;
@@ -200,6 +209,7 @@ export async function updateCourse(
     thumbnailUrl: updated.thumbnailUrl ?? null,
     level: updated.level,
     category: updated.category ?? null,
+    originalPrice: updated.originalPrice ?? null,
     price: updated.price,
     isFree: updated.isFree,
     isPublished: updated.isPublished,
@@ -307,6 +317,38 @@ export async function updateChapter(
     createdAt: updated.createdAt,
     lessons: [],
   };
+}
+
+export async function deleteChapter(instructorId: string, chapterId: string): Promise<void> {
+  const [chapter] = await db
+    .select({ id: chapters.id, courseId: chapters.courseId })
+    .from(chapters)
+    .where(eq(chapters.id, chapterId))
+    .limit(1);
+
+  if (!chapter) throw makeError('챕터를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+
+  const [course] = await db
+    .select({ id: courses.id, instructorId: courses.instructorId })
+    .from(courses)
+    .where(eq(courses.id, chapter.courseId))
+    .limit(1);
+
+  if (!course || course.instructorId !== instructorId) {
+    throw makeError('접근 권한이 없습니다.', 'FORBIDDEN', 403);
+  }
+
+  // lesson_progress → lessons → chapter 순으로 삭제 (FK 제약)
+  const chapterLessons = await db
+    .select({ id: lessons.id })
+    .from(lessons)
+    .where(eq(lessons.chapterId, chapterId));
+  if (chapterLessons.length > 0) {
+    const lessonIds = chapterLessons.map((l) => l.id);
+    await db.delete(lessonProgress).where(inArray(lessonProgress.lessonId, lessonIds));
+    await db.delete(lessons).where(inArray(lessons.id, lessonIds));
+  }
+  await db.delete(chapters).where(eq(chapters.id, chapterId));
 }
 
 // ─── Lesson ───────────────────────────────────────────────────────────────────
@@ -419,7 +461,20 @@ export async function updateLesson(
     throw makeError('접근 권한이 없습니다.', 'FORBIDDEN', 403);
   }
 
+  // chapterId 변경 시 대상 챕터가 같은 강좌 소속인지 검증
+  if (input.chapterId !== undefined && input.chapterId !== lesson.chapterId) {
+    const [targetChapter] = await db
+      .select({ id: chapters.id, courseId: chapters.courseId })
+      .from(chapters)
+      .where(eq(chapters.id, input.chapterId))
+      .limit(1);
+    if (!targetChapter || targetChapter.courseId !== lesson.courseId) {
+      throw makeError('대상 챕터를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+    }
+  }
+
   const updateData: Partial<typeof lessons.$inferInsert> = {};
+  if (input.chapterId !== undefined) updateData.chapterId = input.chapterId;
   if (input.title !== undefined) updateData.title = input.title;
   if (input.type !== undefined) updateData.type = input.type;
   if (input.videoProvider !== undefined) updateData.videoProvider = input.videoProvider ?? undefined;
@@ -460,6 +515,38 @@ export async function updateLesson(
     order: updated.order,
     createdAt: updated.createdAt,
   };
+}
+
+export async function deleteLesson(instructorId: string, lessonId: string): Promise<void> {
+  const [lesson] = await db
+    .select({ id: lessons.id, courseId: lessons.courseId })
+    .from(lessons)
+    .where(eq(lessons.id, lessonId))
+    .limit(1);
+
+  if (!lesson) throw makeError('레슨을 찾을 수 없습니다.', 'NOT_FOUND', 404);
+
+  const [course] = await db
+    .select({ id: courses.id, instructorId: courses.instructorId })
+    .from(courses)
+    .where(eq(courses.id, lesson.courseId))
+    .limit(1);
+
+  if (!course || course.instructorId !== instructorId) {
+    throw makeError('접근 권한이 없습니다.', 'FORBIDDEN', 403);
+  }
+
+  await db.delete(lessonProgress).where(eq(lessonProgress.lessonId, lessonId));
+  await db.delete(lessons).where(eq(lessons.id, lessonId));
+
+  await db
+    .update(courses)
+    .set({
+      totalLessons: sql`(SELECT COUNT(*)::int FROM lessons WHERE course_id = ${lesson.courseId} AND is_published = true)`,
+      totalDuration: sql`(SELECT COALESCE(SUM(duration), 0)::int FROM lessons WHERE course_id = ${lesson.courseId} AND is_published = true)`,
+      updatedAt: new Date(),
+    })
+    .where(eq(courses.id, lesson.courseId));
 }
 
 // ─── Students ─────────────────────────────────────────────────────────────────
@@ -642,6 +729,144 @@ export async function getLessonForEdit(instructorId: string, lessonId: string): 
   };
 }
 
+// ─── Delete Course ────────────────────────────────────────────────────────────
+
+export async function deleteCourse(instructorId: string, courseId: string): Promise<void> {
+  const [course] = await db
+    .select({ id: courses.id, instructorId: courses.instructorId })
+    .from(courses)
+    .where(eq(courses.id, courseId))
+    .limit(1);
+
+  if (!course) throw makeError('강좌를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  if (course.instructorId !== instructorId) throw makeError('접근 권한이 없습니다.', 'FORBIDDEN', 403);
+
+  const [{ activeCount }] = await db
+    .select({ activeCount: sql<number>`count(*)::int` })
+    .from(enrollments)
+    .where(and(eq(enrollments.courseId, courseId), eq(enrollments.status, 'active')));
+
+  if (activeCount > 0) {
+    throw makeError(
+      `수강생(${activeCount}명)이 있어 삭제할 수 없습니다. 수강생이 없는 강좌만 삭제할 수 있습니다.`,
+      'CONFLICT',
+      409
+    );
+  }
+
+  // FK 순서: lessonProgress → lessons → chapters → courseReviews → wishlists → enrollments → courses
+  await db.transaction(async (tx) => {
+    await tx.delete(lessonProgress).where(eq(lessonProgress.courseId, courseId));
+    await tx.delete(lessons).where(eq(lessons.courseId, courseId));
+    await tx.delete(chapters).where(eq(chapters.courseId, courseId));
+    await tx.delete(courseReviews).where(eq(courseReviews.courseId, courseId));
+    await tx.delete(wishlists).where(eq(wishlists.courseId, courseId));
+    await tx.delete(enrollments).where(eq(enrollments.courseId, courseId));
+    await tx.delete(courses).where(eq(courses.id, courseId));
+  });
+}
+
+// ─── Duplicate Course ─────────────────────────────────────────────────────────
+
+export async function duplicateCourse(instructorId: string, courseId: string): Promise<InstructorCourse> {
+  const [course] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
+  if (!course) throw makeError('강좌를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  if (course.instructorId !== instructorId) throw makeError('접근 권한이 없습니다.', 'FORBIDDEN', 403);
+
+  // 고유 슬러그 생성 (최대 20회 시도 후 timestamp suffix)
+  const MAX_SLUG_ATTEMPTS = 20;
+  let newSlug = `${course.slug}-copy`;
+  let attempt = 1;
+  while (attempt <= MAX_SLUG_ATTEMPTS) {
+    const [existing] = await db.select({ id: courses.id }).from(courses).where(eq(courses.slug, newSlug)).limit(1);
+    if (!existing) break;
+    attempt++;
+    if (attempt > MAX_SLUG_ATTEMPTS) {
+      newSlug = `${course.slug}-copy-${Date.now()}`;
+      break;
+    }
+    newSlug = `${course.slug}-copy-${attempt}`;
+  }
+
+  const newCourseId = await db.transaction(async (tx) => {
+    const [newCourse] = await tx.insert(courses).values({
+      slug: newSlug,
+      title: `[복사] ${course.title}`,
+      description: course.description ?? undefined,
+      shortDescription: course.shortDescription ?? undefined,
+      thumbnailUrl: course.thumbnailUrl ?? undefined,
+      level: course.level,
+      category: course.category ?? undefined,
+      originalPrice: course.originalPrice ?? undefined,
+      price: course.price,
+      isFree: course.isFree,
+      isPublished: false,
+      instructorId,
+    }).returning({ id: courses.id });
+
+    const chapterRows = await tx.select().from(chapters).where(eq(chapters.courseId, courseId)).orderBy(chapters.order);
+    const lessonRows = await tx.select().from(lessons).where(eq(lessons.courseId, courseId)).orderBy(lessons.order);
+
+    for (const chapter of chapterRows) {
+      const [newChapter] = await tx.insert(chapters).values({
+        courseId: newCourse.id,
+        title: chapter.title,
+        description: chapter.description ?? undefined,
+        order: chapter.order,
+        isPublished: chapter.isPublished,
+      }).returning({ id: chapters.id });
+
+      const chapterLessons = lessonRows.filter((l) => l.chapterId === chapter.id);
+      for (const lesson of chapterLessons) {
+        await tx.insert(lessons).values({
+          chapterId: newChapter.id,
+          courseId: newCourse.id,
+          title: lesson.title,
+          type: lesson.type,
+          videoProvider: lesson.videoProvider ?? undefined,
+          videoUrl: lesson.videoUrl ?? undefined,
+          duration: lesson.duration ?? undefined,
+          isPreview: lesson.isPreview,
+          isPublished: lesson.isPublished,
+          textContent: lesson.textContent ?? undefined,
+          order: lesson.order,
+        });
+      }
+    }
+
+    // totalLessons / totalDuration 갱신
+    await tx.update(courses).set({
+      totalLessons: sql`(SELECT COUNT(*)::int FROM lessons WHERE course_id = ${newCourse.id} AND is_published = true)`,
+      totalDuration: sql`(SELECT COALESCE(SUM(duration), 0)::int FROM lessons WHERE course_id = ${newCourse.id} AND is_published = true)`,
+    }).where(eq(courses.id, newCourse.id));
+
+    return newCourse.id;
+  });
+
+  // UPDATE 반영된 실제 값을 DB에서 재조회
+  const [updated] = await db.select().from(courses).where(eq(courses.id, newCourseId)).limit(1);
+
+  return {
+    id: updated.id,
+    slug: updated.slug,
+    title: updated.title,
+    shortDescription: updated.shortDescription ?? null,
+    thumbnailUrl: updated.thumbnailUrl ?? null,
+    level: updated.level,
+    category: updated.category ?? null,
+    originalPrice: updated.originalPrice ?? null,
+    price: updated.price,
+    isFree: updated.isFree,
+    isPublished: updated.isPublished,
+    totalLessons: updated.totalLessons,
+    totalDuration: updated.totalDuration,
+    averageRating: updated.averageRating ?? null,
+    reviewCount: updated.reviewCount,
+    enrollmentCount: 0,
+    createdAt: updated.createdAt,
+  };
+}
+
 // ─── Course detail with chapters/lessons tree ─────────────────────────────────
 
 export interface CourseDetailWithTree extends InstructorCourse {
@@ -714,6 +939,7 @@ export async function getCourseDetail(
     thumbnailUrl: course.thumbnailUrl ?? null,
     level: course.level,
     category: course.category ?? null,
+    originalPrice: course.originalPrice ?? null,
     price: course.price,
     isFree: course.isFree,
     isPublished: course.isPublished,

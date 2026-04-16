@@ -43,21 +43,22 @@ function getLevelLabel(level: string): string {
 }
 
 // 레벨별 출제 과목
-const SUBJECT_MAP: Record<string, { code: string; name: string }[]> = {
+const SUBJECT_MAP: Record<string, { code: string; name: string; count: string; topics: string }[]> = {
   basic: [
-    { code: '01', name: '블록체인 기초 구조' },
-    { code: '02', name: '암호화 기술 및 지갑' },
-    { code: '03', name: '스마트컨트랙트 개요' },
-    { code: '04', name: 'DeFi · NFT · 토큰 이코노미' },
-    { code: '05', name: 'WEB3 인프라 및 생태계' },
+    {
+      code: '01',
+      name: '분산 신뢰 구조의 이해',
+      count: '15문항',
+      topics: '중앙화 신뢰 구조 / 단일 기록 구조 / 권한 집중 구조 / 분산 신뢰 3층 구조 / 블록체인 기본 정의',
+    },
+    {
+      code: '02',
+      name: 'WEB3 기초 구조의 이해',
+      count: '25문항',
+      topics: '키 기반 소유권 / 트랜잭션 구조 / 지갑 / 주소 / 트랜잭션 결과 / 가스 / 스마트컨트랙트 / 토큰 / 기본 시나리오 구조 해석 / 기본 위험요소 분류 / 기본 점검 체크리스트',
+    },
   ],
-  associate: [
-    { code: '01', name: '온체인 데이터 분석' },
-    { code: '02', name: '스마트컨트랙트 설계' },
-    { code: '03', name: 'Layer 2 & 크로스체인' },
-    { code: '04', name: 'DeFi 프로토콜 아키텍처' },
-    { code: '05', name: 'WEB3 보안 및 감사' },
-  ],
+  associate: [],
 };
 
 // 시험 일정 (DB에 없으므로 레벨별 하드코드, 추후 DB 이관)
@@ -112,6 +113,14 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
                   <span className="text-sm font-semibold text-cc-text">{value}</span>
                 </div>
               ))}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-cc-muted">검정료</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-cc-muted line-through">60,000원</span>
+                  <span className="text-sm font-semibold text-cc-accent">30,000원</span>
+                  <span className="text-xs text-red-400 font-bold">1회차 파일럿 특가</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -119,13 +128,19 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
           {subjects.length > 0 && (
             <div className="bg-cc-secondary border border-white/10 rounded-xl p-6">
               <h2 className="text-sm font-bold text-cc-text mb-4">출제 과목</h2>
-              <div className="space-y-2">
+              <div className="space-y-4">
                 {subjects.map((s) => (
-                  <div key={s.code} className="flex items-center gap-3 text-sm">
-                    <span className="w-6 h-6 rounded-full bg-cc-accent/10 text-cc-accent text-xs font-bold flex items-center justify-center shrink-0">
+                  <div key={s.code} className="flex gap-3 text-sm">
+                    <span className="w-6 h-6 rounded-full bg-cc-accent/10 text-cc-accent text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                       {s.code}
                     </span>
-                    <span className="text-cc-text">{s.name}</span>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-cc-text font-semibold">과목 {s.code} · {s.name}</span>
+                        <span className="text-xs text-cc-muted">({s.count})</span>
+                      </div>
+                      <p className="text-xs text-cc-muted leading-relaxed">{s.topics}</p>
+                    </div>
                   </div>
                 ))}
               </div>

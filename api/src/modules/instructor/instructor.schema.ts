@@ -8,9 +8,13 @@ export const createCourseSchema = z.object({
   thumbnailUrl: z.string().min(1).optional(),
   level: z.enum(['beginner', 'intermediate', 'advanced']).default('beginner'),
   category: z.string().max(50).optional(),
+  originalPrice: z.coerce.number().min(0).optional(),
   price: z.coerce.number().min(0).default(0),
   isFree: z.boolean().default(false),
-});
+}).refine(
+  (d) => !d.originalPrice || d.originalPrice === 0 || d.price <= d.originalPrice,
+  { message: '판매가는 정가보다 클 수 없습니다.', path: ['price'] }
+);
 
 export const updateCourseSchema = z.object({
   title: z.string().min(1).max(300).optional(),
@@ -20,10 +24,17 @@ export const updateCourseSchema = z.object({
   thumbnailUrl: z.string().min(1).optional().nullable(),
   level: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
   category: z.string().max(50).optional().nullable(),
+  originalPrice: z.coerce.number().min(0).optional().nullable(),
   price: z.coerce.number().min(0).optional(),
   isFree: z.boolean().optional(),
   isPublished: z.boolean().optional(),
-});
+}).refine(
+  (d) => {
+    if (d.price == null || !d.originalPrice || d.originalPrice === 0) return true;
+    return d.price <= d.originalPrice;
+  },
+  { message: '판매가는 정가보다 클 수 없습니다.', path: ['price'] }
+);
 
 export const createChapterSchema = z.object({
   title: z.string().min(1).max(300),
@@ -54,6 +65,7 @@ export const updateLessonSchema = z.object({
   isPublished: z.boolean().optional(),
   textContent: z.string().optional().nullable(),
   order: z.coerce.number().int().min(0).optional(),
+  chapterId: z.string().uuid().optional(),
 });
 
 export const updateChapterSchema = z.object({

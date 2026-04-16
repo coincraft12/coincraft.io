@@ -17,7 +17,7 @@ export default function Footer() {
 
           {/* 1열: 로고 */}
           <div className="flex items-start justify-center md:justify-start">
-            <Image src="/logo-footer-v3.png" alt="COINCRAFT" width={220} height={220} className="w-56 object-contain" />
+            <Image src="/logo-footer-v4.png" alt="COINCRAFT" width={220} height={220} className="w-56 object-contain" />
           </div>
 
           {/* 2열: 연락처 */}
@@ -111,7 +111,7 @@ export default function Footer() {
 
       {/* 사업자 정보 */}
       <div className="border-t border-white/10 py-6 px-6">
-        <div className="max-w-cc mx-auto text-xs text-[#878787] leading-relaxed text-center md:text-left space-y-1">
+        <div className="max-w-cc mx-auto text-xs text-[#878787] leading-relaxed text-center space-y-1">
           <p>
             (주)코인크래프트 | 대표자: 김응준 | 사업자등록번호: 573-86-03834 &nbsp;
             [<a href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=5738603834" target="_blank" rel="noopener noreferrer" className="underline hover:text-cc-muted transition-colors">사업자 정보 확인</a>]

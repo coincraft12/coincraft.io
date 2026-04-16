@@ -5,6 +5,7 @@ import Footer from '@/components/ui/Footer';
 import CurriculumWithProgress from '@/components/courses/curriculum-with-progress';
 import EnrollButton from '@/components/courses/enroll-button';
 import MarkdownContent from '@/components/ui/MarkdownContent';
+import InstructorCard from '@/components/courses/instructor-card';
 
 export const revalidate = 300;
 
@@ -41,7 +42,7 @@ interface CourseDetail {
   totalDuration: number;
   averageRating: string | null;
   reviewCount: number;
-  instructor: { id: string; name: string; avatarUrl: string | null } | null;
+  instructor: { id: string; name: string; avatarUrl: string | null; bio: string | null; specialties: string[] | null; photoUrl: string | null } | null;
   isEnrolled: boolean;
   chapters: Chapter[];
 }
@@ -104,9 +105,6 @@ export default async function CourseDetailPage({
             <div className="lg:col-span-2 space-y-8">
               {/* Title & meta */}
               <div>
-                {course.category && (
-                  <p className="cc-label mb-2">{course.category.toUpperCase()}</p>
-                )}
                 <h1 className="text-3xl md:text-4xl font-bold text-cc-text mb-3">{course.title}</h1>
                 {course.shortDescription && (
                   <p className="text-cc-muted text-lg leading-relaxed">{course.shortDescription}</p>
@@ -115,18 +113,15 @@ export default async function CourseDetailPage({
 
               {/* Instructor */}
               {course.instructor && (
-                <div className="flex items-center gap-3">
-                  {course.instructor.avatarUrl && (
-                    <img
-                      src={course.instructor.avatarUrl}
-                      alt={course.instructor.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  )}
-                  <div>
-                    <p className="text-xs text-cc-muted">강사</p>
-                    <p className="text-cc-text font-semibold">{course.instructor.name}</p>
-                  </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-bold text-cc-text">강사 소개</h2>
+                  <InstructorCard
+                    name={course.instructor.name}
+                    avatarUrl={course.instructor.avatarUrl}
+                    photoUrl={course.instructor.photoUrl}
+                    bio={course.instructor.bio}
+                    specialties={course.instructor.specialties}
+                  />
                 </div>
               )}
 

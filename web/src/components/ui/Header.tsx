@@ -8,14 +8,7 @@ import { apiClient } from '@/lib/api-client'
 const BASE_NAV = [
   { label: 'HOME', href: '/' },
   { label: 'ABOUT', href: '/about' },
-  {
-    label: '전체 강좌',
-    href: '/courses',
-    children: [
-      { label: 'Web3', href: '/courses?category=web3' },
-      { label: '온체인 데이터 분석', href: '/courses?category=onchain' },
-    ],
-  },
+  { label: '전체 강좌', href: '/courses' },
   {
     label: '검정',
     href: '/cert',
@@ -31,6 +24,14 @@ const BASE_NAV = [
     children: [
       { label: '전자책', href: '/ebooks' },
       { label: '종이책 (준비중)', href: '/shop', disabled: true },
+    ],
+  },
+  {
+    label: '강사',
+    href: '/instructors',
+    children: [
+      { label: '강사진 소개', href: '/instructors' },
+      { label: '강사 등록 신청', href: '/instructors/apply' },
     ],
   },
 ]
@@ -83,7 +84,7 @@ export default function Header() {
       <div className="max-w-cc mx-auto px-6 flex items-center justify-between h-16">
         {/* Logo */}
         <a href="/" className="flex items-center h-10">
-          <Image src="/logo-header-v2.png" alt="COINCRAFT" width={160} height={40} className="h-10 w-auto object-contain" />
+          <Image src="/logo-header-v4.png" alt="COINCRAFT" width={160} height={40} className="h-10 w-auto object-contain" />
         </a>
 
         {/* Desktop nav */}

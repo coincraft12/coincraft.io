@@ -87,7 +87,8 @@ export default function EnrollButton({
       setError(null);
       try {
         await apiClient.post(`/api/v1/courses/${courseId}/enroll`, undefined, { token });
-        router.refresh();
+        setEnrolled(true);
+        setContinueLessonId(firstLessonId);
       } catch (err) {
         if (err instanceof ApiError) {
           setError(err.message);

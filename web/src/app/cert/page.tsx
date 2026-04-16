@@ -133,7 +133,11 @@ export default function CertPage() {
               </div>
               <div className="flex">
                 <span className="w-24 text-cc-muted shrink-0">수험료</span>
-                <span className="font-semibold text-cc-text">30,000원</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-cc-muted line-through text-sm">60,000원</span>
+                  <span className="font-semibold text-cc-accent">30,000원</span>
+                  <span className="text-xs font-bold text-red-400">50%</span>
+                </div>
               </div>
             </div>
             <div className="mt-6 text-center">

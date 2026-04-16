@@ -11,6 +11,7 @@ export const courses = pgTable('courses', {
   level: varchar('level', { length: 20 }).notNull().default('beginner'),
   category: varchar('category', { length: 50 }),
   price: numeric('price', { precision: 10, scale: 2 }).notNull().default('0'),
+  originalPrice: numeric('original_price', { precision: 10, scale: 2 }),
   isFree: boolean('is_free').notNull().default(false),
   isPublished: boolean('is_published').notNull().default(false),
   instructorId: uuid('instructor_id').references(() => users.id),

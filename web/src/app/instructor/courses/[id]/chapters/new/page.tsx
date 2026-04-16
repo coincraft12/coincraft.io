@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { revalidateCourse } from '@/lib/revalidate';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
@@ -29,6 +30,13 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
     isPublished: false,
   });
   const [formError, setFormError] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+  const { confirmLeave } = useUnsavedChanges(isDirty);
+
+  function markDirty(updater: Partial<typeof form>) {
+    setForm((prev) => ({ ...prev, ...updater }));
+    setIsDirty(true);
+  }
 
   const mutation = useMutation({
     mutationFn: async (body: CreateChapterBody) => {
@@ -39,6 +47,7 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
       );
     },
     onSuccess: () => {
+      setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: ['instructor-course', courseId] });
       revalidateCourse();
       router.push(`/instructor/courses/${courseId}`);
@@ -77,7 +86,7 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
           label="챕터 제목 *"
           placeholder="예: 1장. 블록체인 기초"
           value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          onChange={(e) => markDirty({ title: e.target.value })}
         />
 
         <div className="flex flex-col gap-1.5">
@@ -87,7 +96,7 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
             className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm focus:outline-none focus:border-cc-accent transition-colors resize-none"
             placeholder="챕터에 대한 간단한 설명"
             value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            onChange={(e) => markDirty({ description: e.target.value })}
           />
         </div>
 
@@ -96,7 +105,7 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
             type="checkbox"
             className="w-4 h-4 accent-cc-accent"
             checked={form.isPublished}
-            onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
+            onChange={(e) => markDirty({ isPublished: e.target.checked })}
           />
           <span className="text-sm text-cc-text">즉시 공개</span>
         </label>
@@ -107,7 +116,7 @@ export default function NewChapterPage({ params }: { params: Promise<{ id: strin
           <Button type="submit" loading={mutation.isPending}>
             챕터 추가
           </Button>
-          <Button type="button" variant="ghost" onClick={() => router.back()}>
+          <Button type="button" variant="ghost" onClick={() => confirmLeave(() => router.back())}>
             취소
           </Button>
         </div>

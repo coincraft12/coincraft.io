@@ -22,3 +22,4 @@ export * from './coupon-usages';
 export * from './wishlists';
 export * from './subscriptions';
 export * from './blog';
+export * from './vimeo-bulk-uploads';

@@ -13,8 +13,11 @@ import paymentPlugin from './modules/payment';
 import ebookPlugin from './modules/ebook';
 import certificatesPlugin from './modules/certificates';
 import instructorPlugin from './modules/instructor';
+import instructorsPublicPlugin from './modules/instructors';
+import adminPlugin from './modules/admin';
 import blogPlugin from './modules/blog';
 import { uploadRoutes, UPLOADS_DIR } from './modules/upload/upload.routes';
+import { registerPdfDeliveryJob } from './jobs/pdf-delivery';
 
 export async function buildApp() {
   const app = Fastify({
@@ -41,8 +44,13 @@ export async function buildApp() {
   await app.register(ebookPlugin);
   await app.register(certificatesPlugin);
   await app.register(instructorPlugin);
+  await app.register(instructorsPublicPlugin);
+  await app.register(adminPlugin);
   await app.register(blogPlugin);
   await app.register(uploadRoutes, { prefix: '/api/v1/instructor/upload' });
+
+  // 스케줄러 등록
+  registerPdfDeliveryJob();
 
   return app;
 }

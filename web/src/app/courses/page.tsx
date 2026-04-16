@@ -24,6 +24,7 @@ interface Course {
   level: string;
   category: string | null;
   price: string;
+  originalPrice: string | null;
   isFree: boolean;
   totalLessons: number;
   totalDuration: number;

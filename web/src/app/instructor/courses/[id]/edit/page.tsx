@@ -2,6 +2,7 @@
 
 import { useState, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -19,6 +20,7 @@ interface CourseEditForm {
   description: string;
   level: 'beginner' | 'intermediate' | 'advanced';
   category: string;
+  originalPrice: number;
   price: number;
   isFree: boolean;
   isPublished: boolean;
@@ -35,6 +37,7 @@ interface CourseResponse {
     description: string | null;
     level: string;
     category: string | null;
+    originalPrice: string | null;
     price: string;
     isFree: boolean;
     isPublished: boolean;
@@ -55,12 +58,15 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     description: '',
     level: 'beginner',
     category: '',
+    originalPrice: 0,
     price: 0,
     isFree: false,
     isPublished: false,
     thumbnailUrl: '',
   });
   const [formError, setFormError] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+  const { confirmLeave } = useUnsavedChanges(isDirty);
 
   const { data: courseData, isLoading } = useQuery({
     queryKey: ['instructor-course-edit', id],
@@ -73,22 +79,37 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     enabled: !!token && !!id,
   });
 
+  // courseData 로드 후 form 초기화 — 이 시점엔 dirty가 아님
+  // 이후 사용자가 수정하면 dirty로 변경 (아래 별도 effect)
+  const [initialForm, setInitialForm] = useState<CourseEditForm | null>(null);
+
   useEffect(() => {
     if (courseData) {
-      setForm({
+      const loaded: CourseEditForm = {
         title: courseData.title,
         slug: courseData.slug,
         shortDescription: courseData.shortDescription ?? '',
         description: courseData.description ?? '',
         level: (courseData.level as CourseEditForm['level']) ?? 'beginner',
         category: courseData.category ?? '',
+        originalPrice: Number(courseData.originalPrice ?? 0),
         price: Number(courseData.price),
         isFree: courseData.isFree,
         isPublished: courseData.isPublished,
         thumbnailUrl: courseData.thumbnailUrl ?? '',
-      });
+      };
+      setForm(loaded);
+      setInitialForm(loaded);
+      setIsDirty(false);
     }
   }, [courseData]);
+
+  useEffect(() => {
+    if (initialForm) {
+      setIsDirty(JSON.stringify(form) !== JSON.stringify(initialForm));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
 
   const mutation = useMutation({
     mutationFn: async (body: Partial<CourseEditForm>) => {
@@ -97,6 +118,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       });
     },
     onSuccess: () => {
+      setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: ['instructor-course', id] });
       queryClient.invalidateQueries({ queryKey: ['instructor-courses'] });
       revalidateCourse(form.slug);
@@ -118,6 +140,10 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       setFormError('강좌 제목을 입력해 주세요.');
       return;
     }
+    if (!form.isFree && form.originalPrice > 0 && form.price > form.originalPrice) {
+      setFormError('판매가는 정가보다 클 수 없습니다.');
+      return;
+    }
     mutation.mutate({
       title: form.title.trim(),
       slug: form.slug.trim() || undefined,
@@ -126,6 +152,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       level: form.level,
       category: form.category.trim() || undefined,
       price: form.isFree ? 0 : form.price,
+      originalPrice: form.isFree ? 0 : form.originalPrice,
       isFree: form.isFree,
       isPublished: form.isPublished,
       thumbnailUrl: form.thumbnailUrl.trim() || undefined,
@@ -145,6 +172,17 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
       <div>
         <p className="cc-label mb-1">INSTRUCTOR</p>
         <h1 className="text-3xl font-bold text-cc-text">강좌 수정</h1>
+      </div>
+
+      <div className="bg-cc-accent/10 border border-cc-accent/30 rounded-cc px-4 py-3 flex items-center justify-between">
+        <p className="text-sm text-cc-muted">챕터·레슨 편집은 커리큘럼 관리 페이지에서 할 수 있습니다.</p>
+        <button
+          type="button"
+          onClick={() => router.push(`/instructor/courses/${id}`)}
+          className="text-sm text-cc-accent hover:underline ml-4 whitespace-nowrap"
+        >
+          커리큘럼 관리 →
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 bg-cc-secondary border border-white/10 rounded-cc p-6">
@@ -196,42 +234,47 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
               <option value="advanced">고급</option>
             </select>
           </div>
-          <Input
-            label="카테고리"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="가격 (원)"
+            label="정가 (원)"
+            type="number"
+            min={0}
+            value={form.originalPrice}
+            onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
+            onFocus={(e) => e.target.select()}
+            disabled={form.isFree}
+          />
+          <Input
+            label="판매가 (원)"
             type="number"
             min={0}
             value={form.price}
             onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+            onFocus={(e) => e.target.select()}
             disabled={form.isFree}
           />
-          <div className="flex flex-col gap-3 justify-end">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-4 h-4 accent-cc-accent"
-                checked={form.isFree}
-                onChange={(e) => setForm({ ...form, isFree: e.target.checked, price: e.target.checked ? 0 : form.price })}
-              />
-              <span className="text-sm text-cc-text">무료 강좌</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-4 h-4 accent-cc-accent"
-                checked={form.isPublished}
-                onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
-              />
-              <span className="text-sm text-cc-text">공개</span>
-            </label>
-          </div>
+        </div>
+        <div className="flex gap-6">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-cc-accent"
+              checked={form.isFree}
+              onChange={(e) => setForm({ ...form, isFree: e.target.checked, price: e.target.checked ? 0 : form.price, originalPrice: e.target.checked ? 0 : form.originalPrice })}
+            />
+            <span className="text-sm text-cc-text">무료 강좌</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-cc-accent"
+              checked={form.isPublished}
+              onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
+            />
+            <span className="text-sm text-cc-text">공개</span>
+          </label>
         </div>
 
         {formError && <p className="text-sm text-red-400">{formError}</p>}
@@ -240,7 +283,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
           <Button type="submit" loading={mutation.isPending}>
             저장
           </Button>
-          <Button type="button" variant="ghost" onClick={() => router.back()}>
+          <Button type="button" variant="ghost" onClick={() => confirmLeave(() => router.back())}>
             취소
           </Button>
         </div>

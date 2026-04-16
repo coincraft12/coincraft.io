@@ -1,6 +1,6 @@
 import { eq, and, ilike, sql, desc, asc } from 'drizzle-orm';
 import { db } from '../../db';
-import { courses, chapters, lessons, enrollments, users } from '../../db/schema';
+import { courses, chapters, lessons, enrollments, users, instructors } from '../../db/schema';
 import type { CoursesQuery } from './courses.schema';
 
 export interface CourseListItem {
@@ -12,12 +12,13 @@ export interface CourseListItem {
   level: string;
   category: string | null;
   price: string;
+  originalPrice: string | null;
   isFree: boolean;
   totalLessons: number;
   totalDuration: number;
   averageRating: string | null;
   reviewCount: number;
-  instructor: { id: string; name: string; avatarUrl: string | null } | null;
+  instructor: { id: string; name: string; avatarUrl: string | null; bio: string | null; specialties: string[] | null; photoUrl: string | null } | null;
 }
 
 export interface CourseDetail extends CourseListItem {
@@ -76,6 +77,7 @@ export async function listCourses(query: CoursesQuery, userId?: string): Promise
       level: courses.level,
       category: courses.category,
       price: courses.price,
+      originalPrice: courses.originalPrice,
       isFree: courses.isFree,
       totalLessons: courses.totalLessons,
       totalDuration: courses.totalDuration,
@@ -101,13 +103,14 @@ export async function listCourses(query: CoursesQuery, userId?: string): Promise
     level: r.level,
     category: r.category,
     price: r.price,
+    originalPrice: r.originalPrice ?? null,
     isFree: r.isFree,
     totalLessons: r.totalLessons,
     totalDuration: r.totalDuration,
     averageRating: r.averageRating,
     reviewCount: r.reviewCount,
     instructor: r.instructorId
-      ? { id: r.instructorId, name: r.instructorName ?? '', avatarUrl: r.instructorAvatar ?? null }
+      ? { id: r.instructorId, name: r.instructorName ?? '', avatarUrl: r.instructorAvatar ?? null, bio: null, specialties: null, photoUrl: null }
       : null,
   }));
 
@@ -136,6 +139,7 @@ export async function getCourseBySlug(slug: string, userId?: string): Promise<Co
       level: courses.level,
       category: courses.category,
       price: courses.price,
+      originalPrice: courses.originalPrice,
       isFree: courses.isFree,
       totalLessons: courses.totalLessons,
       totalDuration: courses.totalDuration,
@@ -144,9 +148,13 @@ export async function getCourseBySlug(slug: string, userId?: string): Promise<Co
       instructorId: courses.instructorId,
       instructorName: users.name,
       instructorAvatar: users.avatarUrl,
+      instructorBio: instructors.bio,
+      instructorSpecialties: instructors.specialties,
+      instructorPhotoUrl: instructors.photoUrl,
     })
     .from(courses)
     .leftJoin(users, eq(courses.instructorId, users.id))
+    .leftJoin(instructors, eq(courses.instructorId, instructors.userId))
     .where(and(eq(courses.slug, slug), eq(courses.isPublished, true)))
     .limit(1);
 
@@ -210,13 +218,21 @@ export async function getCourseBySlug(slug: string, userId?: string): Promise<Co
     level: course.level,
     category: course.category,
     price: course.price,
+    originalPrice: course.originalPrice ?? null,
     isFree: course.isFree,
     totalLessons: course.totalLessons,
     totalDuration: course.totalDuration,
     averageRating: course.averageRating,
     reviewCount: course.reviewCount,
     instructor: course.instructorId
-      ? { id: course.instructorId, name: course.instructorName ?? '', avatarUrl: course.instructorAvatar ?? null }
+      ? {
+          id: course.instructorId,
+          name: course.instructorName ?? '',
+          avatarUrl: course.instructorAvatar ?? null,
+          bio: course.instructorBio ?? null,
+          specialties: course.instructorSpecialties ?? null,
+          photoUrl: course.instructorPhotoUrl ?? null,
+        }
       : null,
     isEnrolled,
     chapters: chaptersWithLessons,

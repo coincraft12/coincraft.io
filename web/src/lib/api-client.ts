@@ -70,7 +70,7 @@ async function request<T>(path: string, options: ApiOptions = {}, _isRetry = fal
   const { token, ...init } = options;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     ...(init.headers as Record<string, string>),
   };
 

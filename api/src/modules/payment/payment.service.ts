@@ -231,6 +231,18 @@ export async function confirmPayment(
   if (u?.phone) notifyEnroll(u.phone, u.name, course.title).catch(() => {});
   if (u?.email) sendEnrollEmail(u.email, u.name, course.title).catch(() => {});
 
+  // 관리자 알림
+  import('../../lib/admin-notify').then(({ sendAdminNotification }) => {
+    sendAdminNotification(
+      '결제 완료',
+      `<p>강좌 결제가 완료되었습니다.</p>
+       <p>수강생: ${u?.name ?? userId} (${u?.email ?? ''})</p>
+       <p>강좌: ${course.title}</p>
+       <p>금액: ₩${amount.toLocaleString()}</p>
+       <p>주문번호: ${orderId}</p>`
+    ).catch(() => {});
+  }).catch(() => {});
+
   return { courseId: course.id, courseSlug: course.slug };
 }
 
@@ -481,6 +493,18 @@ export async function confirmExamPayment(
   if (eu?.email && ex?.title && registrationNumber) {
     sendExamRegistrationEmail(eu.email, displayName, ex.title, examDateTime, registrationNumber, rulesUrl).catch(() => {});
   }
+
+  // 관리자 알림
+  import('../../lib/admin-notify').then(({ sendAdminNotification }) => {
+    sendAdminNotification(
+      '시험 접수 완료',
+      `<p>시험 접수가 완료되었습니다.</p>
+       <p>수험자: ${displayName} (${eu?.email ?? ''})</p>
+       <p>시험: ${ex?.title ?? examId}</p>
+       <p>수험번호: ${registrationNumber}</p>
+       <p>금액: ₩${amount.toLocaleString()}</p>`
+    ).catch(() => {});
+  }).catch(() => {});
 
   return { examId, registrationNumber };
 }

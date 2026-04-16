@@ -90,7 +90,8 @@ export default function ThumbnailUploader({
       const formData = new FormData();
       formData.append('image', blob, 'thumbnail.jpg');
 
-      const res = await fetch('/api/v1/instructor/upload/image', {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
+      const res = await fetch(`${apiBase}/api/v1/instructor/upload/image`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
 import Button from '@/components/ui/Button';
@@ -76,6 +77,7 @@ export default function LessonPage() {
 
   const token = useAuthStore((s) => s.accessToken);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const queryClient = useQueryClient();
 
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [course, setCourse] = useState<CourseData | null>(null);
@@ -133,6 +135,7 @@ export default function LessonPage() {
     try {
       await apiClient.post(`/api/v1/lessons/${lesson.id}/complete`, undefined, { token });
       setProgress((prev) => ({ ...prev, [lesson.id]: true }));
+      queryClient.invalidateQueries({ queryKey: ['my-enrollments'] });
 
       // Navigate to next lesson
       if (course) {

@@ -6,8 +6,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { revalidateCourse } from '@/lib/revalidate';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import VimeoUploader from '@/components/ui/VimeoUploader';
 
 interface CreateLessonBody {
   title: string;
@@ -51,7 +53,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
   const [form, setForm] = useState<CreateLessonBody>({
     title: '',
     type: 'video',
-    videoProvider: 'youtube',
+    videoProvider: 'vimeo',
     videoUrl: '',
     duration: 0,
     isPreview: false,
@@ -61,6 +63,13 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
   });
   const [videoDuration, setVideoDuration] = useState(0);
   const [formError, setFormError] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+  const { confirmLeave } = useUnsavedChanges(isDirty);
+
+  function markDirty(updater: Partial<typeof form>) {
+    setForm((prev) => ({ ...prev, ...updater }));
+    setIsDirty(true);
+  }
 
   const mutation = useMutation({
     mutationFn: async (body: CreateLessonBody) => {
@@ -72,6 +81,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
       return res.data;
     },
     onSuccess: () => {
+      setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: ['instructor-course', courseId] });
       revalidateCourse();
       router.push(`/instructor/courses/${courseId}`);
@@ -118,58 +128,66 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
           label="레슨 제목 *"
           placeholder="예: 스마트 컨트랙트 개요"
           value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          onChange={(e) => markDirty({ title: e.target.value })}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-cc-text">레슨 타입</label>
-            <select
-              className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text text-sm focus:outline-none focus:border-cc-accent transition-colors"
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as CreateLessonBody['type'] })}
-            >
-              <option value="video">영상</option>
-              <option value="text">텍스트</option>
-              <option value="quiz">퀴즈</option>
-            </select>
-          </div>
-
-          <Input
-            label="순서"
-            type="number"
-            min={0}
-            value={form.order}
-            onChange={(e) => setForm({ ...form, order: Number(e.target.value) })}
-          />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-cc-text">레슨 타입</label>
+          <select
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text text-sm focus:outline-none focus:border-cc-accent transition-colors"
+            value={form.type}
+            onChange={(e) => markDirty({ type: e.target.value as CreateLessonBody['type'] })}
+          >
+            <option value="video" className="text-black bg-white">영상</option>
+            <option value="text" className="text-black bg-white">텍스트</option>
+            <option value="quiz" className="text-black bg-white">퀴즈</option>
+          </select>
         </div>
 
         {form.type === 'video' && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-cc-text">비디오 제공사</label>
+              <label className="text-sm font-medium text-cc-text">영상 등록 방식</label>
               <select
                 className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text text-sm focus:outline-none focus:border-cc-accent transition-colors"
                 value={form.videoProvider}
                 onChange={(e) =>
-                  setForm({ ...form, videoProvider: e.target.value as CreateLessonBody['videoProvider'] })
+                  markDirty({ videoProvider: e.target.value as CreateLessonBody['videoProvider'] })
                 }
               >
-                <option value="youtube">YouTube</option>
-                <option value="vimeo">Vimeo</option>
+                <option value="vimeo" className="text-black bg-white">영상 업로드</option>
+                <option value="youtube" className="text-black bg-white">YouTube URL</option>
               </select>
             </div>
 
-            <Input
-              label="비디오 URL"
-              placeholder="예: https://youtu.be/xxxxx"
-              value={form.videoUrl}
-              onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-              onBlur={async (e) => {
-                const duration = await fetchVimeoDuration(e.target.value);
-                setVideoDuration(duration);
-              }}
-            />
+            {form.videoProvider === 'vimeo' ? (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-cc-text">영상 파일</label>
+                <VimeoUploader
+                  token={token ?? ''}
+                  courseId={courseId}
+                  onComplete={async (url) => {
+                    markDirty({ videoUrl: url });
+                    const duration = await fetchVimeoDuration(url);
+                    if (duration > 0) setVideoDuration(duration);
+                  }}
+                />
+                {form.videoUrl && (
+                  <p className="text-xs text-cc-muted break-all">업로드 완료: {form.videoUrl}</p>
+                )}
+              </div>
+            ) : (
+              <Input
+                label="YouTube URL"
+                placeholder="예: https://youtu.be/xxxxx"
+                value={form.videoUrl}
+                onChange={(e) => markDirty({ videoUrl: e.target.value })}
+                onBlur={async (e) => {
+                  const duration = await fetchVimeoDuration(e.target.value);
+                  setVideoDuration(duration);
+                }}
+              />
+            )}
           </>
         )}
 
@@ -181,7 +199,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
               className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm focus:outline-none focus:border-cc-accent transition-colors resize-none"
               placeholder="레슨 내용을 입력해 주세요."
               value={form.textContent}
-              onChange={(e) => setForm({ ...form, textContent: e.target.value })}
+              onChange={(e) => markDirty({ textContent: e.target.value })}
             />
           </div>
         )}
@@ -192,7 +210,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
               type="checkbox"
               className="w-4 h-4 accent-cc-accent"
               checked={form.isPreview}
-              onChange={(e) => setForm({ ...form, isPreview: e.target.checked })}
+              onChange={(e) => markDirty({ isPreview: e.target.checked })}
             />
             <span className="text-sm text-cc-text">미리보기 허용</span>
           </label>
@@ -201,7 +219,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
               type="checkbox"
               className="w-4 h-4 accent-cc-accent"
               checked={form.isPublished}
-              onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
+              onChange={(e) => markDirty({ isPublished: e.target.checked })}
             />
             <span className="text-sm text-cc-text">즉시 공개</span>
           </label>
@@ -213,7 +231,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
           <Button type="submit" loading={mutation.isPending}>
             레슨 추가
           </Button>
-          <Button type="button" variant="ghost" onClick={() => router.back()}>
+          <Button type="button" variant="ghost" onClick={() => confirmLeave(() => router.back())}>
             취소
           </Button>
         </div>

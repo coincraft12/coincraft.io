@@ -7,8 +7,12 @@ export class VimeoProvider implements VideoProvider {
   }
 
   getEmbedUrl(idOrUrl: string): string {
-    const id = this.extractId(idOrUrl) ?? idOrUrl;
-    return `https://player.vimeo.com/video/${id}?badge=0&autopause=0&player_id=0&app_id=58479`;
+    // unlisted 영상: https://vimeo.com/123456/abcdef → ?h=abcdef 포함 필요
+    const match = idOrUrl.match(/vimeo\.com\/(\d+)(?:\/([a-f0-9]+))?/);
+    const id = match?.[1] ?? idOrUrl;
+    const hash = match?.[2];
+    const base = `https://player.vimeo.com/video/${id}?badge=0&autopause=0&player_id=0&app_id=58479`;
+    return hash ? `${base}&h=${hash}` : base;
   }
 
   async getMetadata(id: string): Promise<VideoMetadata> {

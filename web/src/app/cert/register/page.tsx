@@ -53,7 +53,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 const EXAM_SCHEDULE = [
   { label: '시험일', value: '2026년 5월 2일 (토) 오후 2시' },
   { label: '접수 기간', value: '4월 14일(월) ~ 4월 20일(일)' },
-  { label: '응시료', value: '30,000원' },
+  { label: '응시료', value: null },
   { label: '시험 방식', value: '온라인 · 객관식 40문항 · 60분' },
   { label: '합격 기준', value: '100점 만점 · 70점 이상' },
 ];
@@ -259,7 +259,15 @@ export default function CertRegisterPage() {
                 {EXAM_SCHEDULE.map(({ label, value }) => (
                   <div key={label} className="flex text-sm">
                     <span className="w-28 text-cc-muted shrink-0">{label}</span>
-                    <span className="font-semibold text-cc-text">{value}</span>
+                    {value === null ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-cc-muted line-through">60,000원</span>
+                        <span className="font-semibold text-cc-accent">30,000원</span>
+                        <span className="text-xs font-bold text-red-400">50%</span>
+                      </div>
+                    ) : (
+                      <span className="font-semibold text-cc-text">{value}</span>
+                    )}
                   </div>
                 ))}
               </div>

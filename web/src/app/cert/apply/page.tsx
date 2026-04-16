@@ -7,7 +7,7 @@ export const metadata = { title: '검정 신청 — CoinCraft' };
 const SCHEDULE = [
   { label: '시험일', value: '2026년 5월 2일 (토)' },
   { label: '접수 기간', value: '4월 14일(월) ~ 4월 20일(일)' },
-  { label: '수험료', value: '30,000원' },
+  { label: '수험료', value: null },
   { label: '응시 자격', value: '제한 없음' },
   { label: '합격 기준', value: '100점 만점 · 70점 이상' },
   { label: '시험 방식', value: '온라인 · 객관식 40문항 · 60분' },
@@ -64,7 +64,15 @@ export default function CertApplyPage() {
               {SCHEDULE.map(({ label, value }) => (
                 <div key={label} className="flex text-sm">
                   <span className="w-28 text-cc-muted shrink-0">{label}</span>
-                  <span className="font-semibold text-cc-text">{value}</span>
+                  {value === null ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-cc-muted line-through">60,000원</span>
+                      <span className="font-semibold text-cc-accent">30,000원</span>
+                      <span className="text-xs font-bold text-red-400">50%</span>
+                    </div>
+                  ) : (
+                    <span className="font-semibold text-cc-text">{value}</span>
+                  )}
                 </div>
               ))}
             </div>

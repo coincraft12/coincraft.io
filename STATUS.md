@@ -138,7 +138,53 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 **시드 데이터:**
 - Basic 레벨 블록체인 기초 시험 5문항 (api/src/db/seed-exam.ts)
 
+## 2026-04-17 작업 내역
+
+**강사 포털 기능 추가 (스테이징 배포 완료):**
+- 강좌 삭제/복제 버튼: `/instructor/courses/[id]` 헤더 + `/instructor` 대시보드 강좌별 현황 테이블
+  - 삭제: cascade (lessonProgress → lessons → chapters → courseReviews → wishlists → enrollments → course), 활성 수강생 있으면 차단
+  - 복제: title "[복사]" 접두사, slug "-copy" 접미사, isPublished: false
+  - `/instructor/courses/[id]` 삭제 → `/instructor` 이동, 복제 → `/instructor/courses/[new-id]` 이동
+  - `/instructor` 삭제/복제 → 그 자리 유지 (invalidateQueries로 즉시 목록 갱신)
+- 강좌 삭제 후 목록 미반영 버그 수정: `router.refresh()` → `queryClient.invalidateQueries` 교체
+
+**브랜딩 — 헤더/푸터 로고 교체 (스테이징 배포 완료):**
+- 헤더 로고: `헤더_로고7.png` → `logo-header-v4.png`
+- 푸터 로고: `푸터_로고3.png` → `logo-footer-v4.png`
+- 푸터 사업자 정보 텍스트 가운데 정렬 적용
+
+**배포 스크립트 개선 (`web/deploy-staging.sh`):**
+- `.next/dev`, `.next/cache` 제외 (tar 파일 변경 오류 방지)
+- `public/` 폴더 tar.gz 동기화 추가 (이미지 누락 방지)
+- `.next/standalone/server.js` 배포 추가 (next.config.ts 변경사항 스테이징에 즉시 반영)
+- `next.config.ts`에 `imageSizes: [32,48,64,96,128,160,220,256,384]` 추가
+
+**버그 수정 기록 (CLAUDE.md 추가):**
+- `output: standalone` 빌드에서 `next.config.ts` 변경이 스테이징에 미반영되는 원인: config가 `server.js`에 하드코딩됨 → 매 배포 시 `server.js`도 교체해야 함
+
+**캐시 무효화 전수 감사 + 수정 (스테이징 배포 완료):**
+- 강좌 삭제 후 `/courses` ISR 캐시 즉시 무효화 — `cache-revalidate` 엔드포인트 호출 추가 (instructor/page.tsx, instructor/courses/[id]/page.tsx)
+- 레슨 완료 시 `['my-enrollments']` React Query 캐시 무효화 → `/my/courses` 진도율 즉시 반영
+- 무료 수강 신청 후 `router.refresh()` → `setEnrolled(true)` 직접 전환 (버튼 즉시 "이어서 학습")
+- 레슨 수정 저장 후 `['instructor-course', courseId]` 무효화 → 강좌 상세 목록 즉시 반영
+
+**강좌 카테고리 전면 제거 (배포 대기):**
+- Header: "전체 강좌" 서브메뉴(Web3, 온체인 데이터 분석) 제거 → 단일 링크
+- `/courses/[slug]`: 강좌 상세 카테고리 라벨 제거
+- 강좌 생성/수정 폼: 카테고리 입력 필드 제거
+
 ## 2026-04-16 작업 내역
+
+**기능 추가 — 로컬 구현 완료 (배포 대기):**
+- 정가/판매가/할인율 분리 표시: `CourseCard` + `original_price` 컬럼 마이그레이션
+- 강사 페이지: `/instructors` (카드 그리드) + `/instructors/apply` (신청 폼)
+- 헤더 "강사" 메뉴 추가 (강사진 소개 + 강사 등록 신청)
+- 관리자 메일 알림: `lib/admin-notify.ts` (SMTP) — 결제/시험접수/강사신청 트리거
+- **관리자 무료 입과**: `POST /api/v1/admin/enroll` + `/admin/enroll` 페이지 (이메일 → 강좌 무료 등록)
+- PDF 자동 발송 스케줄러: `jobs/pdf-delivery.ts` (node-cron, 매일 09:00 KST)
+- 마이그레이션: `0004_original_price_instructors_exams.sql` (미실행)
+- `.env.example`: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, ADMIN_EMAIL 추가
+- ⚠️ 배포 전: `cd api && npm install` (node-cron) + `npm run migrate` + .env SMTP 변수 설정 필요
 
 **검정 접수 시스템 고도화 (스테이징 배포 완료):**
 - 레슨 영상 페이지 X 닫기 버튼 추가
@@ -176,11 +222,12 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 - 전자책 미리보기 제한: 비구매 시 20페이지까지만 열람, 이후 결제 유도
 
 ## 홈페이지 개선 요청 (Sharon)
-1. 정가/판매가 분리 표시 — 정가 + 판매가 + 할인율 함께 표시
-2. 1회 신청자 대상 PDF 자동 발송 — 정해진 날짜에 자동화
-3. 강사 페이지 — 프로필/경력/사진 등
-4. 강사 등록 버튼 추가 — 메인 메뉴, 심사 후 등록 방식
-5. 관리자 메일 알림 — 결제/변경 등 모든 이벤트 → `coincraft.edu@gmail.com` 발송
+1. ✅ 정가/판매가 분리 표시 — 구현 완료 (배포 대기)
+2. ✅ 1회 신청자 대상 PDF 자동 발송 — 구현 완료 (배포 대기)
+3. ✅ 강사 페이지 — 구현 완료 (배포 대기)
+4. ✅ 강사 등록 버튼 추가 — 구현 완료 (배포 대기)
+5. ✅ 관리자 메일 알림 — 구현 완료 (배포 대기, SMTP .env 설정 필요)
+6. ✅ 관리자 무료 입과 — 구현 완료 (배포 대기)
 
 ## 다음 작업 (Phase 5 — 모바일 앱 또는 강사 포털)
 Phase 5~8 중 우선순위 결정 필요:

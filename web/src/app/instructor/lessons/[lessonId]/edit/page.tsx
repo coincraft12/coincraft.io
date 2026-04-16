@@ -2,13 +2,15 @@
 
 import { useState, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { revalidateCourse } from '@/lib/revalidate';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import VimeoUploader from '@/components/ui/VimeoUploader';
 
 interface LessonEditForm {
   title: string;
@@ -54,15 +56,18 @@ interface LessonDetailResponse {
   };
 }
 
+// ─── 메인 페이지 ──────────────────────────────────────────────────────────────
+
 export default function EditLessonPage({ params }: { params: Promise<{ lessonId: string }> }) {
   const { lessonId } = use(params);
   const router = useRouter();
   const token = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState<LessonEditForm>({
     title: '',
     type: 'video',
-    videoProvider: 'youtube',
+    videoProvider: 'vimeo',
     videoUrl: '',
     duration: 0,
     isPreview: false,
@@ -73,11 +78,17 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
   const [videoDuration, setVideoDuration] = useState(0);
   const [formError, setFormError] = useState('');
   const [courseId, setCourseId] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+  const { confirmLeave } = useUnsavedChanges(isDirty);
+
+  function markDirty(updater: Partial<typeof form>) {
+    setForm((prev) => ({ ...prev, ...updater }));
+    setIsDirty(true);
+  }
 
   const { data: lessonData, isLoading } = useQuery({
     queryKey: ['instructor-lesson-edit', lessonId],
     queryFn: async () => {
-      // Use the LMS lesson detail endpoint (instructor access)
       const res = await apiClient.get<LessonDetailResponse>(
         `/api/v1/instructor/lessons/${lessonId}`,
         { token: token ?? undefined }
@@ -112,6 +123,10 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
       });
     },
     onSuccess: () => {
+      setIsDirty(false);
+      if (courseId) {
+        queryClient.invalidateQueries({ queryKey: ['instructor-course', courseId] });
+      }
       revalidateCourse();
       if (courseId) {
         router.push(`/instructor/courses/${courseId}`);
@@ -167,55 +182,63 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
         <Input
           label="레슨 제목 *"
           value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          onChange={(e) => markDirty({ title: e.target.value })}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-cc-text">레슨 타입</label>
-            <select
-              className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text text-sm focus:outline-none focus:border-cc-accent transition-colors"
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as LessonEditForm['type'] })}
-            >
-              <option value="video">영상</option>
-              <option value="text">텍스트</option>
-              <option value="quiz">퀴즈</option>
-            </select>
-          </div>
-          <Input
-            label="순서"
-            type="number"
-            min={0}
-            value={form.order}
-            onChange={(e) => setForm({ ...form, order: Number(e.target.value) })}
-          />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-cc-text">레슨 타입</label>
+          <select
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text text-sm focus:outline-none focus:border-cc-accent transition-colors"
+            value={form.type}
+            onChange={(e) => markDirty({ type: e.target.value as LessonEditForm['type'] })}
+          >
+            <option value="video" className="text-black bg-white">영상</option>
+            <option value="text" className="text-black bg-white">텍스트</option>
+            <option value="quiz" className="text-black bg-white">퀴즈</option>
+          </select>
         </div>
 
         {form.type === 'video' && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-cc-text">비디오 제공사</label>
+              <label className="text-sm font-medium text-cc-text">영상 등록 방식</label>
               <select
                 className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text text-sm focus:outline-none focus:border-cc-accent transition-colors"
                 value={form.videoProvider}
                 onChange={(e) =>
-                  setForm({ ...form, videoProvider: e.target.value as LessonEditForm['videoProvider'] })
+                  markDirty({ videoProvider: e.target.value as LessonEditForm['videoProvider'] })
                 }
               >
-                <option value="youtube">YouTube</option>
-                <option value="vimeo">Vimeo</option>
+                <option value="vimeo" className="text-black bg-white">영상 업로드</option>
+                <option value="youtube" className="text-black bg-white">YouTube URL</option>
               </select>
             </div>
-            <Input
-              label="비디오 URL"
-              value={form.videoUrl}
-              onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
-              onBlur={async (e) => {
-                const duration = await fetchVimeoDuration(e.target.value);
-                setVideoDuration(duration);
-              }}
-            />
+
+            {form.videoProvider === 'vimeo' ? (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-cc-text">영상 파일</label>
+                <VimeoUploader
+                  token={token ?? ''}
+                  courseId={courseId}
+                  existingUrl={form.videoUrl || undefined}
+                  onComplete={async (url) => {
+                    markDirty({ videoUrl: url });
+                    const duration = await fetchVimeoDuration(url);
+                    if (duration > 0) setVideoDuration(duration);
+                  }}
+                />
+                {form.videoUrl && (
+                  <p className="text-xs text-cc-muted break-all">업로드 완료: {form.videoUrl}</p>
+                )}
+              </div>
+            ) : (
+              <Input
+                label="YouTube URL"
+                placeholder="예: https://youtu.be/xxxxx"
+                value={form.videoUrl}
+                onChange={(e) => markDirty({ videoUrl: e.target.value })}
+              />
+            )}
           </>
         )}
 
@@ -226,7 +249,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
               rows={8}
               className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm focus:outline-none focus:border-cc-accent transition-colors resize-none"
               value={form.textContent}
-              onChange={(e) => setForm({ ...form, textContent: e.target.value })}
+              onChange={(e) => markDirty({ textContent: e.target.value })}
             />
           </div>
         )}
@@ -237,7 +260,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
               type="checkbox"
               className="w-4 h-4 accent-cc-accent"
               checked={form.isPreview}
-              onChange={(e) => setForm({ ...form, isPreview: e.target.checked })}
+              onChange={(e) => markDirty({ isPreview: e.target.checked })}
             />
             <span className="text-sm text-cc-text">미리보기 허용</span>
           </label>
@@ -246,7 +269,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
               type="checkbox"
               className="w-4 h-4 accent-cc-accent"
               checked={form.isPublished}
-              onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
+              onChange={(e) => markDirty({ isPublished: e.target.checked })}
             />
             <span className="text-sm text-cc-text">공개</span>
           </label>
@@ -258,7 +281,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
           <Button type="submit" loading={mutation.isPending}>
             저장
           </Button>
-          <Button type="button" variant="ghost" onClick={() => router.back()}>
+          <Button type="button" variant="ghost" onClick={() => confirmLeave(() => router.back())}>
             취소
           </Button>
         </div>

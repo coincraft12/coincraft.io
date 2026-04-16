@@ -5,7 +5,7 @@ import { sendAlimtalk } from './solapi';
 const TEMPLATES = {
   JOIN:        'KA01TP260413132405301c2z6CPmwdq6', // 회원가입 완료
   ENROLL:      'KA01TP260413133446910SurHgZTHEsB', // 수강신청 완료
-  EXAM:        'KA01TP260413133351273AgZjZMgnlMj', // 시험 접수 완료
+  EXAM:        'KA01TP260415124239346m8LhqysOnyn', // 시험 접수 완료
   EXAM_RESULT: 'KA01TP260413133233410gkaKx8nBRPm', // 합격/불합격 통보
   CERT:        'KA01TP260413133146159R6CY4X0UrHW', // 인증서 발급
   COUPON:      'KA01TP260413133053995drYa51MAIzM', // 쿠폰 발급

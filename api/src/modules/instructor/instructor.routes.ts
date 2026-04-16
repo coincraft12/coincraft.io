@@ -77,6 +77,13 @@ export async function instructorRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ success: true, data: result });
   });
 
+  // DELETE /api/v1/instructor/chapters/:chapterId — 챕터 삭제
+  app.delete('/chapters/:chapterId', { preHandler }, async (request, reply) => {
+    const { chapterId } = request.params as { chapterId: string };
+    await instructorService.deleteChapter(request.user!.id, chapterId);
+    return reply.send({ success: true, message: '챕터가 삭제되었습니다.' });
+  });
+
   // POST /api/v1/instructor/chapters/:id/lessons — 레슨 추가
   app.post('/chapters/:id/lessons', { preHandler }, async (request, reply) => {
     const { id } = request.params as { id: string };
@@ -110,6 +117,27 @@ export async function instructorRoutes(app: FastifyInstance): Promise<void> {
     }
     const lesson = await instructorService.updateLesson(request.user!.id, id, body.data);
     return reply.send(ok(lesson));
+  });
+
+  // DELETE /api/v1/instructor/lessons/:id — 레슨 삭제
+  app.delete('/lessons/:id', { preHandler }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    await instructorService.deleteLesson(request.user!.id, id);
+    return reply.send({ success: true, message: '레슨이 삭제되었습니다.' });
+  });
+
+  // DELETE /api/v1/instructor/courses/:id — 강좌 삭제
+  app.delete('/courses/:id', { preHandler }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    await instructorService.deleteCourse(request.user!.id, id);
+    return reply.send({ success: true, message: '강좌가 삭제되었습니다.' });
+  });
+
+  // POST /api/v1/instructor/courses/:id/duplicate — 강좌 복제
+  app.post('/courses/:id/duplicate', { preHandler }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const course = await instructorService.duplicateCourse(request.user!.id, id);
+    return reply.code(201).send(created(course, '강좌가 복제되었습니다.'));
   });
 
   // GET /api/v1/instructor/courses/:id/students — 수강생 목록 + 진도
