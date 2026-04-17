@@ -4,8 +4,8 @@
 > 다음 작업자가 이 파일 하나만 읽어도 현재 상태를 파악할 수 있어야 한다.
 
 ## 현재 상태
-- **단계**: Phase 4 완료 + 검정 접수·알림 시스템 운영 중
-- **마지막 업데이트**: 2026-04-17
+- **단계**: Phase 4 완료 + 결제 고도화 완료 + coincraft.io 운영 서버 배포 완료
+- **마지막 업데이트**: 2026-04-18
 - **결정 근거**: CIO-003 (WordPress 완전 제거 — 자체 풀스택 플랫폼)
 
 ## 아키텍처 (CIO-003 확정)
@@ -21,8 +21,8 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 ## 서버 정보
 | 환경 | 서버 | Next.js | API |
 |---|---|---|---|
-| 스테이징 | 204.168.242.99 | port 3000 (PM2: coincraft-staging) | port 4001 (PM2: coincraft-api-staging) |
-| 운영 | 46.62.212.134 | port 3000 (미설치) | port 4000 (미설치) |
+| 스테이징 | 204.168.242.99 | port 3000 (PM2: coincraft-staging) | port 4001 (PM2: coincraft-api) |
+| 운영 | 46.62.212.134 | port 3000 (PM2: coincraft-web) | port 4000 (PM2: coincraft-api) |
 
 - 스테이징 Nginx: `staging.coincraft.io` → port 3000, `/api/*` → port 4001
 - 스테이징 DB: PostgreSQL `custody-postgres` Docker, DB: `coincraft_staging`, 유저: `coincraft`
@@ -137,6 +137,47 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 
 **시드 데이터:**
 - Basic 레벨 블록체인 기초 시험 5문항 (api/src/db/seed-exam.ts)
+
+## 2026-04-18 작업 내역
+
+**결제 고도화 — 무통장 입금 + 가상계좌 전 상품 적용 (스테이징 배포 완료):**
+- 강좌 결제: 카드 / 실시간 계좌이체 / 가상계좌 / 무통장 입금 4가지 선택 추가
+- 검정 결제: 동일하게 4가지 결제 수단 추가 (`cert/register/page.tsx`)
+- `prepareBankTransfer` (강좌) / `prepareBankTransferExam` (검정) 서비스 구현
+- `confirmVbankPayment` — 강좌+검정 모두 처리하도록 productType 분기
+- `handleWebhook` — 가상계좌 입금 완료 시 exam productType도 등록 처리
+- `approveBankTransferPayment` — 강좌/검정 모두 처리 (관리자 수동 승인)
+- 결제 실패(PortOne) → `pending` 상태 `failed`로 즉시 갱신 (`/api/v1/payments/cancel`)
+
+**관리자 결제 관리 페이지 (`/admin/payments`):**
+- 전체 결제 내역 목록 (강좌/검정/전자책/구독 전부)
+- 무통장 입금 대기 건 수동 승인 버튼
+- Header 관리자 메뉴에 "결제 관리" 링크 추가
+
+**관리자 알림 이메일 통합:**
+- 모든 결제 완료/신청 시 `coincraft.edu@gmail.com`으로 즉시 발송
+  - 무통장 입금: prepare 시점 (수동 승인 필요 안내 포함)
+  - PortOne 카드/이체/가상계좌: confirm 시점
+  - 강좌/검정/전자책/구독 전부 포함
+
+**WordPress 사용자 마이그레이션 완료:**
+- 전 사용자 임시 비밀번호 `coincraft12!@`로 초기화
+- 16명 마이그레이션 안내 이메일 일괄 발송 완료 (수강 이력 포함 안내)
+- `scripts/send-migration-emails.js` — 운영 서버에서 직접 실행
+
+**운영 배포 파이프라인 개선:**
+- `deploy-production.sh` (웹) / `deploy-api-production.sh` (API): 스테이징 서버에서 빌드 pull → 운영 배포 방식으로 변경 (로컬 빌드 → 운영 직접 배포 금지)
+- PM2 `pm2 save && pm2 startup systemd` — 서버 재부팅 시 자동시작 설정 완료 (운영)
+
+**알림 시스템 확장:**
+- 가상계좌 발급 + 무통장 입금 신청 시 카카오톡 알림톡 + 이메일 발송
+- `notifications.ts`: `notifyVbank`, `notifyBankTransfer` (Solapi 템플릿 등록 대기 중, 등록 후 ID 입력 필요)
+- `email.ts`: `sendVbankEmail`, `sendBankTransferEmail` 구현 완료
+
+**미완료 / 다음 세션 처리 필요:**
+- [ ] Solapi 가상계좌/무통장 알림톡 템플릿 등록 후 `TEMPLATES.VBANK`, `TEMPLATES.BANK_TRANSFER` ID 입력
+- [ ] PortOne 대시보드에서 webhook URL 등록: `https://coincraft.io/api/v1/payments/webhook`
+- [ ] 검정료 운영 DB 복원: 현재 테스트값 → 30,000원
 
 ## 2026-04-17 작업 내역
 

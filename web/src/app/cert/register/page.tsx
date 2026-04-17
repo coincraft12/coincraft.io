@@ -21,32 +21,24 @@ interface ExamInfo {
   passingScore: number;
 }
 
+type PayMethod = 'card' | 'trans' | 'vbank' | 'bank_transfer';
+
 interface PrepareResult {
   orderId: string;
   amount: number;
   examTitle: string;
 }
 
-declare global {
-  interface Window {
-    IMP?: {
-      init: (impCode: string) => void;
-      request_pay: (
-        params: {
-          pg?: string;
-          pay_method?: string;
-          merchant_uid: string;
-          name: string;
-          amount: number;
-          buyer_email?: string;
-          buyer_name?: string;
-          buyer_tel?: string;
-        },
-        callback: (rsp: { success: boolean; imp_uid?: string; error_msg?: string }) => void
-      ) => void;
-    };
-  }
+interface BankTransferResult {
+  paymentId: string;
+  orderId: string;
+  amount: number;
+  examTitle: string;
+  bankName: string;
+  bankAccount: string;
+  bankHolder: string;
 }
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
@@ -83,6 +75,8 @@ export default function CertRegisterPage() {
   const [phoneError, setPhoneError] = useState('');
   const [agreeError, setAgreeError] = useState('');
 
+  const [payMethod, setPayMethod] = useState<PayMethod>('card');
+  const [bankTransferInfo, setBankTransferInfo] = useState<BankTransferResult | null>(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,6 +86,23 @@ export default function CertRegisterPage() {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
   }, [isLoading, user, router, pathname]);
+
+  // 이미 접수한 계정이면 나의 검정으로 리다이렉트
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .get<{ success: boolean; data: { id: string; examId: string }[] }>(
+        '/api/v1/users/me/exam-registrations',
+        { token }
+      )
+      .then((res) => {
+        if (res.data.length > 0) {
+          const latest = res.data[res.data.length - 1];
+          router.replace(`/exams/${latest.examId}`);
+        }
+      })
+      .catch(() => {});
+  }, [token, router]);
 
   // Pre-fill form from auth store
   useEffect(() => {
@@ -135,55 +146,85 @@ export default function CertRegisterPage() {
   const handlePayment = async () => {
     if (!validate()) return;
     if (!token || !exam) return;
-    if (!window.IMP) {
-      setError('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
-      return;
-    }
 
     setError(null);
     setPaying(true);
 
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const cleanBirthdate = birthdate.replace(/-/g, '');
+
     try {
+      // 무통장 입금
+      if (payMethod === 'bank_transfer') {
+        const res = await apiClient.post<{ success: boolean; data: BankTransferResult }>(
+          '/api/v1/payments/bank-transfer/exams/prepare',
+          { examId: exam.id, name: name.trim() || undefined, birthdate: cleanBirthdate || undefined, phone: cleanPhone || undefined },
+          { token }
+        );
+        setBankTransferInfo(res.data);
+        setPaying(false);
+        return;
+      }
+
+      if (!window.IMP) {
+        setError('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        setPaying(false);
+        return;
+      }
+
       const prepareRes = await apiClient.post<{ success: boolean; data: PrepareResult }>(
         '/api/v1/payments/exams/prepare',
-        { examId: exam.id, name: name.trim() || undefined, birthdate: birthdate.replace(/-/g, '') || undefined, phone: phone.replace(/[^0-9]/g, '') || undefined },
+        { examId: exam.id, name: name.trim() || undefined, birthdate: cleanBirthdate || undefined, phone: cleanPhone || undefined },
         { token }
       );
       const { orderId, amount, examTitle } = prepareRes.data;
 
+      if (payMethod === 'vbank') {
+        // 가상계좌
+        const impUid = await new Promise<string>((resolve, reject) => {
+          window.IMP!.request_pay(
+            { pg: 'kcp', pay_method: 'vbank', merchant_uid: orderId, name: examTitle, amount, buyer_email: email, buyer_name: name, buyer_tel: cleanPhone || undefined },
+            (rsp) => {
+              if (rsp.success && rsp.imp_uid) resolve(rsp.imp_uid);
+              else { apiClient.post('/api/v1/payments/cancel', { orderId }, { token: token! }).catch(() => {}); reject(new Error(rsp.error_msg ?? '결제가 취소되었습니다.')); }
+            }
+          );
+        });
+        const vbankRes = await apiClient.post<{ success: boolean; data: { vbankNum: string; vbankName: string; vbankHolder: string; vbankDate: number } }>(
+          '/api/v1/payments/vbank/confirm', { impUid, orderId, amount }, { token }
+        );
+        const d = vbankRes.data;
+        const expiry = d.vbankDate ? new Date(d.vbankDate * 1000).toLocaleString('ko-KR') : '';
+        setError(null);
+        setBankTransferInfo({
+          paymentId: '',
+          orderId,
+          amount,
+          examTitle,
+          bankName: d.vbankName,
+          bankAccount: d.vbankNum,
+          bankHolder: d.vbankHolder,
+        });
+        // Show vbank info as a confirmation screen — reuse bankTransferInfo display
+        setPaying(false);
+        return;
+      }
+
+      // 카드 / 계좌이체
       const impUid = await new Promise<string>((resolve, reject) => {
         window.IMP!.request_pay(
-          {
-            pg: 'kcp',
-            pay_method: 'card',
-            merchant_uid: orderId,
-            name: examTitle,
-            amount,
-            buyer_email: email,
-            buyer_name: name,
-            buyer_tel: phone || undefined,
-          },
+          { pg: 'kcp', pay_method: payMethod === 'trans' ? 'trans' : 'card', merchant_uid: orderId, name: examTitle, amount, buyer_email: email, buyer_name: name, buyer_tel: cleanPhone || undefined },
           (rsp) => {
-            if (rsp.success && rsp.imp_uid) {
-              resolve(rsp.imp_uid);
-            } else {
-              reject(new Error(rsp.error_msg ?? '결제가 취소되었습니다.'));
-            }
+            if (rsp.success && rsp.imp_uid) resolve(rsp.imp_uid);
+            else { apiClient.post('/api/v1/payments/cancel', { orderId }, { token: token! }).catch(() => {}); reject(new Error(rsp.error_msg ?? '결제가 취소되었습니다.')); }
           }
         );
       });
 
       await apiClient.post('/api/v1/payments/exams/confirm', { impUid, orderId, amount }, { token });
-
       router.push(`/cert/register/complete?examId=${exam.id}`);
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-          ? err.message
-          : '결제 처리 중 오류가 발생했습니다.'
-      );
+      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : '결제 처리 중 오류가 발생했습니다.');
       setPaying(false);
     }
   };
@@ -357,6 +398,38 @@ export default function CertRegisterPage() {
               </label>
               {agreeError && <p className="text-xs text-red-400 -mt-3">{agreeError}</p>}
 
+              {/* 결제 수단 선택 */}
+              <div>
+                <p className="text-sm font-semibold text-cc-text mb-3">결제 수단</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: 'card', label: '신용카드' },
+                    { value: 'trans', label: '실시간 계좌이체' },
+                    { value: 'vbank', label: '가상계좌' },
+                    { value: 'bank_transfer', label: '무통장 입금' },
+                  ] as { value: PayMethod; label: string }[]).map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPayMethod(value)}
+                      className={`py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                        payMethod === value
+                          ? 'border-cc-accent text-cc-accent bg-cc-accent/10'
+                          : 'border-white/10 text-cc-muted hover:border-white/20'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {payMethod === 'bank_transfer' && (
+                  <p className="text-xs text-cc-muted mt-2">입금 확인 후 영업일 1~2일 내 접수 완료 처리됩니다.</p>
+                )}
+                {payMethod === 'vbank' && (
+                  <p className="text-xs text-cc-muted mt-2">가상계좌 발급 후 입금 기한 내 입금하시면 자동 접수됩니다.</p>
+                )}
+              </div>
+
               {/* 결제 금액 요약 */}
               <div className="flex justify-between items-center border-t border-white/10 pt-4">
                 <span className="text-cc-muted text-sm">결제 금액</span>
@@ -365,32 +438,60 @@ export default function CertRegisterPage() {
                 </span>
               </div>
 
+              {/* 무통장 입금 안내 화면 */}
+              {bankTransferInfo && (
+                <div className="bg-cc-primary rounded-xl p-5 border border-white/10 space-y-3">
+                  <p className="text-sm font-bold text-cc-accent">
+                    {payMethod === 'vbank' ? '가상계좌가 발급되었습니다' : '무통장 입금 신청이 완료되었습니다'}
+                  </p>
+                  <div className="space-y-1.5 text-sm">
+                    {[
+                      ['은행', bankTransferInfo.bankName],
+                      ['계좌번호', bankTransferInfo.bankAccount],
+                      ['예금주', bankTransferInfo.bankHolder],
+                      ['입금 금액', `${bankTransferInfo.amount.toLocaleString()}원`],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex justify-between">
+                        <span className="text-cc-muted">{label}</span>
+                        <span className="text-cc-text font-semibold">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-cc-muted">카카오톡과 이메일로 안내를 보내드렸습니다.</p>
+                  <Button variant="primary" size="md" className="w-full" onClick={() => router.push('/my')}>
+                    마이페이지로 이동
+                  </Button>
+                </div>
+              )}
+
               {error && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded p-3">
                   <p className="text-red-400 text-sm">{error}</p>
                 </div>
               )}
 
-              <div className="space-y-3">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="w-full"
-                  loading={paying}
-                  onClick={handlePayment}
-                >
-                  {Number(exam.examFee).toLocaleString()}원 결제하기
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="md"
-                  className="w-full"
-                  onClick={() => router.back()}
-                  disabled={paying}
-                >
-                  취소
-                </Button>
-              </div>
+              {!bankTransferInfo && (
+                <div className="space-y-3">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                    loading={paying}
+                    onClick={handlePayment}
+                  >
+                    {Number(exam.examFee).toLocaleString()}원 결제하기
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    className="w-full"
+                    onClick={() => router.back()}
+                    disabled={paying}
+                  >
+                    취소
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* 문의 */}

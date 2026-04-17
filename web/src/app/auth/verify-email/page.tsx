@@ -7,6 +7,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Spinner from '@/components/ui/Spinner';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { useAuthStore } from '@/store/auth.store';
 
 function VerifyEmailInner() {
   const searchParams = useSearchParams();
@@ -65,6 +66,11 @@ function VerifyEmailInner() {
 }
 
 export default function VerifyEmailPage() {
+  const { user, isLoading } = useAuthStore();
+  useEffect(() => {
+    if (!isLoading && user) window.location.replace('/');
+  }, [isLoading, user]);
+
   return (
     <>
       <Header />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { useAuthStore } from '@/store/auth.store';
 
 function ResetPasswordInner() {
   const searchParams = useSearchParams();
@@ -77,6 +78,11 @@ function ResetPasswordInner() {
 }
 
 export default function ResetPasswordPage() {
+  const { user, isLoading } = useAuthStore();
+  useEffect(() => {
+    if (!isLoading && user) window.location.replace('/');
+  }, [isLoading, user]);
+
   return (
     <>
       <Header />

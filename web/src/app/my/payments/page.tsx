@@ -161,7 +161,7 @@ export default function MyPaymentsPage() {
                     취소
                   </button>
                   <button
-                    onClick={() => refundMutation.mutate(confirmId)}
+                    onClick={() => { setErrorMsg(null); refundMutation.mutate(confirmId); }}
                     disabled={refundMutation.isPending}
                     className="flex-1 py-2.5 rounded-cc bg-red-500/80 hover:bg-red-500 text-white text-sm font-semibold transition-colors disabled:opacity-50"
                   >

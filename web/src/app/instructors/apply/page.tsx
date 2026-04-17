@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
@@ -9,7 +9,11 @@ import { apiClient, ApiError } from '@/lib/api-client';
 
 export default function InstructorApplyPage() {
   const router = useRouter();
-  const { user, accessToken } = useAuthStore();
+  const { user, accessToken, isLoading } = useAuthStore();
+
+  useEffect(() => {
+    if (!isLoading && !user) router.push(`/login?redirect=/instructors/apply`);
+  }, [isLoading, user, router]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({ bio: '', career: '' });

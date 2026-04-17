@@ -8,6 +8,7 @@ import { authenticate } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/require-role';
 import { ok, created } from '../../utils/response';
 import { env } from '../../config/env';
+import * as paymentService from '../payment/payment.service';
 
 const ACTION_SECRET = env.JWT_ACCESS_SECRET;
 const FRONTEND_URL = env.FRONTEND_URL;
@@ -140,6 +141,19 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       .from(courses)
       .orderBy(courses.title);
     return reply.send(ok(allCourses));
+  });
+
+  // GET /api/v1/admin/payments — 전체 결제 목록
+  app.get('/payments', { preHandler }, async (_request, reply) => {
+    const result = await paymentService.listAllPayments();
+    return reply.send(ok(result));
+  });
+
+  // POST /api/v1/admin/payments/:id/approve — 무통장 입금 승인
+  app.post('/payments/:id/approve', { preHandler }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await paymentService.approveBankTransferPayment(id);
+    return reply.send(ok(result, '무통장 입금이 승인되었습니다.'));
   });
 
   // GET /api/v1/admin/instructors/action?token=xxx — 이메일 승인/거절 링크 (토큰 인증)

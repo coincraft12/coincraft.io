@@ -168,7 +168,7 @@ export async function getCourseBySlug(slug: string, userId?: string): Promise<Co
     const [enrollment] = await db
       .select({ id: enrollments.id })
       .from(enrollments)
-      .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, course.id)))
+      .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, course.id), eq(enrollments.status, 'active')))
       .limit(1);
     isEnrolled = !!enrollment;
   }

@@ -31,11 +31,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
   }
 
   if (user.role !== 'instructor' && user.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-cc-primary flex items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return null;
   }
 
   return (

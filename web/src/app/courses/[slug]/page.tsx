@@ -149,7 +149,7 @@ export default async function CourseDetailPage({
               )}
 
               {/* Reviews */}
-              <CourseReviews courseId={course.id} />
+              <CourseReviews courseId={course.id} isEnrolled={course.isEnrolled} />
             </div>
 
             {/* Right: sidebar (1/3) */}

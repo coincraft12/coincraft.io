@@ -45,7 +45,11 @@ export async function createReview(
   const [enrollment] = await db
     .select({ id: enrollments.id })
     .from(enrollments)
-    .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)))
+    .where(and(
+      eq(enrollments.userId, userId),
+      eq(enrollments.courseId, courseId),
+      eq(enrollments.status, 'active'),
+    ))
     .limit(1);
 
   if (!enrollment) {

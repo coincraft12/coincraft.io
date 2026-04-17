@@ -1,10 +1,17 @@
+'use client';
+
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-
-export const metadata = { title: '이메일 인증 완료 — CoinCraft' };
+import { useAuthStore } from '@/store/auth.store';
 
 export default function EmailVerifiedPage() {
+  const { user, isLoading } = useAuthStore();
+  useEffect(() => {
+    if (!isLoading && user) window.location.replace('/');
+  }, [isLoading, user]);
+
   return (
     <>
       <Header />

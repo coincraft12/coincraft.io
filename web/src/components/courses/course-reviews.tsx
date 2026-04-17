@@ -41,7 +41,7 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
   );
 }
 
-export default function CourseReviews({ courseId }: { courseId: string }) {
+export default function CourseReviews({ courseId, isEnrolled }: { courseId: string; isEnrolled: boolean }) {
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
@@ -92,7 +92,7 @@ export default function CourseReviews({ courseId }: { courseId: string }) {
       <h2 className="text-xl font-bold text-cc-text">수강생 리뷰</h2>
 
       {/* 리뷰 작성 폼 */}
-      {token && !myReview && (
+      {token && isEnrolled && !myReview && (
         <div className="bg-cc-secondary border border-white/10 rounded-cc p-5 space-y-4">
           <p className="text-cc-text font-medium text-sm">리뷰 작성</p>
           <StarRating value={rating} onChange={setRating} />

@@ -34,14 +34,14 @@ async function verifyCert(certNumber: string): Promise<CertVerification | null> 
 }
 
 function getLevelLabel(level: string): string {
-  const map: Record<string, string> = { basic: 'Basic', associate: 'Associate', expert: 'Expert' };
-  return map[level] ?? level.toUpperCase();
+  const map: Record<string, string> = { basic: 'Basic', associate: 'Associate', professional: 'Professional', expert: 'Expert' };
+  return map[level] ?? level;
 }
 
 function getLevelVariant(level: string): 'basic' | 'associate' | 'expert' | 'default' {
   if (level === 'basic') return 'basic';
   if (level === 'associate') return 'associate';
-  if (level === 'expert') return 'expert';
+  if (level === 'professional' || level === 'expert') return 'expert';
   return 'default';
 }
 

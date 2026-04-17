@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { useAuthStore } from '@/store/auth.store';
 
 export default function ForgotPasswordPage() {
+  const { user, isLoading } = useAuthStore();
+  useEffect(() => {
+    if (!isLoading && user) window.location.replace('/');
+  }, [isLoading, user]);
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);

@@ -177,6 +177,63 @@ export async function sendEbookPurchaseEmail(
   }).catch(() => {});
 }
 
+export async function sendVbankEmail(
+  to: string, name: string, courseName: string,
+  bankName: string, bankAccount: string, bankHolder: string,
+  amount: number, expiry: string
+): Promise<void> {
+  await sendEmail({
+    to,
+    subject: '[CoinCraft] 가상계좌가 발급되었습니다',
+    html: wrap('가상계좌 발급 완료', `
+      <p style="color:#cbd5e1;font-size:15px;line-height:1.7;">안녕하세요, <strong style="color:#f1f5f9;">${name}</strong>님.<br>
+      <strong style="color:#f1f5f9;">${courseName}</strong> 결제를 위한 가상계좌가 발급되었습니다.</p>
+      <table style="border-collapse:collapse;margin:20px 0;">
+        ${row('은행', bankName)}
+        ${row('계좌번호', bankAccount)}
+        ${row('예금주', bankHolder)}
+        ${row('입금 금액', `${amount.toLocaleString()}원`)}
+        ${row('입금 기한', expiry)}
+      </table>
+      <div style="background:#0f172a;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.8;">
+          · 입금 기한 내 미입금 시 주문이 자동 취소됩니다.<br>
+          · 입금 확인 후 자동으로 수강이 시작됩니다.
+        </p>
+      </div>
+    `),
+  }).catch(() => {});
+}
+
+export async function sendBankTransferEmail(
+  to: string, name: string, courseName: string, amount: number
+): Promise<void> {
+  await sendEmail({
+    to,
+    subject: '[CoinCraft] 무통장 입금 신청이 접수되었습니다',
+    html: wrap('무통장 입금 안내', `
+      <p style="color:#cbd5e1;font-size:15px;line-height:1.7;">안녕하세요, <strong style="color:#f1f5f9;">${name}</strong>님.<br>
+      무통장 입금 신청이 접수되었습니다. 아래 계좌로 입금해 주세요.</p>
+      <table style="border-collapse:collapse;margin:20px 0;">
+        ${row('은행', '하나은행')}
+        ${row('계좌번호', '398-910040-13304')}
+        ${row('예금주', '(주)코인크래프트')}
+        ${row('입금 금액', `${amount.toLocaleString()}원`)}
+        ${row('강좌명', courseName)}
+      </table>
+      <div style="background:#0f172a;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#f59e0b;">■ 입금 안내</p>
+        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.8;">
+          · 입금자명을 <strong style="color:#f1f5f9;">가입 시 이름(${name})</strong>과 동일하게 입력해 주세요.<br>
+          · 확인은 영업일 기준 1~2일 내 처리됩니다.<br>
+          · 입금 확인 후 수강 처리 완료 알림이 발송됩니다.
+        </p>
+      </div>
+      <p style="color:#64748b;font-size:13px;">문의: <a href="mailto:coincraft.edu@gmail.com" style="color:#f59e0b;">coincraft.edu@gmail.com</a></p>
+    `),
+  }).catch(() => {});
+}
+
 export async function sendVerificationEmail(to: string, token: string): Promise<void> {
   const url = `${env.FRONTEND_URL}/auth/verify-email?token=${token}`;
   await sendEmail({
@@ -189,6 +246,107 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
       <p>링크가 작동하지 않으면 아래 URL을 브라우저에 붙여넣으세요:</p>
       <p>${url}</p>
     `,
+  });
+}
+
+export async function sendAdminPaymentNotificationEmail(params: {
+  userName: string;
+  userEmail: string;
+  productType: string;
+  productName: string;
+  amount: number;
+  provider: string;
+  adminUrl: string;
+}): Promise<void> {
+  const { userName, userEmail, productType, productName, amount, provider, adminUrl } = params;
+  const productLabels: Record<string, string> = { course: '강좌', ebook: '전자책', exam: '검정', subscription: '구독' };
+  const providerLabels: Record<string, string> = { portone: 'PortOne (카드/이체/가상계좌)', bank_transfer: '무통장 입금' };
+
+  await sendEmail({
+    to: 'coincraft.edu@gmail.com',
+    subject: `[CoinCraft 관리자] 새 결제 내역 — ${productLabels[productType] ?? productType} · ${userName}`,
+    html: wrap('새 결제 내역이 등록되었습니다', `
+      <p style="color:#cbd5e1;font-size:15px;line-height:1.7;">새로운 결제 신청이 접수되었습니다.</p>
+      <table style="border-collapse:collapse;margin:20px 0;">
+        ${row('이름', userName)}
+        ${row('이메일', userEmail)}
+        ${row('상품 유형', productLabels[productType] ?? productType)}
+        ${row('상품명', productName)}
+        ${row('금액', `${amount.toLocaleString()}원`)}
+        ${row('결제 수단', providerLabels[provider] ?? provider)}
+      </table>
+      ${provider === 'bank_transfer' ? `
+      <div style="background:#0f172a;border-radius:8px;padding:14px;margin:16px 0;border-left:3px solid #f59e0b;">
+        <p style="margin:0;font-size:13px;color:#f59e0b;font-weight:700;">⚠ 무통장 입금 — 관리자 수동 승인 필요</p>
+      </div>` : ''}
+      <a href="${adminUrl}" style="display:inline-block;padding:12px 24px;background:#f59e0b;color:#0f172a;font-weight:700;text-decoration:none;border-radius:8px;font-size:14px;">결제 관리 페이지 바로가기</a>
+    `),
+  }).catch(() => {});
+}
+
+export async function sendMigrationEmail(
+  to: string,
+  name: string,
+  tempPassword: string,
+  hasEnrollment: boolean
+): Promise<void> {
+  const loginUrl = `${env.FRONTEND_URL}/login`;
+  const passwordChangeUrl = `${env.FRONTEND_URL}/my/settings`;
+
+  await sendEmail({
+    to,
+    subject: '[CoinCraft] 새 플랫폼 전환 완료 — 임시 비밀번호 안내',
+    html: wrap('플랫폼 전환 완료 안내', `
+      <p style="color:#cbd5e1;font-size:15px;line-height:1.7;">안녕하세요, <strong style="color:#f1f5f9;">${name}</strong>님.<br>
+      코인크래프트가 새로운 전용 학습 플랫폼(<strong style="color:#f59e0b;">coincraft.io</strong>)으로 전환되었습니다.</p>
+
+      <div style="background:#0f172a;border-radius:8px;padding:20px;margin:20px 0;border-left:3px solid #f59e0b;">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#f59e0b;">■ 로그인 임시 비밀번호</p>
+        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;line-height:1.8;">
+          기존 워드프레스 비밀번호는 보안 정책상 새 플랫폼으로 이관이 불가하여<br>
+          아래 임시 비밀번호를 발급해드립니다.
+        </p>
+        <div style="background:#1e293b;border-radius:6px;padding:12px 16px;margin-top:12px;">
+          <span style="font-size:18px;font-weight:800;color:#f1f5f9;letter-spacing:1px;">${tempPassword}</span>
+        </div>
+        <p style="margin:8px 0 0;font-size:12px;color:#64748b;">
+          ⚠ 로그인 후 즉시 비밀번호를 변경해 주세요.
+        </p>
+      </div>
+
+      ${hasEnrollment ? `
+      <div style="background:#0f172a;border-radius:8px;padding:16px;margin:20px 0;border-left:3px solid #34d399;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#34d399;">■ 수강 정보 이관 완료</p>
+        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.8;">
+          · 기존 수강 신청 강좌가 새 플랫폼에 그대로 이관되었습니다.<br>
+          · 강좌별 학습 진도율도 함께 이관되었습니다.<br>
+          · 로그인 후 [마이페이지 → 내 강좌]에서 확인하실 수 있습니다.
+        </p>
+      </div>
+      ` : ''}
+
+      <div style="background:#0f172a;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#f59e0b;">■ 새 플랫폼 주요 변경사항</p>
+        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.8;">
+          · 모든 강좌·자료는 coincraft.io에서 이용 가능합니다.<br>
+          · 기존 워드프레스 사이트는 순차적으로 종료될 예정입니다.<br>
+          · 블록체인 기반 수료 인증서 발급 시스템이 도입됩니다.
+        </p>
+      </div>
+
+      <div style="margin:28px 0 16px;display:flex;gap:12px;flex-direction:column;">
+        <a href="${loginUrl}" style="display:block;text-align:center;padding:14px 24px;background:#f59e0b;color:#0f172a;font-weight:700;text-decoration:none;border-radius:8px;font-size:15px;">
+          새 플랫폼 로그인하기
+        </a>
+        <a href="${passwordChangeUrl}" style="display:block;text-align:center;padding:12px 24px;background:transparent;color:#94a3b8;font-weight:600;text-decoration:none;border-radius:8px;font-size:14px;border:1px solid rgba(255,255,255,0.12);">
+          비밀번호 변경하기
+        </a>
+      </div>
+
+      <p style="color:#64748b;font-size:13px;line-height:1.7;margin-top:24px;">
+        문의사항은 <a href="mailto:coincraft.edu@gmail.com" style="color:#f59e0b;text-decoration:none;">coincraft.edu@gmail.com</a>으로 연락주세요.
+      </p>
+    `),
   });
 }
 

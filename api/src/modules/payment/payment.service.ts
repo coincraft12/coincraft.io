@@ -3,8 +3,8 @@ import { db } from '../../db';
 import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subscriptions, users, examRegistrations } from '../../db/schema';
 import { redis } from '../../lib/redis';
 import { env } from '../../config/env';
-import { notifyEnroll, notifyExamRegistration, notifyEbookPurchase } from '../../lib/notifications';
-import { sendEnrollEmail, sendExamRegistrationEmail, sendEbookPurchaseEmail } from '../../lib/email';
+import { notifyEnroll, notifyExamRegistration, notifyEbookPurchase, notifyVbank, notifyBankTransfer } from '../../lib/notifications';
+import { sendEnrollEmail, sendExamRegistrationEmail, sendEbookPurchaseEmail, sendVbankEmail, sendBankTransferEmail, sendAdminPaymentNotificationEmail } from '../../lib/email';
 
 // ─── Subscription plans ───────────────────────────────────────────────────────
 export const SUBSCRIPTION_PLANS: Record<string, { label: string; amount: number; months: number }> = {
@@ -57,33 +57,69 @@ function makeError(message: string, code: string, statusCode: number): Error {
   return Object.assign(new Error(message), { code, statusCode });
 }
 
-async function verifyIamportPayment(impUid: string, expectedAmount: number): Promise<void> {
+interface IamportPaymentData {
+  status: string;
+  amount: number;
+  pay_method: string;
+  vbank_num?: string;
+  vbank_name?: string;
+  vbank_holder?: string;
+  vbank_date?: number;
+}
+
+async function getIamportToken(): Promise<string> {
   if (!env.PORTONE_IMP_KEY || !env.PORTONE_IMP_SECRET) {
     throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);
   }
-
-  // 1. Get access token
-  const tokenRes = await fetch('https://api.iamport.kr/users/getToken', {
+  const res = await fetch('https://api.iamport.kr/users/getToken', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ imp_key: env.PORTONE_IMP_KEY, imp_secret: env.PORTONE_IMP_SECRET }),
   });
-  const tokenData = await tokenRes.json() as { code: number; response: { access_token: string } };
-  if (tokenData.code !== 0) throw makeError('결제 검증 토큰 발급에 실패했습니다.', 'TOKEN_ERROR', 500);
+  const data = await res.json() as { code: number; response: { access_token: string } };
+  if (data.code !== 0) throw makeError('결제 검증 토큰 발급에 실패했습니다.', 'TOKEN_ERROR', 500);
+  return data.response.access_token;
+}
 
-  // 2. Verify payment
-  const payRes = await fetch(`https://api.iamport.kr/payments/${encodeURIComponent(impUid)}`, {
-    headers: { 'Authorization': tokenData.response.access_token },
+async function getIamportPayment(impUid: string, accessToken: string): Promise<IamportPaymentData> {
+  const res = await fetch(`https://api.iamport.kr/payments/${encodeURIComponent(impUid)}`, {
+    headers: { 'Authorization': accessToken },
   });
-  if (!payRes.ok) throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
+  if (!res.ok) throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
+  const data = await res.json() as { code: number; response: IamportPaymentData };
+  if (data.code !== 0) throw makeError('결제 검증에 실패했습니다.', 'PAYMENT_VERIFICATION_FAILED', 400);
+  return data.response;
+}
 
-  const payData = await payRes.json() as { code: number; response: { status: string; amount: number } };
-  if (payData.code !== 0 || payData.response.status !== 'paid') {
+async function verifyIamportPayment(impUid: string, expectedAmount: number): Promise<void> {
+  const token = await getIamportToken();
+  const payment = await getIamportPayment(impUid, token);
+  if (payment.status !== 'paid') {
     throw makeError('결제가 완료되지 않았습니다.', 'PAYMENT_NOT_PAID', 400);
   }
-  if (payData.response.amount !== expectedAmount) {
+  if (payment.amount !== expectedAmount) {
     throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
   }
+}
+
+export interface VbankInfo {
+  vbankNum: string;
+  vbankName: string;
+  vbankHolder: string;
+  vbankDate: number;
+  orderId: string;
+}
+
+async function verifyIamportVbank(impUid: string, expectedAmount: number): Promise<IamportPaymentData> {
+  const token = await getIamportToken();
+  const payment = await getIamportPayment(impUid, token);
+  if (payment.status !== 'ready') {
+    throw makeError('가상계좌 발급이 완료되지 않았습니다.', 'VBANK_NOT_READY', 400);
+  }
+  if (payment.amount !== expectedAmount) {
+    throw makeError('결제 금액이 일치하지 않습니다.', 'AMOUNT_MISMATCH', 400);
+  }
+  return payment;
 }
 
 async function generateRegistrationNumber(level: string): Promise<string> {
@@ -284,6 +320,28 @@ export async function handleWebhook(impUid: string, merchantUid: string): Promis
           paymentId: pendingPayment.id,
         });
       }
+    } else if (pendingPayment.productType === 'exam') {
+      const meta = pendingPayment.metadata as { orderId?: string; applicantName?: string; applicantBirthdate?: string } | null;
+      const [existing] = await tx
+        .select({ id: examRegistrations.id })
+        .from(examRegistrations)
+        .where(and(eq(examRegistrations.userId, pendingPayment.userId), eq(examRegistrations.examId, pendingPayment.productId)))
+        .limit(1);
+      if (!existing) {
+        const [[u], [ex]] = await Promise.all([
+          tx.select({ name: users.name }).from(users).where(eq(users.id, pendingPayment.userId)).limit(1),
+          tx.select({ level: certExams.level }).from(certExams).where(eq(certExams.id, pendingPayment.productId)).limit(1),
+        ]);
+        const regNumber = await generateRegistrationNumber(ex?.level ?? pendingPayment.productId);
+        await tx.insert(examRegistrations).values({
+          userId: pendingPayment.userId,
+          examId: pendingPayment.productId,
+          paymentId: pendingPayment.id,
+          applicantName: meta?.applicantName ?? u?.name ?? '',
+          applicantBirthdate: meta?.applicantBirthdate ?? '',
+          registrationNumber: regNumber,
+        });
+      }
     }
   });
 }
@@ -413,6 +471,14 @@ export async function confirmEbookPayment(
   const [uu] = await db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
   if (uu?.phone && eb?.title) notifyEbookPurchase(uu.phone, uu.name, eb.title, pendingPayment.id).catch(() => {});
   if (uu?.email && eb?.title) sendEbookPurchaseEmail(uu.email, uu.name, eb.title, pendingPayment.id).catch(() => {});
+  import('../../lib/admin-notify').then(({ sendAdminNotification }) => {
+    sendAdminNotification('전자책 결제 완료',
+      `<p>전자책 구매가 완료되었습니다.</p>
+       <p>구매자: ${uu?.name ?? ''} (${uu?.email ?? ''})</p>
+       <p>도서: ${eb?.title ?? ebookId}</p>
+       <p>금액: ₩${amount.toLocaleString()}</p>`
+    ).catch(() => {});
+  }).catch(() => {});
 
   return { ebookId };
 }
@@ -668,6 +734,17 @@ export async function confirmSubscriptionPayment(
     });
   });
 
+  const [su] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  import('../../lib/admin-notify').then(({ sendAdminNotification }) => {
+    sendAdminNotification('구독 결제 완료',
+      `<p>구독 결제가 완료되었습니다.</p>
+       <p>구독자: ${su?.name ?? ''} (${su?.email ?? ''})</p>
+       <p>플랜: ${planInfo.label}</p>
+       <p>금액: ₩${amount.toLocaleString()}</p>
+       <p>만료일: ${periodEnd.toLocaleDateString('ko-KR')}</p>`
+    ).catch(() => {});
+  }).catch(() => {});
+
   return { plan, currentPeriodEnd: periodEnd };
 }
 
@@ -741,6 +818,333 @@ export async function refundPayment(userId: string, paymentId: string): Promise<
   });
 
   return { refunded: true };
+}
+
+// ─── 가상계좌 confirm ─────────────────────────────────────────────────────────
+
+export async function confirmVbankPayment(
+  userId: string,
+  impUid: string,
+  orderId: string,
+  amount: number
+): Promise<VbankInfo> {
+  const paymentData = await verifyIamportVbank(impUid, amount);
+
+  const allPending = await db
+    .select()
+    .from(payments)
+    .where(and(eq(payments.userId, userId), eq(payments.status, 'pending'), eq(payments.provider, 'portone')));
+
+  const pendingPayment = allPending.find((p) => {
+    const meta = p.metadata as { orderId?: string } | null;
+    return meta?.orderId === orderId;
+  });
+
+  if (!pendingPayment) throw makeError('결제 정보를 찾을 수 없습니다.', 'PAYMENT_NOT_FOUND', 404);
+
+  await db.update(payments)
+    .set({ providerPaymentId: impUid })
+    .where(eq(payments.id, pendingPayment.id));
+
+  const vbankInfo: VbankInfo = {
+    vbankNum: paymentData.vbank_num ?? '',
+    vbankName: paymentData.vbank_name ?? '',
+    vbankHolder: paymentData.vbank_holder ?? '',
+    vbankDate: paymentData.vbank_date ?? 0,
+    orderId,
+  };
+
+  // 알림 발송 (강좌 또는 시험 모두 처리)
+  const [u] = await db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  let productTitle = '';
+  if (pendingPayment.productType === 'exam') {
+    const [ex] = await db.select({ title: certExams.title }).from(certExams).where(eq(certExams.id, pendingPayment.productId)).limit(1);
+    productTitle = ex?.title ?? '';
+  } else {
+    const [c] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, pendingPayment.productId)).limit(1);
+    productTitle = c?.title ?? '';
+  }
+  const expiry = vbankInfo.vbankDate
+    ? new Date(vbankInfo.vbankDate * 1000).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '';
+  const paidAmount = Math.round(Number(pendingPayment.amount));
+  if (u?.phone && productTitle) notifyVbank(u.phone, u.name, productTitle, vbankInfo.vbankName, vbankInfo.vbankNum, paidAmount, expiry).catch(() => {});
+  if (u?.email && productTitle) sendVbankEmail(u.email, u.name, productTitle, vbankInfo.vbankName, vbankInfo.vbankNum, vbankInfo.vbankHolder, paidAmount, expiry).catch(() => {});
+
+  return vbankInfo;
+}
+
+// ─── 결제 실패/취소 처리 ─────────────────────────────────────────────────────
+
+export async function cancelPendingPayment(userId: string, orderId: string): Promise<void> {
+  const allPending = await db
+    .select()
+    .from(payments)
+    .where(and(eq(payments.userId, userId), eq(payments.status, 'pending'), eq(payments.provider, 'portone')));
+
+  const payment = allPending.find((p) => {
+    const meta = p.metadata as { orderId?: string } | null;
+    return meta?.orderId === orderId;
+  });
+
+  if (!payment) return; // 이미 처리됐거나 없으면 무시
+
+  await db.update(payments)
+    .set({ status: 'failed' })
+    .where(eq(payments.id, payment.id));
+}
+
+// ─── 무통장 입금 (직접 계좌이체) ────────────────────────────────────────────
+
+export interface BankTransferInfo {
+  paymentId: string;
+  orderId: string;
+  amount: number;
+  courseName: string;
+  bankName: string;
+  bankAccount: string;
+  bankHolder: string;
+}
+
+export async function prepareBankTransfer(
+  userId: string,
+  courseId: string
+): Promise<BankTransferInfo> {
+  const [course] = await db
+    .select({ id: courses.id, title: courses.title, price: courses.price, isFree: courses.isFree, isPublished: courses.isPublished })
+    .from(courses)
+    .where(eq(courses.id, courseId))
+    .limit(1);
+
+  if (!course || !course.isPublished) throw makeError('강좌를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  if (course.isFree) throw makeError('무료 강좌는 결제가 필요하지 않습니다.', 'BAD_REQUEST', 400);
+
+  const [existing] = await db
+    .select({ id: enrollments.id })
+    .from(enrollments)
+    .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)))
+    .limit(1);
+
+  if (existing) throw makeError('이미 수강 중인 강좌입니다.', 'ALREADY_ENROLLED', 409);
+
+  const orderId = generateOrderId(courseId);
+  const amount = Math.round(Number(course.price));
+
+  const [inserted] = await db.insert(payments).values({
+    userId,
+    productType: 'course',
+    productId: courseId,
+    amount: String(amount),
+    currency: 'KRW',
+    status: 'pending',
+    provider: 'bank_transfer',
+    metadata: { orderId },
+  }).returning({ id: payments.id });
+
+  // 알림 발송
+  const [u] = await db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  if (u?.phone) notifyBankTransfer(u.phone, u.name, course.title, amount).catch(() => {});
+  if (u?.email) sendBankTransferEmail(u.email, u.name, course.title, amount).catch(() => {});
+  import('../../lib/admin-notify').then(({ sendAdminNotification }) => {
+    sendAdminNotification('무통장 입금 신청 — 강좌',
+      `<p>무통장 입금 신청이 접수되었습니다. <strong>관리자 수동 승인이 필요합니다.</strong></p>
+       <p>신청자: ${u?.name ?? ''} (${u?.email ?? ''})</p>
+       <p>강좌: ${course.title}</p>
+       <p>금액: ₩${amount.toLocaleString()}</p>
+       <p><a href="${env.FRONTEND_URL}/admin/payments" style="color:#f59e0b;">결제 관리 페이지 바로가기</a></p>`
+    ).catch(() => {});
+  }).catch(() => {});
+
+  return {
+    paymentId: inserted.id,
+    orderId,
+    amount,
+    courseName: course.title,
+    bankName: '하나은행',
+    bankAccount: '398-910040-13304',
+    bankHolder: '(주)코인크래프트',
+  };
+}
+
+export async function approveBankTransferPayment(
+  paymentId: string
+): Promise<{ productId: string; productType: string; userId: string }> {
+  const [payment] = await db
+    .select()
+    .from(payments)
+    .where(and(eq(payments.id, paymentId), eq(payments.provider, 'bank_transfer'), eq(payments.status, 'pending')))
+    .limit(1);
+
+  if (!payment) throw makeError('결제 정보를 찾을 수 없습니다.', 'PAYMENT_NOT_FOUND', 404);
+
+  const [u] = await db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, payment.userId)).limit(1);
+
+  if (payment.productType === 'course') {
+    const courseId = payment.productId;
+
+    await db.transaction(async (tx) => {
+      await tx.update(payments).set({ status: 'paid', paidAt: new Date() }).where(eq(payments.id, paymentId));
+      const [existing] = await tx.select({ id: enrollments.id }).from(enrollments)
+        .where(and(eq(enrollments.userId, payment.userId), eq(enrollments.courseId, courseId))).limit(1);
+      if (!existing) {
+        await tx.insert(enrollments).values({ userId: payment.userId, courseId, status: 'active', paymentId: payment.id });
+      }
+    });
+
+    const [c] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, courseId)).limit(1);
+    if (u?.phone && c?.title) notifyEnroll(u.phone, u.name, c.title).catch(() => {});
+    if (u?.email && c?.title) sendEnrollEmail(u.email, u.name, c.title).catch(() => {});
+
+  } else if (payment.productType === 'exam') {
+    const examId = payment.productId;
+    const meta = payment.metadata as { orderId?: string; applicantName?: string; applicantBirthdate?: string } | null;
+
+    const [ex] = await db.select({ title: certExams.title, level: certExams.level }).from(certExams).where(eq(certExams.id, examId)).limit(1);
+
+    await db.transaction(async (tx) => {
+      await tx.update(payments).set({ status: 'paid', paidAt: new Date() }).where(eq(payments.id, paymentId));
+      const [existing] = await tx.select({ id: examRegistrations.id }).from(examRegistrations)
+        .where(and(eq(examRegistrations.userId, payment.userId), eq(examRegistrations.examId, examId))).limit(1);
+      if (!existing) {
+        const regNumber = await generateRegistrationNumber(ex?.level ?? examId);
+        await tx.insert(examRegistrations).values({
+          userId: payment.userId,
+          examId,
+          paymentId: payment.id,
+          applicantName: meta?.applicantName ?? u?.name ?? '',
+          applicantBirthdate: meta?.applicantBirthdate ?? '',
+          registrationNumber: regNumber,
+        });
+      }
+    });
+
+    const examDateTime = '2026년 5월 2일 (토) 오후 2시';
+    const rulesUrl = `${env.FRONTEND_URL}/cert/exam-rules`;
+    const [reg] = await db.select({ registrationNumber: examRegistrations.registrationNumber })
+      .from(examRegistrations).where(and(eq(examRegistrations.userId, payment.userId), eq(examRegistrations.examId, examId))).limit(1);
+    const regNum = reg?.registrationNumber ?? '';
+    if (u?.phone && ex?.title) notifyExamRegistration(u.phone, u.name, ex.title, examDateTime, regNum, rulesUrl).catch(() => {});
+    if (u?.email && ex?.title) sendExamRegistrationEmail(u.email, u.name, ex.title, examDateTime, regNum, rulesUrl).catch(() => {});
+  }
+
+  return { productId: payment.productId, productType: payment.productType, userId: payment.userId };
+}
+
+export async function prepareBankTransferExam(
+  userId: string,
+  examId: string,
+  phone?: string,
+  name?: string,
+  birthdate?: string
+): Promise<BankTransferInfo & { examTitle: string }> {
+  const [exam] = await db
+    .select({ id: certExams.id, title: certExams.title, examFee: certExams.examFee, isActive: certExams.isActive, level: certExams.level })
+    .from(certExams)
+    .where(eq(certExams.id, examId))
+    .limit(1);
+
+  if (!exam || !exam.isActive) throw makeError('시험을 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  const amount = Math.round(Number(exam.examFee));
+  if (amount === 0) throw makeError('무료 시험은 결제가 필요하지 않습니다.', 'BAD_REQUEST', 400);
+
+  if (name?.trim() && birthdate) {
+    const [dup] = await db.select({ id: examRegistrations.id }).from(examRegistrations)
+      .where(and(eq(examRegistrations.examId, examId), eq(examRegistrations.applicantName, name.trim()), eq(examRegistrations.applicantBirthdate, birthdate)))
+      .limit(1);
+    if (dup) throw makeError('이미 접수된 수험자입니다. (이름 + 생년월일 중복)', 'ALREADY_REGISTERED', 409);
+  }
+
+  const orderId = generateOrderId(examId);
+
+  const [inserted] = await db.insert(payments).values({
+    userId,
+    productType: 'exam',
+    productId: examId,
+    amount: String(amount),
+    currency: 'KRW',
+    status: 'pending',
+    provider: 'bank_transfer',
+    metadata: { orderId, applicantName: name?.trim() ?? null, applicantBirthdate: birthdate ?? null },
+  }).returning({ id: payments.id });
+
+  if (phone) {
+    const cleaned = phone.replace(/[^0-9]/g, '');
+    if (cleaned.length >= 10) await db.update(users).set({ phone: cleaned }).where(eq(users.id, userId));
+  }
+
+  const [u] = await db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  if (u?.phone) notifyBankTransfer(u.phone, u.name, exam.title, amount).catch(() => {});
+  if (u?.email) sendBankTransferEmail(u.email, u.name, exam.title, amount).catch(() => {});
+  import('../../lib/admin-notify').then(({ sendAdminNotification }) => {
+    sendAdminNotification('무통장 입금 신청 — 검정',
+      `<p>검정 무통장 입금 신청이 접수되었습니다. <strong>관리자 수동 승인이 필요합니다.</strong></p>
+       <p>신청자: ${u?.name ?? ''} (${u?.email ?? ''})</p>
+       <p>시험: ${exam.title}</p>
+       <p>금액: ₩${amount.toLocaleString()}</p>
+       <p><a href="${env.FRONTEND_URL}/admin/payments" style="color:#f59e0b;">결제 관리 페이지 바로가기</a></p>`
+    ).catch(() => {});
+  }).catch(() => {});
+
+  return {
+    paymentId: inserted.id,
+    orderId,
+    amount,
+    courseName: exam.title,
+    examTitle: exam.title,
+    bankName: '하나은행',
+    bankAccount: '398-910040-13304',
+    bankHolder: '(주)코인크래프트',
+  };
+}
+
+// ─── Admin: 전체 결제 목록 조회 ───────────────────────────────────────────────
+
+export interface AdminPaymentItem {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  productType: string;
+  productId: string;
+  amount: string;
+  status: string;
+  provider: string;
+  createdAt: Date;
+  paidAt: Date | null;
+}
+
+export async function listAllPayments(): Promise<AdminPaymentItem[]> {
+  const rows = await db
+    .select({
+      id: payments.id,
+      userId: payments.userId,
+      userEmail: users.email,
+      userName: users.name,
+      productType: payments.productType,
+      productId: payments.productId,
+      amount: payments.amount,
+      status: payments.status,
+      provider: payments.provider,
+      createdAt: payments.createdAt,
+      paidAt: payments.paidAt,
+    })
+    .from(payments)
+    .leftJoin(users, eq(payments.userId, users.id))
+    .orderBy(desc(payments.createdAt));
+
+  return rows.map((r) => ({
+    id: r.id,
+    userId: r.userId,
+    userEmail: r.userEmail ?? '',
+    userName: r.userName ?? '',
+    productType: r.productType,
+    productId: r.productId,
+    amount: r.amount,
+    status: r.status,
+    provider: r.provider,
+    createdAt: r.createdAt,
+    paidAt: r.paidAt,
+  }));
 }
 
 // ─── Exam payment check (cert.service 에서 호출용) ───────────────────────────

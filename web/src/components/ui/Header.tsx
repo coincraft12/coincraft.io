@@ -62,9 +62,10 @@ export default function Header() {
 
   const nav = BASE_NAV.map((item) => {
     if (item.label !== '검정' || !item.children) return item;
-    const certChildren: { label: string; href: string; disabled?: boolean }[] = [...item.children];
+    let certChildren: { label: string; href: string; disabled?: boolean }[] = [...item.children];
     if (myExams.length > 0) {
       const latest = myExams[myExams.length - 1];
+      certChildren = certChildren.filter((c) => c.label !== '검정 신청');
       certChildren.unshift({ label: '나의 검정', href: `/exams/${latest.examId}` });
     }
     return { ...item, children: certChildren };
@@ -147,6 +148,11 @@ export default function Header() {
                   강사 포털
                 </a>
               )}
+              {user.role === 'admin' && (
+                <a href="/admin/payments" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">
+                  결제 관리
+                </a>
+              )}
               <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">
                 로그아웃
               </button>
@@ -218,6 +224,9 @@ export default function Header() {
                 <a href="/my/courses" className="text-sm text-cc-muted">{user.name}</a>
                 {(user.role === 'admin' || user.role === 'instructor') && (
                   <a href="/instructor" className="text-sm text-cc-accent">강사 포털</a>
+                )}
+                {user.role === 'admin' && (
+                  <a href="/admin/payments" className="text-sm text-yellow-400">결제 관리</a>
                 )}
                 <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">로그아웃</button>
               </>

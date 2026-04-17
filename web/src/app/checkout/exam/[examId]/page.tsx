@@ -11,26 +11,6 @@ import { apiClient, ApiError } from '@/lib/api-client';
 interface PrepareResult { orderId: string; amount: number; examTitle: string; }
 interface ExamInfo { id: string; title: string; level: string; description: string | null; examFee: string; timeLimit: number; passingScore: number; }
 
-declare global {
-  interface Window {
-    IMP?: {
-      init: (impCode: string) => void;
-      request_pay: (
-        params: {
-          pg?: string;
-          pay_method?: string;
-          merchant_uid: string;
-          name: string;
-          amount: number;
-          buyer_email?: string;
-          buyer_name?: string;
-          buyer_tel?: string;
-        },
-        callback: (rsp: { success: boolean; imp_uid?: string; error_msg?: string }) => void
-      ) => void;
-    };
-  }
-}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
@@ -97,7 +77,7 @@ export default function ExamCheckoutPage() {
 
       await apiClient.post('/api/v1/payments/exams/confirm', { impUid, orderId, amount }, { token });
 
-      router.push(`/exams/${exam.id}`);
+      router.push(`/cert/register/complete?examId=${exam.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : (err instanceof Error ? err.message : '결제 처리 중 오류가 발생했습니다.'));
       setPaying(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
@@ -10,8 +10,15 @@ import Button from '@/components/ui/Button';
 import GoogleLoginButton from '@/components/auth/google-login-button';
 import KakaoLoginButton from '@/components/auth/kakao-login-button';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { useAuthStore } from '@/store/auth.store';
 
 export default function RegisterPage() {
+  const { user, isLoading } = useAuthStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && user) window.location.replace('/');
+  }, [isLoading, user]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

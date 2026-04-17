@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
+import MarkdownContent from '@/components/ui/MarkdownContent';
 import { fetchPostBySlug, fetchPosts } from '@/lib/blog';
 
 export const revalidate = 3600;
@@ -116,8 +117,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 prose-strong:text-cc-text
                 prose-hr:border-white/10
                 prose-img:rounded-cc"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
+            >
+              <MarkdownContent content={post.content} />
+            </article>
           ) : (
             <p className="text-cc-muted">본문이 없습니다.</p>
           )}

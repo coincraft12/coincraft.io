@@ -123,6 +123,51 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(ok(result, '구독이 시작되었습니다.'));
   });
 
+  // POST /api/v1/payments/vbank/confirm
+  app.post('/api/v1/payments/vbank/confirm', { preHandler: [authenticate] }, async (request, reply) => {
+    const schema = z.object({
+      impUid: z.string(),
+      orderId: z.string(),
+      amount: z.number(),
+    });
+    const body = schema.safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
+    const result = await paymentService.confirmVbankPayment(request.user!.id, body.data.impUid, body.data.orderId, body.data.amount);
+    return reply.send(ok(result, '가상계좌가 발급되었습니다.'));
+  });
+
+  // POST /api/v1/payments/cancel — PortOne 실패/취소 시 pending → failed
+  app.post('/api/v1/payments/cancel', { preHandler: [authenticate] }, async (request, reply) => {
+    const schema = z.object({ orderId: z.string() });
+    const body = schema.safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
+    await paymentService.cancelPendingPayment(request.user!.id, body.data.orderId);
+    return reply.send(ok(null, '결제가 취소되었습니다.'));
+  });
+
+  // POST /api/v1/payments/bank-transfer/prepare
+  app.post('/api/v1/payments/bank-transfer/prepare', { preHandler: [authenticate] }, async (request, reply) => {
+    const schema = z.object({ courseId: z.string().uuid() });
+    const body = schema.safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
+    const result = await paymentService.prepareBankTransfer(request.user!.id, body.data.courseId);
+    return reply.code(201).send(created(result, '무통장 입금 정보가 준비되었습니다.'));
+  });
+
+  // POST /api/v1/payments/bank-transfer/exams/prepare
+  app.post('/api/v1/payments/bank-transfer/exams/prepare', { preHandler: [authenticate] }, async (request, reply) => {
+    const schema = z.object({
+      examId: z.string().uuid(),
+      name: z.string().optional(),
+      birthdate: z.string().optional(),
+      phone: z.string().optional(),
+    });
+    const body = schema.safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
+    const result = await paymentService.prepareBankTransferExam(request.user!.id, body.data.examId, body.data.phone, body.data.name, body.data.birthdate);
+    return reply.code(201).send(created(result, '무통장 입금 정보가 준비되었습니다.'));
+  });
+
   // POST /api/v1/payments/webhook  — PortOne V1 서버 알림
   app.post('/api/v1/payments/webhook', async (request, reply) => {
     const schema = z.object({

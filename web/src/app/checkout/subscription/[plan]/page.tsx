@@ -25,26 +25,6 @@ const PLAN_INFO: Record<string, { label: string; amount: number; period: string;
   },
 };
 
-declare global {
-  interface Window {
-    IMP?: {
-      init: (impCode: string) => void;
-      request_pay: (
-        params: {
-          pg?: string;
-          pay_method?: string;
-          merchant_uid: string;
-          name: string;
-          amount: number;
-          buyer_email?: string;
-          buyer_name?: string;
-          buyer_tel?: string;
-        },
-        callback: (rsp: { success: boolean; imp_uid?: string; error_msg?: string }) => void
-      ) => void;
-    };
-  }
-}
 
 export default function SubscriptionCheckoutPage() {
   const params = useParams();
@@ -93,6 +73,7 @@ export default function SubscriptionCheckoutPage() {
             if (rsp.success && rsp.imp_uid) {
               resolve(rsp.imp_uid);
             } else {
+              apiClient.post('/api/v1/payments/cancel', { orderId }, { token: token! }).catch(() => {});
               reject(new Error(rsp.error_msg ?? '결제가 취소되었습니다.'));
             }
           }

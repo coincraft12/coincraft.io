@@ -55,7 +55,11 @@ export default function ExamResultPage() {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (!token || !attemptId) return;
+    if (!token || !attemptId) {
+      setError('잘못된 접근입니다. 시험 목록으로 돌아가 주세요.');
+      setIsLoading(false);
+      return;
+    }
 
     async function fetchResult() {
       try {

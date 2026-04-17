@@ -49,7 +49,7 @@ export function useAuthInit() {
         localStorage.setItem(USER_CACHE_KEY, JSON.stringify(res.data));
       })
       .catch((err) => {
-        // 401 → 토큰 만료, 로그아웃 처리
+        // 401 → 토큰 만료 (refresh도 실패), 로그아웃 처리
         if (err instanceof ApiError && err.status === 401) {
           clearToken();
           setToken(null);

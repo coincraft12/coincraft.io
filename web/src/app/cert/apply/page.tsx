@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
+import ExamRegisteredRedirect from './ExamRegisteredRedirect';
 
 export const metadata = { title: '검정 신청 — CoinCraft' };
 export const revalidate = 60;
@@ -57,6 +58,7 @@ export default async function CertApplyPage() {
   return (
     <>
       <Header />
+      <ExamRegisteredRedirect />
       <main className="min-h-screen bg-cc-primary pt-24 pb-16">
         <div className="cc-container max-w-2xl">
 
