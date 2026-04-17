@@ -5,8 +5,8 @@ export const preparePaymentSchema = z.object({
 });
 
 export const confirmPaymentSchema = z.object({
-  impUid: z.string().min(1),
-  orderId: z.string().min(1),
+  impUid: z.string().min(1).max(100),
+  orderId: z.string().min(1).max(200),
   amount: z.number().int().positive(),
 });
 
@@ -15,21 +15,21 @@ export const prepareEbookPaymentSchema = z.object({
 });
 
 export const confirmEbookPaymentSchema = z.object({
-  impUid: z.string().min(1),
-  orderId: z.string().min(1),
+  impUid: z.string().min(1).max(100),
+  orderId: z.string().min(1).max(200),
   amount: z.number().int().positive(),
 });
 
 export const prepareExamPaymentSchema = z.object({
   examId: z.string().uuid(),
-  name: z.string().optional(),
+  name: z.string().max(100).optional(),
   birthdate: z.string().regex(/^\d{8}$/).optional(),
-  phone: z.string().optional(),
+  phone: z.string().max(20).optional(),
 });
 
 export const confirmExamPaymentSchema = z.object({
-  impUid: z.string().min(1),
-  orderId: z.string().min(1),
+  impUid: z.string().min(1).max(100),
+  orderId: z.string().min(1).max(200),
   amount: z.number().int().positive(),
 });
 
@@ -38,8 +38,8 @@ export const prepareSubscriptionPaymentSchema = z.object({
 });
 
 export const confirmSubscriptionPaymentSchema = z.object({
-  impUid: z.string().min(1),
-  orderId: z.string().min(1),
+  impUid: z.string().min(1).max(100),
+  orderId: z.string().min(1).max(200),
   amount: z.number().int().positive(),
 });
 

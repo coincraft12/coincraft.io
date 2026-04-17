@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subscriptions, users, examRegistrations } from '../../db/schema';
 import { redis } from '../../lib/redis';
@@ -466,8 +466,19 @@ export async function confirmExamPayment(
 
   const [[eu], [ex]] = await Promise.all([
     db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1),
-    db.select({ title: certExams.title, level: certExams.level }).from(certExams).where(eq(certExams.id, examId)).limit(1),
+    db.select({ title: certExams.title, level: certExams.level, maxCapacity: certExams.maxCapacity }).from(certExams).where(eq(certExams.id, examId)).limit(1),
   ]);
+
+  // 정원 초과 체크
+  if (ex?.maxCapacity != null) {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(examRegistrations)
+      .where(eq(examRegistrations.examId, examId));
+    if (count >= ex.maxCapacity) {
+      throw makeError('접수 정원이 마감되었습니다.', 'EXAM_CAPACITY_FULL', 409);
+    }
+  }
 
   // 수험번호 생성 + DB 저장 (payment 상태 업데이트와 등록 레코드 생성을 트랜잭션으로 처리)
   let registrationNumber = '';

@@ -3,6 +3,21 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 
 export const metadata = { title: 'WEB3 구조 설계자 검정 — CoinCraft' };
+export const revalidate = 60;
+
+async function fetchExamCapacity(): Promise<{ registeredCount: number; maxCapacity: number | null } | null> {
+  try {
+    const apiBase = process.env.API_INTERNAL_URL ?? '';
+    const res = await fetch(`${apiBase}/api/v1/exams`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const exams: Array<{ level: string; registeredCount: number; maxCapacity: number | null }> = json.data ?? [];
+    const basic = exams.find((e) => e.level === 'basic');
+    return basic ? { registeredCount: basic.registeredCount, maxCapacity: basic.maxCapacity } : null;
+  } catch {
+    return null;
+  }
+}
 
 const LEVELS = [
   {
@@ -46,7 +61,11 @@ const INFO_LINKS = [
   },
 ];
 
-export default function CertPage() {
+export default async function CertPage() {
+  const capacity = await fetchExamCapacity();
+  const isFull = capacity?.maxCapacity != null && capacity.registeredCount >= capacity.maxCapacity;
+  const remaining = capacity?.maxCapacity != null ? capacity.maxCapacity - capacity.registeredCount : null;
+
   return (
     <>
       <Header />
@@ -139,14 +158,35 @@ export default function CertPage() {
                   <span className="text-xs font-bold text-red-400">50%</span>
                 </div>
               </div>
+              {capacity?.maxCapacity != null && (
+                <div className="flex">
+                  <span className="w-24 text-cc-muted shrink-0">접수 현황</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold text-sm ${isFull ? 'text-red-400' : 'text-cc-text'}`}>
+                      {capacity.registeredCount} / {capacity.maxCapacity}명
+                    </span>
+                    {isFull ? (
+                      <span className="text-xs font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">마감</span>
+                    ) : remaining !== null && remaining <= 5 ? (
+                      <span className="text-xs font-bold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full">잔여 {remaining}석</span>
+                    ) : null}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="mt-6 text-center">
-              <Link
-                href="/cert/apply"
-                className="inline-block bg-[#0a2463] text-white text-sm font-bold px-10 py-3.5 rounded-lg hover:opacity-90 transition-opacity"
-              >
-                검정 신청하기
-              </Link>
+              {isFull ? (
+                <div className="inline-block bg-white/10 text-cc-muted text-sm font-bold px-10 py-3.5 rounded-lg cursor-not-allowed">
+                  접수 마감
+                </div>
+              ) : (
+                <Link
+                  href="/cert/apply"
+                  className="inline-block bg-[#0a2463] text-white text-sm font-bold px-10 py-3.5 rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  검정 신청하기
+                </Link>
+              )}
             </div>
           </div>
 

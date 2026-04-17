@@ -47,6 +47,8 @@ export default function ExamResultPage() {
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [isGrading, setIsGrading] = useState(true);
 
   useEffect(() => {
     if (!isAuthLoading && !token) {
@@ -55,21 +57,22 @@ export default function ExamResultPage() {
     }
     if (!token || !attemptId) return;
 
-    // Fetch attempt result by re-submitting or getting from state
-    // Since we already submitted, we fetch the attempt status
     async function fetchResult() {
       try {
-        // We store the result in sessionStorage from the attempt page
         const stored = sessionStorage.getItem(`exam-result-${attemptId}`);
         if (stored) {
           setResult(JSON.parse(stored) as AttemptResult);
           setIsLoading(false);
           return;
         }
-        // Fallback: show error since result should have been stored
-        setError('결과를 불러올 수 없습니다. 시험 목록으로 돌아가 주세요.');
+        // fallback: API 조회 (새로고침 등 sessionStorage 소실 시)
+        const res = await apiClient.get<{ success: boolean; data: AttemptResult }>(
+          `/api/v1/exams/attempts/${attemptId}/result`,
+          { token: token ?? undefined }
+        );
+        setResult(res.data);
       } catch {
-        setError('결과를 불러오는 중 오류가 발생했습니다.');
+        setError('결과를 불러올 수 없습니다. 시험 목록으로 돌아가 주세요.');
       } finally {
         setIsLoading(false);
       }
@@ -78,10 +81,77 @@ export default function ExamResultPage() {
     fetchResult();
   }, [isAuthLoading, token, attemptId, router]);
 
+  // 채점 프로그레스 애니메이션 (결과 로드 완료 후 시작)
+  useEffect(() => {
+    if (isLoading || error) return;
+
+    const STAGES = [
+      { target: 28, duration: 600 },
+      { target: 55, duration: 700 },
+      { target: 79, duration: 600 },
+      { target: 95, duration: 500 },
+      { target: 100, duration: 400 },
+    ];
+
+    let current = 0;
+    let stageIdx = 0;
+
+    const tick = () => {
+      if (stageIdx >= STAGES.length) return;
+      const { target, duration } = STAGES[stageIdx];
+      const steps = Math.ceil(duration / 30);
+      const increment = (target - current) / steps;
+      let step = 0;
+
+      const interval = setInterval(() => {
+        step++;
+        current = Math.min(current + increment, target);
+        setProgress(Math.round(current));
+        if (step >= steps) {
+          clearInterval(interval);
+          stageIdx++;
+          if (stageIdx < STAGES.length) {
+            setTimeout(tick, 150);
+          } else {
+            setTimeout(() => setIsGrading(false), 300);
+          }
+        }
+      }, 30);
+    };
+
+    tick();
+  }, [isLoading, error]);
+
   if (isAuthLoading || isLoading) {
     return (
       <div className="min-h-screen bg-cc-primary flex items-center justify-center">
         <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (isGrading && !error) {
+    const stages = ['답변 수집 중', '정답 대조 중', '점수 계산 중', '결과 생성 중'];
+    const stageIndex = progress < 30 ? 0 : progress < 60 ? 1 : progress < 85 ? 2 : 3;
+    return (
+      <div className="min-h-screen bg-cc-primary flex items-center justify-center px-4">
+        <div className="w-full max-w-sm space-y-8 text-center">
+          <div className="space-y-2">
+            <p className="text-cc-label text-xs tracking-widest">GRADING</p>
+            <h2 className="text-xl font-bold text-cc-text">채점 중입니다</h2>
+            <p className="text-cc-muted text-sm">{stages[stageIndex]}...</p>
+          </div>
+          <div className="space-y-3">
+            <div className="w-full h-2 bg-cc-secondary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-cc-accent rounded-full transition-all duration-100 ease-linear"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-cc-accent font-bold text-sm tabular-nums">{progress}%</p>
+          </div>
+          <p className="text-xs text-cc-muted">잠시만 기다려 주세요</p>
+        </div>
       </div>
     );
   }

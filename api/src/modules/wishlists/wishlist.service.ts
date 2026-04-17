@@ -1,0 +1,71 @@
+import { eq, and } from 'drizzle-orm';
+import { db } from '../../db';
+import { wishlists, courses } from '../../db/schema';
+
+export interface WishlistCourse {
+  wishlistId: string;
+  addedAt: Date;
+  courseId: string;
+  title: string;
+  slug: string;
+  thumbnailUrl: string | null;
+  price: string;
+  salePrice: string | null;
+}
+
+export async function toggleWishlist(
+  userId: string,
+  courseId: string,
+): Promise<{ wishlisted: boolean }> {
+  const [existing] = await db
+    .select({ id: wishlists.id })
+    .from(wishlists)
+    .where(and(eq(wishlists.userId, userId), eq(wishlists.courseId, courseId)))
+    .limit(1);
+
+  if (existing) {
+    await db.delete(wishlists).where(eq(wishlists.id, existing.id));
+    return { wishlisted: false };
+  }
+
+  await db.insert(wishlists).values({ userId, courseId });
+  return { wishlisted: true };
+}
+
+export async function listUserWishlists(userId: string): Promise<WishlistCourse[]> {
+  const rows = await db
+    .select({
+      wishlistId: wishlists.id,
+      addedAt: wishlists.addedAt,
+      courseId: courses.id,
+      title: courses.title,
+      slug: courses.slug,
+      thumbnailUrl: courses.thumbnailUrl,
+      price: courses.price,
+      salePrice: courses.originalPrice,
+    })
+    .from(wishlists)
+    .innerJoin(courses, eq(wishlists.courseId, courses.id))
+    .where(eq(wishlists.userId, userId));
+
+  return rows.map((r) => ({
+    wishlistId: r.wishlistId,
+    addedAt: r.addedAt,
+    courseId: r.courseId,
+    title: r.title,
+    slug: r.slug,
+    thumbnailUrl: r.thumbnailUrl,
+    price: r.price,
+    salePrice: r.salePrice ?? null,
+  }));
+}
+
+export async function isWishlisted(userId: string, courseId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: wishlists.id })
+    .from(wishlists)
+    .where(and(eq(wishlists.userId, userId), eq(wishlists.courseId, courseId)))
+    .limit(1);
+
+  return !!row;
+}

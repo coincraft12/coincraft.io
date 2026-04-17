@@ -47,6 +47,13 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(ok(history));
   });
 
+  // POST /api/v1/payments/:id/refund
+  app.post('/api/v1/payments/:id/refund', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await paymentService.refundPayment(request.user!.id, id);
+    return reply.send(ok(result, '환불이 완료되었습니다.'));
+  });
+
   // POST /api/v1/payments/ebooks/prepare
   app.post('/api/v1/payments/ebooks/prepare', { preHandler: [authenticate] }, async (request, reply) => {
     const body = prepareEbookPaymentSchema.safeParse(request.body);

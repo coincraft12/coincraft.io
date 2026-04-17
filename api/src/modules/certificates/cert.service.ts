@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import {
   certExams,
@@ -41,8 +41,12 @@ export async function listExams() {
       passingScore: certExams.passingScore,
       timeLimit: certExams.timeLimit,
       examFee: certExams.examFee,
+      maxCapacity: certExams.maxCapacity,
       prerequisiteCourseId: certExams.prerequisiteCourseId,
       createdAt: certExams.createdAt,
+      registeredCount: sql<number>`(
+        SELECT count(*)::int FROM exam_registrations WHERE exam_id = ${certExams.id}
+      )`,
     })
     .from(certExams)
     .where(eq(certExams.isActive, true))
@@ -140,9 +144,26 @@ export async function startExam(userId: string, examId: string) {
     }
   }
 
-  // Check if already has in-progress attempt
-  const [existing] = await db
+  // 이미 제출 완료된 attempt가 있으면 재응시 불가
+  const [submitted] = await db
     .select({ id: examAttempts.id })
+    .from(examAttempts)
+    .where(
+      and(
+        eq(examAttempts.userId, userId),
+        eq(examAttempts.examId, examId),
+        eq(examAttempts.status, 'submitted')
+      )
+    )
+    .limit(1);
+
+  if (submitted) {
+    throw makeError('이미 제출 완료된 시험입니다.', 'ALREADY_SUBMITTED', 409);
+  }
+
+  // Check if already has in-progress attempt — resume instead of error
+  const [existing] = await db
+    .select({ id: examAttempts.id, startedAt: examAttempts.startedAt })
     .from(examAttempts)
     .where(
       and(
@@ -153,8 +174,38 @@ export async function startExam(userId: string, examId: string) {
     )
     .limit(1);
 
+  const fetchQuestions = () =>
+    db
+      .select({
+        id: examQuestions.id,
+        question: examQuestions.question,
+        options: examQuestions.options,
+        order: examQuestions.order,
+        points: examQuestions.points,
+      })
+      .from(examQuestions)
+      .where(eq(examQuestions.examId, examId))
+      .orderBy(examQuestions.order);
+
   if (existing) {
-    throw makeError('이미 진행 중인 시험이 있습니다.', 'ALREADY_IN_PROGRESS', 409);
+    // 시간 초과 여부 확인
+    const elapsedSec = Math.floor((Date.now() - new Date(existing.startedAt).getTime()) / 1000);
+    const timeLimitSec = exam.timeLimit * 60;
+    if (elapsedSec >= timeLimitSec) {
+      await db.update(examAttempts)
+        .set({ status: 'submitted', submittedAt: new Date(), score: 0, isPassed: false, gradedAt: new Date() })
+        .where(eq(examAttempts.id, existing.id));
+      throw makeError('시험 시간이 초과되어 자동 제출되었습니다.', 'TIME_EXPIRED', 410);
+    }
+    // 이어받기
+    const questions = await fetchQuestions();
+    return {
+      attemptId: existing.id,
+      startedAt: existing.startedAt,
+      timeLimit: exam.timeLimit,
+      questions,
+      resumed: true,
+    };
   }
 
   // Create attempt
@@ -163,24 +214,36 @@ export async function startExam(userId: string, examId: string) {
     .values({ userId, examId, status: 'in_progress' })
     .returning({ id: examAttempts.id, startedAt: examAttempts.startedAt });
 
-  // Fetch questions (without correctIndex and explanation)
-  const questions = await db
-    .select({
-      id: examQuestions.id,
-      question: examQuestions.question,
-      options: examQuestions.options,
-      order: examQuestions.order,
-      points: examQuestions.points,
-    })
-    .from(examQuestions)
-    .where(eq(examQuestions.examId, examId))
-    .orderBy(examQuestions.order);
+  const questions = await fetchQuestions();
 
   return {
     attemptId: attempt.id,
     startedAt: attempt.startedAt,
     timeLimit: exam.timeLimit,
     questions,
+    resumed: false,
+  };
+}
+
+export async function getMyExamStatus(userId: string, examId: string) {
+  const [attempt] = await db
+    .select({
+      id: examAttempts.id,
+      status: examAttempts.status,
+      isPassed: examAttempts.isPassed,
+      score: examAttempts.score,
+    })
+    .from(examAttempts)
+    .where(and(eq(examAttempts.userId, userId), eq(examAttempts.examId, examId)))
+    .orderBy(desc(examAttempts.startedAt))
+    .limit(1);
+
+  if (!attempt) return { status: 'not_started' as const };
+  return {
+    status: attempt.status as 'in_progress' | 'submitted' | 'abandoned',
+    attemptId: attempt.id,
+    isPassed: attempt.isPassed,
+    score: attempt.score,
   };
 }
 
@@ -212,7 +275,7 @@ export async function getAttempt(userId: string, attemptId: string) {
     .where(eq(certExams.id, attempt.examId))
     .limit(1);
 
-  const elapsedSeconds = Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000);
+  const elapsedSeconds = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
   const timeLimitSeconds = (exam?.timeLimit ?? 60) * 60;
   const remainingSeconds = Math.max(0, timeLimitSeconds - elapsedSeconds);
 
@@ -353,6 +416,70 @@ export async function submitExam(
   }
 
   return { score, isPassed, passingScore: exam.passingScore, feedback, certificate };
+}
+
+export async function getAttemptResult(userId: string, attemptId: string) {
+  const [attempt] = await db
+    .select({
+      id: examAttempts.id,
+      examId: examAttempts.examId,
+      status: examAttempts.status,
+      score: examAttempts.score,
+      isPassed: examAttempts.isPassed,
+      answers: examAttempts.answers,
+    })
+    .from(examAttempts)
+    .where(and(eq(examAttempts.id, attemptId), eq(examAttempts.userId, userId)))
+    .limit(1);
+
+  if (!attempt || attempt.status !== 'submitted') {
+    throw makeError('제출된 시험 결과를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  }
+
+  const [exam] = await db
+    .select({ passingScore: certExams.passingScore })
+    .from(certExams)
+    .where(eq(certExams.id, attempt.examId))
+    .limit(1);
+
+  const questions = await db
+    .select({
+      id: examQuestions.id,
+      question: examQuestions.question,
+      options: examQuestions.options,
+      correctIndex: examQuestions.correctIndex,
+      explanation: examQuestions.explanation,
+    })
+    .from(examQuestions)
+    .where(eq(examQuestions.examId, attempt.examId));
+
+  const savedAnswers = (attempt.answers ?? {}) as Record<string, number>;
+  const feedback = questions.map((q) => {
+    const selectedIndex = savedAnswers[q.id] ?? null;
+    return {
+      questionId: q.id,
+      question: q.question,
+      options: q.options,
+      selectedIndex,
+      correctIndex: q.correctIndex,
+      isCorrect: selectedIndex === q.correctIndex,
+      explanation: q.explanation ?? null,
+    };
+  });
+
+  const [cert] = await db
+    .select({ id: certificates.id, certNumber: certificates.certNumber, level: certificates.level })
+    .from(certificates)
+    .where(and(eq(certificates.userId, userId), eq(certificates.examId, attempt.examId)))
+    .limit(1);
+
+  return {
+    score: attempt.score ?? 0,
+    isPassed: attempt.isPassed ?? false,
+    passingScore: exam?.passingScore ?? 70,
+    feedback,
+    certificate: cert ?? null,
+  };
 }
 
 // ─── Certificate ──────────────────────────────────────────────────────────────

@@ -6,6 +6,8 @@ import CurriculumWithProgress from '@/components/courses/curriculum-with-progres
 import EnrollButton from '@/components/courses/enroll-button';
 import MarkdownContent from '@/components/ui/MarkdownContent';
 import InstructorCard from '@/components/courses/instructor-card';
+import CourseReviews from '@/components/courses/course-reviews';
+import WishlistButton from '@/components/courses/wishlist-button';
 
 export const revalidate = 300;
 
@@ -145,6 +147,9 @@ export default async function CourseDetailPage({
                   />
                 </div>
               )}
+
+              {/* Reviews */}
+              <CourseReviews courseId={course.id} />
             </div>
 
             {/* Right: sidebar (1/3) */}
@@ -179,6 +184,9 @@ export default async function CourseDetailPage({
                   firstLessonId={firstLessonId}
                   courseSlug={course.slug}
                 />
+
+                {/* Wishlist button */}
+                <WishlistButton courseId={course.id} />
 
                 {/* Meta info */}
                 <div className="space-y-2 text-sm text-cc-muted border-t border-white/10 pt-4">

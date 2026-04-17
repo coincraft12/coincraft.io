@@ -78,7 +78,22 @@ export default function CourseCard({
           )}
 
           {instructor && (
-            <p className="text-cc-muted text-xs mb-3">강사: {instructor.name}</p>
+            <div className="flex items-center gap-1.5 mb-3">
+              <div className="w-5 h-5 rounded-full bg-cc-accent/20 border border-cc-accent/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {instructor.avatarUrl || instructor.photoUrl ? (
+                  <img
+                    src={instructor.avatarUrl ?? instructor.photoUrl ?? ''}
+                    alt={instructor.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <svg className="w-3 h-3 text-cc-accent" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-cc-muted text-xs">{instructor.name}</span>
+            </div>
           )}
 
           <div className="flex items-center justify-between mt-auto pt-3">

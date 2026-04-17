@@ -17,7 +17,10 @@ import instructorsPublicPlugin from './modules/instructors';
 import adminPlugin from './modules/admin';
 import blogPlugin from './modules/blog';
 import { uploadRoutes, UPLOADS_DIR } from './modules/upload/upload.routes';
+import { reviewRoutes } from './modules/reviews';
+import { wishlistRoutes } from './modules/wishlists';
 import { registerPdfDeliveryJob } from './jobs/pdf-delivery';
+import { registerCertExpiryNotifierJob } from './jobs/cert-expiry-notifier';
 
 export async function buildApp() {
   const app = Fastify({
@@ -48,9 +51,12 @@ export async function buildApp() {
   await app.register(adminPlugin);
   await app.register(blogPlugin);
   await app.register(uploadRoutes, { prefix: '/api/v1/instructor/upload' });
+  await app.register(reviewRoutes, { prefix: '/api/v1' });
+  await app.register(wishlistRoutes, { prefix: '/api/v1' });
 
   // 스케줄러 등록
   registerPdfDeliveryJob();
+  registerCertExpiryNotifierJob();
 
   return app;
 }

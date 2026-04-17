@@ -137,7 +137,7 @@ export default function Header() {
 
         {/* Auth links */}
         <div className="hidden md:flex items-center gap-3">
-          {!isLoading && user ? (
+          {user ? (
             <>
               <a href="/my/courses" className="text-sm text-cc-muted hover:text-cc-text transition-colors">
                 {user.name}

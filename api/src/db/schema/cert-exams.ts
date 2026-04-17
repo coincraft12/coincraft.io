@@ -11,6 +11,7 @@ export const certExams = pgTable('cert_exams', {
   isActive: boolean('is_active').notNull().default(false),
   prerequisiteCourseId: uuid('prerequisite_course_id').references(() => courses.id),
   examFee: numeric('exam_fee', { precision: 10, scale: 2 }).notNull().default('0'),
+  maxCapacity: integer('max_capacity'),
   pdfDeliveryDate: date('pdf_delivery_date'),
   pdfFileUrl: text('pdf_file_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

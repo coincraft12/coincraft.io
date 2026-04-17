@@ -24,6 +24,7 @@ interface StartExamResponse {
     startedAt: string;
     timeLimit: number;
     questions: Question[];
+    resumed: boolean;
   };
 }
 
@@ -54,6 +55,8 @@ export default function ExamAttemptPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showUnanswered, setShowUnanswered] = useState(false);
   const tabSwitchCount = useRef(0);
   const submitted = useRef(false);
 
@@ -75,9 +78,23 @@ export default function ExamAttemptPage() {
         {},
         { token }
       );
-      setAttemptId(res.data.attemptId);
-      setQuestions(res.data.questions);
-      setTimeLimit(res.data.timeLimit * 60);
+      const { attemptId: newAttemptId, startedAt, timeLimit: tl, questions: qs, resumed } = res.data;
+      setAttemptId(newAttemptId);
+      setQuestions(qs);
+
+      // 남은 시간 계산 (재접속 시 이미 경과한 시간 차감)
+      const elapsedSec = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+      const remainingSec = Math.max(tl * 60 - elapsedSec, 0);
+      setTimeLimit(remainingSec);
+
+      // 이어받기인 경우 localStorage에서 답변 복원
+      if (resumed) {
+        try {
+          const saved = localStorage.getItem(`exam-answers-${newAttemptId}`);
+          if (saved) setAnswers(JSON.parse(saved));
+        } catch { /* ignore */ }
+      }
+
       setStarted(true);
 
       // Request fullscreen
@@ -88,11 +105,15 @@ export default function ExamAttemptPage() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '시험을 시작할 수 없습니다.';
-      setError(msg);
+      if (msg.includes('이미 제출')) {
+        router.replace(`/exams/${examId}`);
+      } else {
+        setError(msg);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [token, examId]);
+  }, [token, examId, router]);
 
   // Submit exam
   const submitExam = useCallback(async (_auto = false) => {
@@ -113,6 +134,7 @@ export default function ExamAttemptPage() {
       // Store result for result page
       try {
         sessionStorage.setItem(`exam-result-${attemptId}`, JSON.stringify(res.data));
+        localStorage.removeItem(`exam-answers-${attemptId}`);
       } catch { /* ignore */ }
       router.push(`/exams/${examId}/result?attemptId=${attemptId}`);
     } catch (err: unknown) {
@@ -142,11 +164,26 @@ export default function ExamAttemptPage() {
   }, [started, submitExam]);
 
   const handleSelect = (questionId: string, index: number) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: index }));
+    setAnswers((prev) => {
+      const next = { ...prev, [questionId]: index };
+      if (attemptId) {
+        try { localStorage.setItem(`exam-answers-${attemptId}`, JSON.stringify(next)); } catch { /* ignore */ }
+      }
+      return next;
+    });
   };
 
   const answeredCount = Object.keys(answers).length;
   const totalCount = questions.length;
+  const allAnswered = answeredCount === totalCount && totalCount > 0;
+
+  const handleSubmitClick = () => {
+    if (!allAnswered) {
+      setShowUnanswered(true);
+      return;
+    }
+    setShowConfirm(true);
+  };
 
   if (isAuthLoading || !token) {
     return (
@@ -197,7 +234,7 @@ export default function ExamAttemptPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => submitExam(false)}
+            onClick={handleSubmitClick}
             loading={isSubmitting}
             disabled={isSubmitting}
           >
@@ -221,11 +258,10 @@ export default function ExamAttemptPage() {
 
         {/* Submit button at bottom */}
         <div className="pt-6 pb-4">
-          {error && <p className="text-red-400 text-sm mb-4 text-center">{error}</p>}
           <Button
             size="lg"
             className="w-full"
-            onClick={() => submitExam(false)}
+            onClick={handleSubmitClick}
             loading={isSubmitting}
             disabled={isSubmitting}
           >
@@ -233,6 +269,57 @@ export default function ExamAttemptPage() {
           </Button>
         </div>
       </div>
+
+      {/* 미답변 경고 모달 */}
+      {showUnanswered && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+          <div className="bg-cc-secondary border border-red-500/30 rounded-2xl p-8 max-w-sm w-full space-y-5 text-center shadow-xl">
+            <p className="text-3xl">⛔</p>
+            <h3 className="text-lg font-bold text-cc-text">미답변 문항이 있습니다</h3>
+            <p className="text-sm text-cc-muted leading-relaxed">
+              <span className="text-red-400 font-bold text-base">{totalCount - answeredCount}개</span> 문항에 아직 답변하지 않았습니다.<br />
+              모든 문항에 답변한 후 제출할 수 있습니다.
+            </p>
+            <button
+              onClick={() => setShowUnanswered(false)}
+              className="w-full py-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-sm font-bold hover:bg-red-500/30 transition-colors"
+            >
+              계속 풀기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 제출 확인 모달 */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+          <div className="bg-cc-secondary border border-white/10 rounded-2xl p-8 max-w-sm w-full space-y-6 text-center shadow-xl">
+            <p className="text-3xl">📋</p>
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-cc-text">최종 제출하시겠습니까?</h3>
+              <p className="text-sm text-cc-muted leading-relaxed">
+                전체 {totalCount}문항 모두 답변 완료.<br />
+                제출 후에는 수정 및 재응시가 불가합니다.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => { setShowConfirm(false); submitExam(false); }}
+                disabled={isSubmitting}
+                className="w-full py-4 rounded-xl bg-cc-accent text-[#0f172a] text-base font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                제출하기
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="w-full py-3 rounded-xl border border-white/10 text-cc-muted text-sm font-semibold hover:bg-white/5 transition-colors"
+              >
+                취소 — 계속 검토하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../../db';
 import { instructors, users } from '../../db/schema';
@@ -31,7 +31,8 @@ export async function instructorsPublicRoutes(app: FastifyInstance): Promise<voi
       })
       .from(instructors)
       .leftJoin(users, eq(instructors.userId, users.id))
-      .where(eq(instructors.isApproved, true));
+      .where(eq(instructors.isApproved, true))
+      .orderBy(asc(instructors.createdAt));
 
     const data = rows.map((r) => ({
       id: r.id,

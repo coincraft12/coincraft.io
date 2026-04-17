@@ -3,6 +3,21 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 
 export const metadata = { title: '검정 신청 — CoinCraft' };
+export const revalidate = 60;
+
+async function fetchExamCapacity(): Promise<{ registeredCount: number; maxCapacity: number | null } | null> {
+  try {
+    const apiBase = process.env.API_INTERNAL_URL ?? '';
+    const res = await fetch(`${apiBase}/api/v1/exams`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const exams: Array<{ level: string; registeredCount: number; maxCapacity: number | null }> = json.data ?? [];
+    const basic = exams.find((e) => e.level === 'basic');
+    return basic ? { registeredCount: basic.registeredCount, maxCapacity: basic.maxCapacity } : null;
+  } catch {
+    return null;
+  }
+}
 
 const SCHEDULE = [
   { label: '시험일', value: '2026년 5월 2일 (토)' },
@@ -34,7 +49,11 @@ const EXAM_FLOW = [
   { label: '결과 발표', value: '제출 즉시 점수 및 정답 확인 가능 / 합격자 인증서는 이메일 발송' },
 ];
 
-export default function CertApplyPage() {
+export default async function CertApplyPage() {
+  const capacity = await fetchExamCapacity();
+  const isFull = capacity?.maxCapacity != null && capacity.registeredCount >= capacity.maxCapacity;
+  const remaining = capacity?.maxCapacity != null ? capacity.maxCapacity - capacity.registeredCount : null;
+
   return (
     <>
       <Header />
@@ -115,12 +134,27 @@ export default function CertApplyPage() {
 
           {/* 신청 버튼 */}
           <div className="text-center mb-10">
-            <a
-              href="/cert/register/"
-              className="inline-block bg-[#0a2463] text-white text-base font-bold px-12 py-4 rounded-lg hover:opacity-90 transition-opacity"
-            >
-              검정 신청하기
-            </a>
+            {capacity?.maxCapacity != null && (
+              <p className={`text-sm mb-3 font-semibold ${isFull ? 'text-red-400' : remaining !== null && remaining <= 5 ? 'text-orange-400' : 'text-cc-muted'}`}>
+                {isFull
+                  ? '접수 정원이 마감되었습니다.'
+                  : remaining !== null && remaining <= 5
+                  ? `잔여 ${remaining}석 — 마감 임박`
+                  : `현재 ${capacity.registeredCount}명 접수 완료 / 총 ${capacity.maxCapacity}명 정원`}
+              </p>
+            )}
+            {isFull ? (
+              <div className="inline-block bg-white/10 text-cc-muted text-base font-bold px-12 py-4 rounded-lg cursor-not-allowed">
+                접수 마감
+              </div>
+            ) : (
+              <a
+                href="/cert/register/"
+                className="inline-block bg-[#0a2463] text-white text-base font-bold px-12 py-4 rounded-lg hover:opacity-90 transition-opacity"
+              >
+                검정 신청하기
+              </a>
+            )}
           </div>
 
           {/* 환불 정책 */}

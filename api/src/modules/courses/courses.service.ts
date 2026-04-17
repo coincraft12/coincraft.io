@@ -86,9 +86,11 @@ export async function listCourses(query: CoursesQuery, userId?: string): Promise
       instructorId: courses.instructorId,
       instructorName: users.name,
       instructorAvatar: users.avatarUrl,
+      instructorPhotoUrl: instructors.photoUrl,
     })
     .from(courses)
     .leftJoin(users, eq(courses.instructorId, users.id))
+    .leftJoin(instructors, eq(courses.instructorId, instructors.userId))
     .where(and(...conditions))
     .orderBy(...orderBy)
     .limit(limit)
@@ -110,7 +112,7 @@ export async function listCourses(query: CoursesQuery, userId?: string): Promise
     averageRating: r.averageRating,
     reviewCount: r.reviewCount,
     instructor: r.instructorId
-      ? { id: r.instructorId, name: r.instructorName ?? '', avatarUrl: r.instructorAvatar ?? null, bio: null, specialties: null, photoUrl: null }
+      ? { id: r.instructorId, name: r.instructorName ?? '', avatarUrl: r.instructorAvatar ?? null, bio: null, specialties: null, photoUrl: r.instructorPhotoUrl ?? null }
       : null,
   }));
 
