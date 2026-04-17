@@ -8,6 +8,7 @@ import {
   prepareSubscriptionPaymentSchema, confirmSubscriptionPaymentSchema,
 } from './payment.schema';
 import * as paymentService from './payment.service';
+import { z } from 'zod';
 
 export async function paymentRoutes(app: FastifyInstance): Promise<void> {
   // POST /api/v1/payments/prepare
@@ -120,5 +121,26 @@ export async function paymentRoutes(app: FastifyInstance): Promise<void> {
     if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
     const result = await paymentService.confirmSubscriptionPayment(request.user!.id, body.data.impUid, body.data.orderId, body.data.amount);
     return reply.send(ok(result, '구독이 시작되었습니다.'));
+  });
+
+  // POST /api/v1/payments/webhook  — PortOne V1 서버 알림
+  app.post('/api/v1/payments/webhook', async (request, reply) => {
+    const schema = z.object({
+      imp_uid: z.string(),
+      merchant_uid: z.string(),
+      status: z.string(),
+    });
+    const parsed = schema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ ok: false });
+
+    const { imp_uid, merchant_uid, status } = parsed.data;
+    if (status !== 'paid') return reply.code(200).send({ ok: true });
+
+    try {
+      await paymentService.handleWebhook(imp_uid, merchant_uid);
+    } catch (e: any) {
+      request.log.error({ err: e.message }, 'webhook.handle_failed');
+    }
+    return reply.code(200).send({ ok: true });
   });
 }

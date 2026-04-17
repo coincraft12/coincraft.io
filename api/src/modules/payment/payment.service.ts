@@ -247,6 +247,47 @@ export async function confirmPayment(
   return { courseId: course.id, courseSlug: course.slug };
 }
 
+export async function handleWebhook(impUid: string, merchantUid: string): Promise<void> {
+  // PortOne V1 서버 알림 처리 — 클라이언트 confirm 누락 케이스 보완
+  const allPending = await db
+    .select()
+    .from(payments)
+    .where(and(eq(payments.status, 'pending'), eq(payments.provider, 'portone')));
+
+  const pendingPayment = allPending.find((p) => {
+    const meta = p.metadata as { orderId?: string } | null;
+    return meta?.orderId === merchantUid;
+  });
+
+  if (!pendingPayment) return; // 이미 처리됐거나 존재하지 않는 주문
+
+  const expectedAmount = Math.round(Number(pendingPayment.amount));
+  await verifyIamportPayment(impUid, expectedAmount);
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payments)
+      .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
+      .where(eq(payments.id, pendingPayment.id));
+
+    if (pendingPayment.productType === 'course') {
+      const [existing] = await tx
+        .select({ id: enrollments.id })
+        .from(enrollments)
+        .where(and(eq(enrollments.userId, pendingPayment.userId), eq(enrollments.courseId, pendingPayment.productId)))
+        .limit(1);
+      if (!existing) {
+        await tx.insert(enrollments).values({
+          userId: pendingPayment.userId,
+          courseId: pendingPayment.productId,
+          status: 'active',
+          paymentId: pendingPayment.id,
+        });
+      }
+    }
+  });
+}
+
 export async function getPaymentHistory(userId: string): Promise<PaymentHistoryItem[]> {
   const rows = await db
     .select({
@@ -487,6 +528,20 @@ export async function confirmExamPayment(
   }
 
   await db.transaction(async (tx) => {
+    // 트랜잭션 내 최종 중복 체크 (race condition 방지)
+    if (applicantName && applicantBirthdate) {
+      const [dup] = await tx
+        .select({ id: examRegistrations.id })
+        .from(examRegistrations)
+        .where(and(
+          eq(examRegistrations.examId, examId),
+          eq(examRegistrations.applicantName, applicantName),
+          eq(examRegistrations.applicantBirthdate, applicantBirthdate),
+        ))
+        .limit(1);
+      if (dup) throw makeError('이미 접수된 수험자입니다.', 'ALREADY_REGISTERED', 409);
+    }
+
     await tx.update(payments)
       .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
       .where(eq(payments.id, pendingPayment.id));
