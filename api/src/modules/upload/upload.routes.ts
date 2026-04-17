@@ -1,13 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../../middleware/authenticate';
+import { requireRole } from '../../middleware/require-role';
 import path from 'path';
 import fs from 'fs/promises';
 import { randomUUID } from 'crypto';
+import { uploadFile } from '../../lib/storage';
 import { db } from '../../db';
 import { courses, users, instructors, vimeoBulkUploads, chapters, lessons } from '../../db/schema';
 import { eq, and, isNull, desc } from 'drizzle-orm';
+import { env } from '../../config/env';
 
-const VIMEO_TOKEN = process.env.VIMEO_ACCESS_TOKEN ?? '';
+const VIMEO_TOKEN = env.VIMEO_ACCESS_TOKEN ?? '';
 
 export const UPLOADS_DIR =
   process.env.UPLOADS_DIR ?? path.join(process.cwd(), 'uploads');
@@ -74,7 +77,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
   // POST /api/v1/instructor/upload/image
   app.post('/image', {
-    preHandler: [authenticate],
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
   }, async (request, reply) => {
     const data = await request.file();
     if (!data) {
@@ -105,20 +108,38 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const filename = `${randomUUID()}${ext}`;
-    await fs.writeFile(path.join(UPLOADS_DIR, filename), buffer);
+    // MIME magic byte 검증 (확장자 위조 방지)
+    const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+    const isWebp = buffer.length > 12 && buffer.slice(0, 4).toString('ascii') === 'RIFF' && buffer.slice(8, 12).toString('ascii') === 'WEBP';
+    if (!isJpeg && !isPng && !isWebp) {
+      return reply.code(400).send({
+        success: false,
+        error: { code: 'INVALID_MIME', message: '실제 이미지 파일만 업로드할 수 있습니다.' },
+      });
+    }
 
-    const publicBase = process.env.API_PUBLIC_URL
-      ? process.env.API_PUBLIC_URL.replace(/\/$/, '')
-      : `${request.protocol}://${request.hostname}:${process.env.PORT ?? 4000}`;
-    const url = `${publicBase}/api/v1/files/${filename}`;
+    const filename = `${randomUUID()}${ext}`;
+    const key = `images/${filename}`;
+
+    // S3 키가 설정돼 있으면 Hetzner Object Storage, 아니면 로컬 fallback
+    let url: string;
+    if (process.env.S3_ACCESS_KEY_ID) {
+      url = await uploadFile(key, buffer, `image/${ext.slice(1)}`);
+    } else {
+      await fs.writeFile(path.join(UPLOADS_DIR, filename), buffer);
+      const publicBase = process.env.API_PUBLIC_URL
+        ? process.env.API_PUBLIC_URL.replace(/\/$/, '')
+        : `${request.protocol}://${request.hostname}:${process.env.PORT ?? 4000}`;
+      url = `${publicBase}/api/v1/files/${filename}`;
+    }
 
     return reply.send({ success: true, data: { url, filename } });
   });
 
   // POST /api/v1/instructor/upload/vimeo-init
   app.post('/vimeo-init', {
-    preHandler: [authenticate],
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
     schema: {
       body: {
         type: 'object',
@@ -136,6 +157,22 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const { size, name, courseId } = request.body as { size: number; name: string; courseId: string };
+    const userId = request.user!.id;
+
+    // size 유효성 검사 (음수/0/과대 방지)
+    if (!Number.isInteger(size) || size <= 0 || size > 50 * 1024 * 1024 * 1024) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: '유효하지 않은 파일 크기입니다.' } });
+    }
+
+    // 강사 소유 강좌인지 확인
+    const [ownedCourse] = await db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(and(eq(courses.id, courseId), eq(courses.instructorId, userId)))
+      .limit(1);
+    if (!ownedCourse) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '해당 강좌에 대한 권한이 없습니다.' } });
+    }
 
     // 강사명 + 강의명 조회
     let instructorName = '강사';
@@ -206,7 +243,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
   // GET /api/v1/instructor/upload/vimeo-status?videoUri=/videos/12345
   app.get('/vimeo-status', {
-    preHandler: [authenticate],
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
   }, async (request, reply) => {
     if (!VIMEO_TOKEN) {
       return reply.code(500).send({ success: false, error: { code: 'NO_TOKEN', message: 'Vimeo 토큰이 설정되지 않았습니다.' } });
@@ -215,6 +252,11 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
     const { videoUri } = request.query as { videoUri?: string };
     if (!videoUri) {
       return reply.code(400).send({ success: false, error: { code: 'MISSING_URI', message: 'videoUri가 필요합니다.' } });
+    }
+
+    // SSRF 방지: /videos/<numeric_id> 형식만 허용
+    if (!/^\/videos\/\d+$/.test(videoUri)) {
+      return reply.code(400).send({ success: false, error: { code: 'INVALID_URI', message: '유효하지 않은 videoUri 형식입니다.' } });
     }
 
     const res = await vimeoFetch(`${videoUri}?fields=uri,link,status`);
@@ -238,7 +280,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
   // POST /api/v1/instructor/upload/bulk-vimeo-init
   app.post('/bulk-vimeo-init', {
-    preHandler: [authenticate],
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
     schema: {
       body: {
         type: 'object',
@@ -257,6 +299,21 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
     const { size, filename, courseId } = request.body as { size: number; filename: string; courseId: string };
     const userId = request.user!.id;
+
+    // size 유효성 검사
+    if (!Number.isInteger(size) || size <= 0 || size > 50 * 1024 * 1024 * 1024) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: '유효하지 않은 파일 크기입니다.' } });
+    }
+
+    // 강사 소유 강좌인지 확인
+    const [ownedCourseBulk] = await db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(and(eq(courses.id, courseId), eq(courses.instructorId, userId)))
+      .limit(1);
+    if (!ownedCourseBulk) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '해당 강좌에 대한 권한이 없습니다.' } });
+    }
 
     let instructorName = '강사';
     let courseTitle = '미분류';
@@ -330,10 +387,16 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
   // PATCH /api/v1/instructor/upload/bulk-uploads/:id — 완료/에러 상태 업데이트
   app.patch('/bulk-uploads/:id', {
-    preHandler: [authenticate],
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as { status?: string; vimeoUrl?: string; errorMsg?: string };
+
+    // status 허용값 제한 (임의 문자열 DB 저장 방지)
+    const ALLOWED_STATUSES = ['uploading', 'done', 'error'];
+    if (body.status !== undefined && !ALLOWED_STATUSES.includes(body.status)) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: '유효하지 않은 status 값입니다.' } });
+    }
 
     await db.update(vimeoBulkUploads)
       .set({
@@ -348,7 +411,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
   // GET /api/v1/instructor/upload/bulk-uploads?courseId=xxx
   app.get('/bulk-uploads', {
-    preHandler: [authenticate],
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
   }, async (request, reply) => {
     const { courseId } = request.query as { courseId?: string };
     if (!courseId) {
@@ -369,7 +432,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
   // DELETE /api/v1/instructor/upload/bulk-uploads/:id
   app.delete('/bulk-uploads/:id', {
-    preHandler: [authenticate],
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -394,7 +457,7 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
   // POST /api/v1/instructor/upload/bulk-generate — 선택한 업로드로 챕터+레슨 일괄 생성
   app.post('/bulk-generate', {
-    preHandler: [authenticate],
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
     schema: {
       body: {
         type: 'object',
@@ -411,6 +474,21 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
     const { courseId, uploadIds, chapterTitle, chapterId: existingChapterId } =
       request.body as { courseId: string; uploadIds: string[]; chapterTitle: string; chapterId?: string };
     const userId = request.user!.id;
+
+    // uploadIds 크기 제한 (DoS 방지)
+    if (!Array.isArray(uploadIds) || uploadIds.length === 0 || uploadIds.length > 100) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: 'uploadIds는 1~100개 사이여야 합니다.' } });
+    }
+
+    // 강사가 해당 강좌의 소유자인지 확인
+    const [ownedCourse] = await db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(and(eq(courses.id, courseId), eq(courses.instructorId, userId)))
+      .limit(1);
+    if (!ownedCourse) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '해당 강좌에 대한 권한이 없습니다.' } });
+    }
 
     // 업로드 레코드 조회 (완료된 것만)
     const uploads = await db

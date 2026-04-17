@@ -30,8 +30,10 @@ function CallbackInner() {
       .get<{ data: any }>('/api/v1/auth/me', { token })
       .then((res) => {
         setUser(res.data);
-        const redirect = sessionStorage.getItem('auth_redirect') ?? '/';
+        const rawRedirect = sessionStorage.getItem('auth_redirect') ?? '/';
         sessionStorage.removeItem('auth_redirect');
+        // 오픈 리다이렉트 방지: 상대 경로만 허용
+        const redirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
         router.replace(redirect);
       })
       .catch(() => {

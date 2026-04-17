@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import LessonSidebar from '@/components/lms/lesson-sidebar';
 import VideoPlayer from '@/components/lms/video-player';
+import MarkdownContent from '@/components/ui/MarkdownContent';
 
 interface Lesson {
   id: string;
@@ -118,7 +119,7 @@ export default function LessonPage() {
     } finally {
       setPageLoading(false);
     }
-  }, [token, slug, lessonId, router]);
+  }, [token, slug, lessonId, router, pathname]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -213,10 +214,9 @@ export default function LessonPage() {
               />
             </div>
           ) : lesson.type === 'text' && lesson.textContent ? (
-            <div
-              className="prose prose-invert max-w-none text-cc-muted leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: lesson.textContent }}
-            />
+            <div className="prose prose-invert max-w-none text-cc-muted leading-relaxed">
+              <MarkdownContent content={lesson.textContent} />
+            </div>
           ) : (
             <div className="aspect-video bg-white/5 rounded-cc flex items-center justify-center">
               <p className="text-cc-muted">콘텐츠를 불러올 수 없습니다.</p>

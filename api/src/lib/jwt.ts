@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { env } from '../config/env';
 
 export interface JwtPayload {
@@ -34,8 +34,11 @@ function verify(token: string, secret: string): JwtPayload {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Invalid JWT format');
   const [header, body, sig] = parts;
-  const expected = base64url(createHmac('sha256', secret).update(`${header}.${body}`).digest());
-  if (sig !== expected) throw new Error('Invalid JWT signature');
+  const expectedBuf = createHmac('sha256', secret).update(`${header}.${body}`).digest();
+  const sigBuf = Buffer.from(sig, 'base64url');
+  if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) {
+    throw new Error('Invalid JWT signature');
+  }
   const payload: JwtPayload = JSON.parse(Buffer.from(body, 'base64url').toString());
   if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) throw new Error('JWT expired');
   return payload;

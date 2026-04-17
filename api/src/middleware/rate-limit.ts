@@ -25,5 +25,6 @@ export async function loginRateLimit(request: FastifyRequest, reply: FastifyRepl
       success: false,
       error: { code: 'TOO_MANY_REQUESTS', message: '로그인 시도 횟수를 초과했습니다. 15분 후 다시 시도해 주세요.' },
     });
+    return;
   }
 }

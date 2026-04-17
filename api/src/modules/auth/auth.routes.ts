@@ -6,6 +6,7 @@ import { loginRateLimit, clearLoginFailures, trackLoginFailure } from '../../mid
 import { ok, created } from '../../utils/response';
 import { env } from '../../config/env';
 import { generateId } from '../../utils/uuid';
+import { redis } from '../../lib/redis';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   // POST /api/v1/auth/register
@@ -72,6 +73,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   // POST /api/v1/auth/forgot-password
   app.post('/forgot-password', async (request, reply) => {
+    // IP당 시간당 5회 제한 (이메일 폭격/사용자 열거 방지)
+    const fpKey = `forgot_pw:${request.ip}`;
+    const fpCount = await redis.incr(fpKey);
+    if (fpCount === 1) await redis.expire(fpKey, 3600);
+    if (fpCount > 5) {
+      return reply.code(429).send({ success: false, error: { code: 'TOO_MANY_REQUESTS', message: '요청이 너무 많습니다. 1시간 후 다시 시도해 주세요.' } });
+    }
+
     const body = forgotPasswordSchema.safeParse(request.body);
     if (!body.success) return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: '유효한 이메일을 입력해 주세요.' } });
 
@@ -170,6 +179,13 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const body = request.body as { message?: string; signature?: string };
     if (!body.message || !body.signature) {
       return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: 'message와 signature가 필요합니다.' } });
+    }
+    // 입력 크기 제한 (DoS 방지)
+    if (typeof body.message !== 'string' || body.message.length > 1000) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: '유효하지 않은 message 형식입니다.' } });
+    }
+    if (typeof body.signature !== 'string' || body.signature.length > 200) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: '유효하지 않은 signature 형식입니다.' } });
     }
 
     const result = await authService.verifyWeb3Signature(body.message, body.signature);

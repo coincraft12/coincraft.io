@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../../middleware/authenticate';
+import { optionalAuth } from '../../middleware/optional-auth';
 import { ok, created } from '../../utils/response';
 import { progressSchema } from './lms.schema';
 import * as lmsService from './lms.service';
@@ -12,10 +13,10 @@ export async function lmsRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(201).send(created(null, '수강 신청이 완료되었습니다.'));
   });
 
-  // GET /api/v1/courses/:slug/lessons/:lessonId
-  app.get('/api/v1/courses/:slug/lessons/:lessonId', { preHandler: [authenticate] }, async (request, reply) => {
+  // GET /api/v1/courses/:slug/lessons/:lessonId — preview lessons are accessible without auth
+  app.get('/api/v1/courses/:slug/lessons/:lessonId', { preHandler: [optionalAuth] }, async (request, reply) => {
     const { lessonId } = request.params as { slug: string; lessonId: string };
-    const lesson = await lmsService.getLessonDetail(lessonId, request.user!.id);
+    const lesson = await lmsService.getLessonDetail(lessonId, request.user?.id);
     return reply.send(ok(lesson));
   });
 

@@ -8,6 +8,7 @@ export function requireRole(...roles: string[]) {
     }
     if (!roles.includes(request.user.role)) {
       reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '접근 권한이 없습니다.' } });
+      return;
     }
   };
 }

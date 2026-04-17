@@ -72,8 +72,14 @@ export async function instructorRoutes(app: FastifyInstance): Promise<void> {
   // PUT /api/v1/instructor/chapters/:chapterId — 챕터 수정
   app.put('/chapters/:chapterId', { preHandler: [authenticate, requireRole('instructor', 'admin')] }, async (request, reply) => {
     const { chapterId } = request.params as { chapterId: string };
-    const input = updateChapterSchema.parse(request.body);
-    const result = await instructorService.updateChapter(request.user!.id, chapterId, input);
+    const parsed = updateChapterSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0].message },
+      });
+    }
+    const result = await instructorService.updateChapter(request.user!.id, chapterId, parsed.data);
     return reply.send({ success: true, data: result });
   });
 

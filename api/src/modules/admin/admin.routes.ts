@@ -1,15 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db } from '../../db';
 import { users, courses, enrollments, instructors } from '../../db/schema';
 import { authenticate } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/require-role';
 import { ok, created } from '../../utils/response';
+import { env } from '../../config/env';
 
-const ACTION_SECRET = process.env.JWT_ACCESS_SECRET ?? 'coincraft-action-secret';
-const FRONTEND_URL = process.env.FRONTEND_URL ?? 'https://coincraft.io';
+const ACTION_SECRET = env.JWT_ACCESS_SECRET;
+const FRONTEND_URL = env.FRONTEND_URL;
 
 function b64(data: Buffer | string) {
   return (Buffer.isBuffer(data) ? data : Buffer.from(data)).toString('base64url');
@@ -28,8 +29,11 @@ function verifyActionToken(token: string): { instructorId: string; action: 'appr
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('invalid');
   const [header, body, sig] = parts;
-  const expected = b64(createHmac('sha256', ACTION_SECRET).update(`${header}.${body}`).digest());
-  if (sig !== expected) throw new Error('invalid signature');
+  const expectedBuf = createHmac('sha256', ACTION_SECRET).update(`${header}.${body}`).digest();
+  const sigBuf = Buffer.from(sig, 'base64url');
+  if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) {
+    throw new Error('invalid signature');
+  }
   const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
   if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('expired');
   return payload;

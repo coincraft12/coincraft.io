@@ -200,31 +200,32 @@ export async function confirmPayment(
     throw makeError('강좌를 찾을 수 없습니다.', 'NOT_FOUND', 404);
   }
 
-  // Update payment to paid
-  await db
-    .update(payments)
-    .set({
-      status: 'paid',
-      providerPaymentId: impUid,
-      paidAt: new Date(),
-    })
-    .where(eq(payments.id, pendingPayment.id));
+  // Update payment to paid + create enrollment atomically
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payments)
+      .set({
+        status: 'paid',
+        providerPaymentId: impUid,
+        paidAt: new Date(),
+      })
+      .where(eq(payments.id, pendingPayment.id));
 
-  // Create enrollment
-  const [existingEnrollment] = await db
-    .select({ id: enrollments.id })
-    .from(enrollments)
-    .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)))
-    .limit(1);
+    const [existingEnrollment] = await tx
+      .select({ id: enrollments.id })
+      .from(enrollments)
+      .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)))
+      .limit(1);
 
-  if (!existingEnrollment) {
-    await db.insert(enrollments).values({
-      userId,
-      courseId,
-      status: 'active',
-      paymentId: pendingPayment.id,
-    });
-  }
+    if (!existingEnrollment) {
+      await tx.insert(enrollments).values({
+        userId,
+        courseId,
+        status: 'active',
+        paymentId: pendingPayment.id,
+      });
+    }
+  });
 
   // 알림톡 + 이메일 — 수강신청 완료 (실패해도 결제 흐름에 영향 없음)
   const [u] = await db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
@@ -344,24 +345,27 @@ export async function confirmEbookPayment(
 
   const ebookId = pendingPayment.productId;
 
-  await db
-    .update(payments)
-    .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
-    .where(eq(payments.id, pendingPayment.id));
+  // Update payment to paid + create ebook purchase atomically
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payments)
+      .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
+      .where(eq(payments.id, pendingPayment.id));
 
-  const [existingPurchase] = await db
-    .select({ id: ebookPurchases.id })
-    .from(ebookPurchases)
-    .where(and(eq(ebookPurchases.userId, userId), eq(ebookPurchases.ebookId, ebookId)))
-    .limit(1);
+    const [existingPurchase] = await tx
+      .select({ id: ebookPurchases.id })
+      .from(ebookPurchases)
+      .where(and(eq(ebookPurchases.userId, userId), eq(ebookPurchases.ebookId, ebookId)))
+      .limit(1);
 
-  if (!existingPurchase) {
-    await db.insert(ebookPurchases).values({
-      userId,
-      ebookId,
-      paymentId: pendingPayment.id,
-    });
-  }
+    if (!existingPurchase) {
+      await tx.insert(ebookPurchases).values({
+        userId,
+        ebookId,
+        paymentId: pendingPayment.id,
+      });
+    }
+  });
 
   // 알림톡 + 이메일 — 전자책 구매 완료
   const [eb] = await db.select({ title: ebooks.title }).from(ebooks).where(eq(ebooks.id, ebookId)).limit(1);
@@ -455,33 +459,38 @@ export async function confirmExamPayment(
 
   if (!pendingPayment) throw makeError('결제 정보를 찾을 수 없습니다.', 'PAYMENT_NOT_FOUND', 404);
 
-  await db.update(payments)
-    .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
-    .where(eq(payments.id, pendingPayment.id));
-
   const examId = pendingPayment.productId;
   const meta = pendingPayment.metadata as { orderId?: string; applicantName?: string | null; applicantBirthdate?: string | null } | null;
   const applicantName = meta?.applicantName ?? null;
   const applicantBirthdate = meta?.applicantBirthdate ?? null;
 
-  // 수험번호 생성 + 등록 테이블 저장
   const [[eu], [ex]] = await Promise.all([
     db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1),
     db.select({ title: certExams.title, level: certExams.level }).from(certExams).where(eq(certExams.id, examId)).limit(1),
   ]);
 
+  // 수험번호 생성 + DB 저장 (payment 상태 업데이트와 등록 레코드 생성을 트랜잭션으로 처리)
   let registrationNumber = '';
   if (ex?.level) {
     registrationNumber = await generateRegistrationNumber(ex.level);
-    await db.insert(examRegistrations).values({
-      userId,
-      examId,
-      paymentId: pendingPayment.id,
-      registrationNumber,
-      applicantName,
-      applicantBirthdate,
-    });
   }
+
+  await db.transaction(async (tx) => {
+    await tx.update(payments)
+      .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
+      .where(eq(payments.id, pendingPayment.id));
+
+    if (registrationNumber) {
+      await tx.insert(examRegistrations).values({
+        userId,
+        examId,
+        paymentId: pendingPayment.id,
+        registrationNumber,
+        applicantName,
+        applicantBirthdate,
+      });
+    }
+  });
 
   // 알림톡 + 이메일 — 시험 접수 완료
   const displayName = applicantName ?? eu?.name ?? '';
@@ -573,24 +582,99 @@ export async function confirmSubscriptionPayment(
   const planInfo = SUBSCRIPTION_PLANS[plan];
   if (!planInfo) throw makeError('플랜 정보가 올바르지 않습니다.', 'INVALID_PLAN', 400);
 
-  await db.update(payments)
-    .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
-    .where(eq(payments.id, pendingPayment.id));
-
   const now = new Date();
   const periodEnd = new Date(now);
   periodEnd.setMonth(periodEnd.getMonth() + planInfo.months);
 
-  await db.insert(subscriptions).values({
-    userId,
-    plan,
-    status: 'active',
-    currentPeriodStart: now,
-    currentPeriodEnd: periodEnd,
-    providerSubscriptionId: impUid,
+  // Update payment + create subscription atomically
+  await db.transaction(async (tx) => {
+    await tx.update(payments)
+      .set({ status: 'paid', providerPaymentId: impUid, paidAt: new Date() })
+      .where(eq(payments.id, pendingPayment.id));
+
+    await tx.insert(subscriptions).values({
+      userId,
+      plan,
+      status: 'active',
+      currentPeriodStart: now,
+      currentPeriodEnd: periodEnd,
+      providerSubscriptionId: impUid,
+    });
   });
 
   return { plan, currentPeriodEnd: periodEnd };
+}
+
+// ─── Refund ───────────────────────────────────────────────────────────────────
+
+export async function refundPayment(userId: string, paymentId: string): Promise<{ refunded: boolean }> {
+  // 1. Find payment (must belong to user, status must be 'paid')
+  const [payment] = await db
+    .select()
+    .from(payments)
+    .where(and(eq(payments.id, paymentId), eq(payments.userId, userId)))
+    .limit(1);
+
+  if (!payment) {
+    throw makeError('결제 정보를 찾을 수 없습니다.', 'PAYMENT_NOT_FOUND', 404);
+  }
+  if (payment.status !== 'paid') {
+    throw makeError('환불 가능한 결제 상태가 아닙니다.', 'INVALID_STATUS', 400);
+  }
+  if (!payment.providerPaymentId) {
+    throw makeError('결제 공급자 정보가 없습니다.', 'MISSING_IMP_UID', 400);
+  }
+
+  // 2. Get PortOne access token
+  if (!env.PORTONE_IMP_KEY || !env.PORTONE_IMP_SECRET) {
+    throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);
+  }
+
+  const tokenRes = await fetch('https://api.iamport.kr/users/getToken', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imp_key: env.PORTONE_IMP_KEY, imp_secret: env.PORTONE_IMP_SECRET }),
+  });
+  const tokenData = await tokenRes.json() as { code: number; response: { access_token: string } };
+  if (tokenData.code !== 0) throw makeError('환불 토큰 발급에 실패했습니다.', 'TOKEN_ERROR', 500);
+
+  // 3. Call PortOne cancel API
+  const cancelRes = await fetch('https://api.iamport.kr/payments/cancel', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': tokenData.response.access_token,
+    },
+    body: JSON.stringify({ imp_uid: payment.providerPaymentId, reason: '사용자 환불 요청' }),
+  });
+  const cancelData = await cancelRes.json() as { code: number; message?: string };
+  if (cancelData.code !== 0) {
+    throw makeError(cancelData.message ?? '환불 처리에 실패했습니다.', 'REFUND_FAILED', 400);
+  }
+
+  // 4 & 5. Update payment status + remove access atomically
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payments)
+      .set({ status: 'refunded', refundedAt: new Date() })
+      .where(eq(payments.id, paymentId));
+
+    if (payment.productType === 'course') {
+      await tx
+        .delete(enrollments)
+        .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, payment.productId)));
+    } else if (payment.productType === 'ebook') {
+      await tx
+        .delete(ebookPurchases)
+        .where(and(eq(ebookPurchases.userId, userId), eq(ebookPurchases.ebookId, payment.productId)));
+    } else if (payment.productType === 'exam') {
+      await tx
+        .delete(examRegistrations)
+        .where(and(eq(examRegistrations.userId, userId), eq(examRegistrations.examId, payment.productId)));
+    }
+  });
+
+  return { refunded: true };
 }
 
 // ─── Exam payment check (cert.service 에서 호출용) ───────────────────────────

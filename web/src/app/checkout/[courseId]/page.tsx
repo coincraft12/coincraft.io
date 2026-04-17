@@ -65,7 +65,7 @@ export default function CheckoutPage() {
     if (!isLoading && !user) {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [isLoading, user, router]);
+  }, [isLoading, user, router, pathname]);
 
   useEffect(() => {
     if (!courseId) return;

@@ -22,7 +22,9 @@ function LoginForm() {
   const { setUser, setToken } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') ?? '/';
+  // 오픈 리다이렉트 방지: 상대 경로(/)로 시작하는 경우만 허용
+  const rawRedirect = searchParams.get('redirect') ?? '/';
+  const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/';
   const oauthError = searchParams.get('error');
 
   async function handleSubmit(e: React.FormEvent) {

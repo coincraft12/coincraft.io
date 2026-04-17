@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../../middleware/authenticate';
+import { requireRole } from '../../middleware/require-role';
+import { optionalAuth } from '../../middleware/optional-auth';
 import { ok, created } from '../../utils/response';
 import {
   startExamSchema,
@@ -9,21 +11,6 @@ import {
   bulkImportQuestionsSchema,
 } from './cert.schema';
 import * as certService from './cert.service';
-
-async function optionalAuth(request: Parameters<typeof authenticate>[0], reply: Parameters<typeof authenticate>[1]): Promise<void> {
-  const auth = request.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return;
-  await authenticate(request, reply);
-}
-
-async function requireRole(role: string) {
-  return async function (request: Parameters<typeof authenticate>[0], reply: Parameters<typeof authenticate>[1]): Promise<void> {
-    await authenticate(request, reply);
-    if (request.user?.role !== role) {
-      reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '권한이 없습니다.' } });
-    }
-  };
-}
 
 export async function certRoutes(app: FastifyInstance): Promise<void> {
   // GET /api/v1/exams — 목록 (인증 불필요)
@@ -37,6 +24,13 @@ export async function certRoutes(app: FastifyInstance): Promise<void> {
     const { id } = request.params as { id: string };
     const exam = await certService.getExam(id);
     return reply.send(ok(exam));
+  });
+
+  // GET /api/v1/exams/:id/my-status — 내 응시 상태 (authenticate)
+  app.get('/api/v1/exams/:id/my-status', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const status = await certService.getMyExamStatus(request.user!.id, id);
+    return reply.send(ok(status));
   });
 
   // POST /api/v1/exams/:id/start — 시작 (authenticate)
@@ -58,6 +52,13 @@ export async function certRoutes(app: FastifyInstance): Promise<void> {
     const { id } = request.params as { id: string };
     const attempt = await certService.getAttempt(request.user!.id, id);
     return reply.send(ok(attempt));
+  });
+
+  // GET /api/v1/exams/attempts/:id/result — 제출된 결과 조회 (authenticate)
+  app.get('/api/v1/exams/attempts/:id/result', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await certService.getAttemptResult(request.user!.id, id);
+    return reply.send(ok(result));
   });
 
   // POST /api/v1/exams/attempts/:id/submit — 제출 (authenticate)
@@ -94,8 +95,7 @@ export async function certRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // POST /api/v1/admin/exams — 시험 생성 (authenticate + requireRole('admin'))
-  const adminRole = await requireRole('admin');
-  app.post('/api/v1/admin/exams', { preHandler: [adminRole] }, async (request, reply) => {
+  app.post('/api/v1/admin/exams', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
     const body = createExamSchema.safeParse(request.body);
     if (!body.success) {
       return reply.code(400).send({
@@ -108,7 +108,7 @@ export async function certRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // POST /api/v1/admin/exams/:id/questions — 문제 추가 (authenticate + requireRole('admin'))
-  app.post('/api/v1/admin/exams/:id/questions', { preHandler: [adminRole] }, async (request, reply) => {
+  app.post('/api/v1/admin/exams/:id/questions', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = addQuestionSchema.safeParse(request.body);
     if (!body.success) {
@@ -122,7 +122,7 @@ export async function certRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // POST /api/v1/admin/exams/:id/questions/bulk — 일괄 업로드 (authenticate + requireRole('admin'))
-  app.post('/api/v1/admin/exams/:id/questions/bulk', { preHandler: [adminRole] }, async (request, reply) => {
+  app.post('/api/v1/admin/exams/:id/questions/bulk', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = bulkImportQuestionsSchema.safeParse(request.body);
     if (!body.success) {

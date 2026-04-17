@@ -1,4 +1,4 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { db } from '../../db';
 import { courses, chapters, lessons, enrollments, lessonProgress, users } from '../../db/schema';
 import { createVideoProvider } from '../../lib/video-provider';
@@ -168,6 +168,12 @@ export async function updateLessonProgress(
 
   const courseId = lesson.courseId;
 
+  // 수강 권한 확인 (미수강자의 진도 기록 방지)
+  const hasAccess = await checkEnrollmentAccess(userId, courseId);
+  if (!hasAccess) {
+    throw makeError('수강 권한이 없습니다.', 'FORBIDDEN', 403);
+  }
+
   const [existing] = await db
     .select({ watchedSeconds: lessonProgress.watchedSeconds })
     .from(lessonProgress)
@@ -209,6 +215,12 @@ export async function completeLesson(
   }
 
   const courseId = lesson.courseId;
+
+  // 수강 권한 확인 (수강 등록 없이 완료 표시 방지)
+  const hasAccess = await checkEnrollmentAccess(userId, courseId);
+  if (!hasAccess) {
+    throw makeError('수강 권한이 없습니다.', 'FORBIDDEN', 403);
+  }
 
   await db
     .insert(lessonProgress)
@@ -286,7 +298,8 @@ export async function getMyEnrollments(userId: string): Promise<EnrollmentItem[]
     .from(enrollments)
     .innerJoin(courses, eq(enrollments.courseId, courses.id))
     .leftJoin(users, eq(courses.instructorId, users.id))
-    .where(eq(enrollments.userId, userId) && eq(enrollments.status, 'active'));
+    .where(and(eq(enrollments.userId, userId), eq(enrollments.status, 'active')))
+    .orderBy(desc(enrollments.enrolledAt));
 
   return rows.map((r) => ({
     enrollmentId: r.enrollmentId,

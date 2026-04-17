@@ -47,8 +47,14 @@ export async function ebookRoutes(app: FastifyInstance): Promise<void> {
   // PATCH /api/v1/ebooks/:id/progress — 읽기 진행도 저장 (인증 필요)
   app.patch('/api/v1/ebooks/:id/progress', { preHandler: [authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { cfi } = request.body as { cfi: string };
-    const progress = await ebookService.upsertEbookProgress(id, request.user!.id, cfi);
+    const body = request.body as { cfi?: unknown };
+    if (typeof body.cfi !== 'string' || body.cfi.trim() === '') {
+      return reply.code(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'cfi 값이 필요합니다.' },
+      });
+    }
+    const progress = await ebookService.upsertEbookProgress(id, request.user!.id, body.cfi);
     return reply.send(ok(progress));
   });
 
