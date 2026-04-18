@@ -1,8 +1,8 @@
 const badges = [
-  { label: '복구 정보 비가역적 소멸 보안 매체', done: true },
-  { label: '단방향 상태머신 기반 복구 시스템', done: true },
-  { label: '다중키 오프라인 복구 시스템', done: true },
-  { label: '온체인 TX 기반 역량 인증 (출원 중)', done: false },
+  { label: '복구 정보 비가역적 소멸 보안 매체', done: true, slug: 'secure-media' },
+  { label: '단방향 상태머신 기반 복구 시스템', done: true, slug: 'state-machine-recovery' },
+  { label: '다중키 오프라인 복구 시스템', done: true, slug: 'multi-key-recovery' },
+  { label: '온체인 TX 기반 역량 인증 (출원 중)', done: false, slug: null },
 ]
 
 export default function Patent() {
@@ -22,18 +22,24 @@ export default function Patent() {
               온체인 역량 인증 특허 출원 진행 중입니다.
             </p>
             <div className="flex flex-wrap gap-3">
-              {badges.map((b) => (
-                <span
-                  key={b.label}
-                  className={`px-4 py-2 rounded-full text-sm font-semibold border ${
-                    b.done
-                      ? 'bg-cc-accent/10 border-cc-accent/40 text-cc-accent'
-                      : 'bg-white/5 border-white/10 text-cc-muted'
-                  }`}
-                >
-                  {b.done ? '✓ ' : ''}{b.label}
-                </span>
-              ))}
+              {badges.map((b) =>
+                b.slug ? (
+                  <a
+                    key={b.label}
+                    href={`/patents/${b.slug}`}
+                    className="px-4 py-2 rounded-full text-sm font-semibold border bg-cc-accent/10 border-cc-accent/40 text-cc-accent hover:bg-cc-accent/20 transition-all"
+                  >
+                    ✓ {b.label}
+                  </a>
+                ) : (
+                  <span
+                    key={b.label}
+                    className="px-4 py-2 rounded-full text-sm font-semibold border bg-white/5 border-white/10 text-cc-muted"
+                  >
+                    {b.label}
+                  </span>
+                )
+              )}
             </div>
           </div>
 

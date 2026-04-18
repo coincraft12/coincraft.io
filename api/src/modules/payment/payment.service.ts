@@ -1,6 +1,6 @@
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from '../../db';
-import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subscriptions, users, examRegistrations } from '../../db/schema';
+import { courses, enrollments, payments, ebooks, ebookPurchases, certExams, subscriptions, users, examRegistrations, wishlists } from '../../db/schema';
 import { redis } from '../../lib/redis';
 import { env } from '../../config/env';
 import { notifyEnroll, notifyExamRegistration, notifyEbookPurchase, notifyVbank, notifyBankTransfer } from '../../lib/notifications';
@@ -260,6 +260,7 @@ export async function confirmPayment(
         status: 'active',
         paymentId: pendingPayment.id,
       });
+      await tx.delete(wishlists).where(and(eq(wishlists.userId, userId), eq(wishlists.courseId, courseId)));
     }
   });
 
@@ -319,6 +320,7 @@ export async function handleWebhook(impUid: string, merchantUid: string): Promis
           status: 'active',
           paymentId: pendingPayment.id,
         });
+        await tx.delete(wishlists).where(and(eq(wishlists.userId, pendingPayment.userId), eq(wishlists.courseId, pendingPayment.productId)));
       }
     } else if (pendingPayment.productType === 'exam') {
       const meta = pendingPayment.metadata as { orderId?: string; applicantName?: string; applicantBirthdate?: string } | null;
@@ -988,6 +990,7 @@ export async function approveBankTransferPayment(
         .where(and(eq(enrollments.userId, payment.userId), eq(enrollments.courseId, courseId))).limit(1);
       if (!existing) {
         await tx.insert(enrollments).values({ userId: payment.userId, courseId, status: 'active', paymentId: payment.id });
+        await tx.delete(wishlists).where(and(eq(wishlists.userId, payment.userId), eq(wishlists.courseId, courseId)));
       }
     });
 

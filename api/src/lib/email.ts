@@ -284,6 +284,52 @@ export async function sendAdminPaymentNotificationEmail(params: {
   }).catch(() => {});
 }
 
+export async function sendAdminBookOrderEmail(params: {
+  userName: string;
+  userEmail: string;
+  bookTitle: string;
+  quantity: number;
+  totalAmount: number;
+  shippingName: string;
+  shippingPhone: string;
+  postalCode: string;
+  shippingAddress: string;
+  shippingDetail: string | null;
+}): Promise<void> {
+  const { userName, userEmail, bookTitle, quantity, totalAmount, shippingName, shippingPhone, postalCode, shippingAddress, shippingDetail } = params;
+  const adminUrl = `${env.FRONTEND_URL}/admin/book-orders`;
+
+  await sendEmail({
+    to: 'coincraft.edu@gmail.com',
+    subject: `[CoinCraft] 📦 종이책 주문 — ${bookTitle} · ${shippingName}`,
+    html: wrap('새 종이책 주문이 접수되었습니다', `
+      <div style="background:#0f172a;border-radius:8px;padding:14px;margin:0 0 20px;border-left:3px solid #f59e0b;">
+        <p style="margin:0;font-size:13px;color:#f59e0b;font-weight:700;">📦 지금 바로 발송 준비를 시작해주세요</p>
+      </div>
+      <p style="color:#cbd5e1;font-size:15px;line-height:1.7;margin:0 0 20px;">새 종이책 주문이 결제 완료되었습니다.</p>
+
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#94a3b8;">■ 주문 정보</p>
+      <table style="border-collapse:collapse;margin:0 0 20px;">
+        ${row('도서', bookTitle)}
+        ${row('수량', `${quantity}권`)}
+        ${row('결제 금액', `${totalAmount.toLocaleString()}원`)}
+        ${row('구매자', `${userName} (${userEmail})`)}
+      </table>
+
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#94a3b8;">■ 배송지</p>
+      <table style="border-collapse:collapse;margin:0 0 24px;">
+        ${row('수령인', shippingName)}
+        ${row('연락처', shippingPhone)}
+        ${row('우편번호', postalCode)}
+        ${row('주소', shippingAddress)}
+        ${shippingDetail ? row('상세주소', shippingDetail) : ''}
+      </table>
+
+      <a href="${adminUrl}" style="display:inline-block;padding:12px 24px;background:#f59e0b;color:#0f172a;font-weight:700;text-decoration:none;border-radius:8px;font-size:14px;">주문 관리 페이지 바로가기</a>
+    `),
+  }).catch(() => {});
+}
+
 export async function sendMigrationEmail(
   to: string,
   name: string,

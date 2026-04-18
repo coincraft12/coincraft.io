@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Badge from '@/components/ui/Badge';
+import WishlistHeart from '@/components/courses/wishlist-heart';
 
 interface CourseCardProps {
   id: string;
@@ -39,7 +40,7 @@ function formatDuration(seconds: number): string {
 }
 
 export default function CourseCard({
-  slug, title, shortDescription, thumbnailUrl, level, price, originalPrice, isFree,
+  id, slug, title, shortDescription, thumbnailUrl, level, price, originalPrice, isFree,
   totalLessons, totalDuration, averageRating, reviewCount, instructor,
 }: CourseCardProps) {
   const discountRate =
@@ -61,6 +62,7 @@ export default function CourseCard({
               <span className="text-4xl opacity-30">🎓</span>
             </div>
           )}
+          <WishlistHeart courseId={id} />
         </div>
 
         <div className="p-4 flex flex-col flex-1">

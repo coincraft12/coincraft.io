@@ -17,7 +17,7 @@ interface WishlistItem {
   slug: string;
   thumbnailUrl: string | null;
   price: string;
-  salePrice: string | null;
+  originalPrice: string | null;
   addedAt: string;
 }
 
@@ -99,9 +99,9 @@ export default function MyWishlistPage() {
                       {item.title}
                     </h3>
                     <p className="text-cc-accent font-semibold text-sm">
-                      {Number(item.salePrice ?? item.price) === 0
+                      {Number(item.price) === 0
                         ? '무료'
-                        : `${Number(item.salePrice ?? item.price).toLocaleString('ko-KR')}원`}
+                        : `${Number(item.price).toLocaleString('ko-KR')}원`}
                     </p>
                   </div>
                 </div>

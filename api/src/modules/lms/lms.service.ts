@@ -1,6 +1,6 @@
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { db } from '../../db';
-import { courses, chapters, lessons, enrollments, lessonProgress, users } from '../../db/schema';
+import { courses, chapters, lessons, enrollments, lessonProgress, users, wishlists } from '../../db/schema';
 import { createVideoProvider } from '../../lib/video-provider';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -64,6 +64,9 @@ export async function enrollFree(userId: string, courseId: string): Promise<void
     courseId,
     status: 'active',
   });
+
+  // 위시리스트에서 제거
+  await db.delete(wishlists).where(and(eq(wishlists.userId, userId), eq(wishlists.courseId, courseId)));
 }
 
 export async function checkEnrollmentAccess(userId: string, courseId: string): Promise<boolean> {

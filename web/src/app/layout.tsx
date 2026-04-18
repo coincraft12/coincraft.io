@@ -3,8 +3,9 @@ import './globals.css'
 import AppProviders from '@/providers/app-providers'
 
 export const metadata: Metadata = {
-  title: 'COINCRAFT — 블록체인의 구조를 설계하는 사람들',
-  description: 'Web3 아키텍처 교육, 온체인 분석, Custody 시스템 설계, 특허 전략을 통해 블록체인 산업의 전문가를 양성합니다.',
+  metadataBase: new URL('https://coincraft.io'),
+  title: 'COINCRAFT — AI 시대의 Web3 신뢰를 설계하는 사람들',
+  description: 'Web3 구조설계 교육·인증, 온체인 리서치, AI 에이전트 신뢰 설계를 통해 블록체인 산업의 미래를 만들어갑니다.',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -13,10 +14,15 @@ export const metadata: Metadata = {
     apple: { url: '/icon.png', sizes: '512x512' },
   },
   openGraph: {
-    title: 'COINCRAFT',
-    description: 'Web3 · Blockchain · Education',
+    title: 'COINCRAFT — Architect of the WEB3 Era',
+    description: 'Web3 구조설계 교육·인증, 온체인 리서치, AI 에이전트 신뢰 설계.',
     url: 'https://coincraft.io',
     siteName: 'COINCRAFT',
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'COINCRAFT' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/og-image.jpg'],
   },
 }
 

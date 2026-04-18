@@ -23,3 +23,5 @@ export * from './wishlists';
 export * from './subscriptions';
 export * from './blog';
 export * from './vimeo-bulk-uploads';
+export * from './physical-books';
+export * from './book-orders';

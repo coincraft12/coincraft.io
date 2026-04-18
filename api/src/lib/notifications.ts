@@ -3,15 +3,18 @@ import { sendAlimtalk } from './solapi';
 // ─── 템플릿 코드 ─────────────────────────────────────────────────────────────
 
 const TEMPLATES = {
-  JOIN:         'KA01TP260413132405301c2z6CPmwdq6', // 회원가입 완료
-  ENROLL:       'KA01TP260413133446910SurHgZTHEsB', // 수강신청 완료
-  EXAM:         'KA01TP260415124239346m8LhqysOnyn', // 시험 접수 완료
-  EXAM_RESULT:  'KA01TP260413133233410gkaKx8nBRPm', // 합격/불합격 통보
-  CERT:         'KA01TP260413133146159R6CY4X0UrHW', // 인증서 발급
-  COUPON:       'KA01TP260413133053995drYa51MAIzM', // 쿠폰 발급
-  EBOOK:        'KA01TP260413132729677IgDhNkDR492', // 전자책 구매 완료
-  VBANK:        '', // 가상계좌 발급 — Solapi 등록 후 ID 입력
-  BANK_TRANSFER:'', // 무통장 입금 안내 — Solapi 등록 후 ID 입력
+  JOIN:          'KA01TP260413132405301c2z6CPmwdq6', // 회원가입 완료
+  ENROLL:        'KA01TP260413133446910SurHgZTHEsB', // 수강신청 완료
+  EXAM:          'KA01TP260415124239346m8LhqysOnyn', // 시험 접수 완료
+  EXAM_RESULT:   'KA01TP260413133233410gkaKx8nBRPm', // 합격/불합격 통보
+  CERT:          'KA01TP260413133146159R6CY4X0UrHW', // 인증서 발급
+  COUPON:        'KA01PF2604131308326646KKlOv6D1pw', // 쿠폰 발급
+  EBOOK:         'KA01TP260413132729677IgDhNkDR492', // 전자책 구매 완료
+  VBANK:         '', // 가상계좌 발급 — Solapi 등록 후 ID 입력
+  BANK_TRANSFER: '', // 무통장 입금 안내 — Solapi 등록 후 ID 입력
+  BOOK_ORDER:    'KA01TP260413132647277oXVt6BuPEl1', // 종이책 주문 확인
+  BOOK_SHIPPED:  'KA01TP260413132547112K2E2GluwzaK', // 종이책 배송 출발
+  BOOK_DELIVERED:'KA01TP260413132821831iHE2GeUfhJ1', // 종이책 배송 완료
 } as const;
 
 // ─── 알림 함수 ────────────────────────────────────────────────────────────────
@@ -108,6 +111,50 @@ export function notifyVbank(
     '#{계좌번호}': bankAccount,
     '#{금액}': amount.toLocaleString(),
     '#{입금기한}': expiry,
+  });
+}
+
+export function notifyBookOrder(
+  phone: string,
+  name: string,
+  bookTitle: string,
+  quantity: number,
+  totalAmount: number,
+  shippingAddress: string
+) {
+  if (!TEMPLATES.BOOK_ORDER) return Promise.resolve();
+  return sendAlimtalk(phone, TEMPLATES.BOOK_ORDER, {
+    '#{이름}': name,
+    '#{도서명}': bookTitle,
+    '#{수량}': String(quantity),
+    '#{금액}': totalAmount.toLocaleString(),
+    '#{배송지}': shippingAddress,
+  });
+}
+
+export function notifyBookShipped(
+  phone: string,
+  name: string,
+  bookTitle: string,
+  trackingNumber: string
+) {
+  if (!TEMPLATES.BOOK_SHIPPED) return Promise.resolve();
+  return sendAlimtalk(phone, TEMPLATES.BOOK_SHIPPED, {
+    '#{이름}': name,
+    '#{도서명}': bookTitle,
+    '#{운송장번호}': trackingNumber,
+  });
+}
+
+export function notifyBookDelivered(
+  phone: string,
+  name: string,
+  bookTitle: string
+) {
+  if (!TEMPLATES.BOOK_DELIVERED) return Promise.resolve();
+  return sendAlimtalk(phone, TEMPLATES.BOOK_DELIVERED, {
+    '#{이름}': name,
+    '#{도서명}': bookTitle,
   });
 }
 

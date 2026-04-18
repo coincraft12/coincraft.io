@@ -23,7 +23,7 @@ const BASE_NAV = [
     href: '/shop',
     children: [
       { label: '전자책', href: '/ebooks' },
-      { label: '종이책 (준비중)', href: '/shop', disabled: true },
+      { label: '종이책', href: '/shop' },
     ],
   },
   {
@@ -104,14 +104,6 @@ export default function Header() {
                 <div className="absolute top-full left-0 pt-2 hidden group-hover:block">
                   <div className="bg-[#1a1a2e] border border-white/10 rounded-cc py-2 min-w-[180px] shadow-lg">
                     {item.children.map((c) => (
-                      c.disabled ? (
-                        <span
-                          key={c.label}
-                          className="block px-4 py-2 text-sm text-cc-muted/40 cursor-default"
-                        >
-                          {c.label}
-                        </span>
-                      ) : (
                       <a
                         key={c.label}
                         href={c.href}
@@ -119,7 +111,6 @@ export default function Header() {
                       >
                         {c.label}
                       </a>
-                      )
                     ))}
                   </div>
                 </div>
@@ -140,7 +131,14 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
-              <a href="/my/courses" className="text-sm text-cc-muted hover:text-cc-text transition-colors">
+              <a href="/my" className="flex items-center gap-2 text-sm text-cc-muted hover:text-cc-text transition-colors border border-white/20 hover:border-white/40 rounded-full pl-1 pr-3 py-1">
+                <div className="w-6 h-6 rounded-full overflow-hidden bg-cc-accent/20 border border-cc-accent/40 flex-shrink-0 flex items-center justify-center">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-bold text-cc-accent">{user.name.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
                 {user.name}
               </a>
               {(user.role === 'admin' || user.role === 'instructor') && (
@@ -149,9 +147,14 @@ export default function Header() {
                 </a>
               )}
               {user.role === 'admin' && (
-                <a href="/admin/payments" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">
-                  결제 관리
-                </a>
+                <>
+                  <a href="/admin/payments" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">
+                    결제 관리
+                  </a>
+                  <a href="/admin/book-orders" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">
+                    배송 관리
+                  </a>
+                </>
               )}
               <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">
                 로그아웃
@@ -221,12 +224,15 @@ export default function Header() {
           <div className="flex gap-3 pt-3 border-t border-white/10 mt-2">
             {user ? (
               <>
-                <a href="/my/courses" className="text-sm text-cc-muted">{user.name}</a>
+                <a href="/my" className="text-sm text-cc-muted">{user.name}</a>
                 {(user.role === 'admin' || user.role === 'instructor') && (
                   <a href="/instructor" className="text-sm text-cc-accent">강사 포털</a>
                 )}
                 {user.role === 'admin' && (
-                  <a href="/admin/payments" className="text-sm text-yellow-400">결제 관리</a>
+                  <>
+                    <a href="/admin/payments" className="text-sm text-yellow-400">결제 관리</a>
+                    <a href="/admin/book-orders" className="text-sm text-yellow-400">배송 관리</a>
+                  </>
                 )}
                 <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">로그아웃</button>
               </>

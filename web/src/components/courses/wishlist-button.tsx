@@ -1,37 +1,56 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient } from '@/lib/api-client';
+import { getLocalWL, saveLocalWL, toggleLocalWL } from '@/lib/local-wishlist';
 
-interface WishlistButtonProps {
-  courseId: string;
-}
-
-export default function WishlistButton({ courseId }: WishlistButtonProps) {
-  const router = useRouter();
+export default function WishlistButton({ courseId }: { courseId: string }) {
   const token = useAuthStore((s) => s.accessToken);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
   const [wishlisted, setWishlisted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isAuthLoading || !token) return;
-    apiClient
-      .get<{ success: boolean; data: { wishlisted: boolean } }>(
-        `/api/v1/courses/${courseId}/wishlist/status`,
-        { token }
-      )
-      .then((res) => setWishlisted(res.data.wishlisted))
-      .catch(() => {});
+    if (isAuthLoading) return;
+
+    if (!token) {
+      setWishlisted(getLocalWL().has(courseId));
+      return;
+    }
+
+    // 로그인됨 — 로컬 캐시 동기화
+    const localWL = getLocalWL();
+    if (localWL.has(courseId)) {
+      localWL.delete(courseId);
+      saveLocalWL(localWL);
+      apiClient
+        .post<{ success: boolean; data: { wishlisted: boolean } }>(
+          `/api/v1/courses/${courseId}/wishlist`,
+          undefined,
+          { token }
+        )
+        .then((res) => setWishlisted(res.data.wishlisted))
+        .catch(() => {});
+    } else {
+      apiClient
+        .get<{ success: boolean; data: { wishlisted: boolean } }>(
+          `/api/v1/courses/${courseId}/wishlist/status`,
+          { token }
+        )
+        .then((res) => setWishlisted(res.data.wishlisted))
+        .catch(() => {});
+    }
   }, [token, isAuthLoading, courseId]);
 
   const handleToggle = async () => {
     if (!token) {
-      router.push('/login');
+      // 비로그인: 로컬에만 저장, UI 즉시 반영
+      const next = toggleLocalWL(courseId);
+      setWishlisted(next);
       return;
     }
+
     setLoading(true);
     try {
       const res = await apiClient.post<{ success: boolean; data: { wishlisted: boolean } }>(
@@ -41,13 +60,11 @@ export default function WishlistButton({ courseId }: WishlistButtonProps) {
       );
       setWishlisted(res.data.wishlisted);
     } catch {
-      // ignore
+      //
     } finally {
       setLoading(false);
     }
   };
-
-  if (isAuthLoading || !token) return null;
 
   return (
     <button

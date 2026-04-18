@@ -10,7 +10,7 @@ export interface WishlistCourse {
   slug: string;
   thumbnailUrl: string | null;
   price: string;
-  salePrice: string | null;
+  originalPrice: string | null;
 }
 
 export async function toggleWishlist(
@@ -42,7 +42,7 @@ export async function listUserWishlists(userId: string): Promise<WishlistCourse[
       slug: courses.slug,
       thumbnailUrl: courses.thumbnailUrl,
       price: courses.price,
-      salePrice: courses.originalPrice,
+      originalPrice: courses.originalPrice,
     })
     .from(wishlists)
     .innerJoin(courses, eq(wishlists.courseId, courses.id))
@@ -56,7 +56,7 @@ export async function listUserWishlists(userId: string): Promise<WishlistCourse[
     slug: r.slug,
     thumbnailUrl: r.thumbnailUrl,
     price: r.price,
-    salePrice: r.salePrice ?? null,
+    originalPrice: r.originalPrice ?? null,
   }));
 }
 

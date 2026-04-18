@@ -25,9 +25,22 @@ interface IMP {
   ) => void;
 }
 
+interface DaumPostcodeData {
+  zonecode: string;
+  roadAddress: string;
+  jibunAddress: string;
+}
+
+interface DaumPostcode {
+  new (options: { oncomplete: (data: DaumPostcodeData) => void }): { open: () => void };
+}
+
 declare global {
   interface Window {
     IMP?: IMP;
+    daum?: {
+      Postcode: DaumPostcode;
+    };
   }
 }
 

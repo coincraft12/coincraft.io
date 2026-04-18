@@ -1,10 +1,8 @@
-export async function revalidateCourse(slug?: string) {
-  const paths = ['/courses'];
-  if (slug) paths.push(`/courses/${slug}`);
+'use server';
 
-  await fetch('/cache-revalidate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ paths }),
-  }).catch(() => {});
+import { revalidatePath } from 'next/cache';
+
+export async function revalidateCourse(slug?: string) {
+  revalidatePath('/courses');
+  if (slug) revalidatePath(`/courses/${slug}`);
 }
