@@ -65,9 +65,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const course = await fetchCourseDetail(slug);
-  if (!course) return { title: '강좌 — CoinCraft' };
+  if (!course) return { title: '강좌 — COINCRAFT' };
   return {
-    title: `${course.title} — CoinCraft`,
+    title: `${course.title} — COINCRAFT`,
     description: course.shortDescription ?? course.description ?? undefined,
     openGraph: {
       title: course.title,

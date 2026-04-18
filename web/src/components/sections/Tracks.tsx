@@ -3,7 +3,7 @@ const tracks = [
     num: '01',
     icon: '📚',
     title: '출판',
-    desc: '온체인 시그널 분석 리포트 판매 및 사토시 픽션 집필. 지식을 콘텐츠로 상품화한다.',
+    desc: '리서치와 전문 지식을 콘텐츠로 상품화한다. 온체인 분석 리포트, 기술 보고서, 단행본 출판을 포함한다.',
     tag: 'ACTIVE',
     tagColor: 'bg-emerald-500/20 text-emerald-400',
   },
@@ -17,27 +17,27 @@ const tracks = [
   },
   {
     num: '03',
-    icon: '🏦',
-    title: 'Custody 설계',
-    desc: '기업용 수탁형 지갑 시스템 아키텍처 설계. Java/Spring Boot 기반 운영급 구현.',
-    tag: 'IN DEV',
-    tagColor: 'bg-blue-500/20 text-blue-400',
-  },
-  {
-    num: '04',
-    icon: '🧬',
-    title: '핵심 정체성',
-    desc: '생활 속에서 자연스럽게 도출되는 철학과 관점. 억지 없는 진정성 브랜딩.',
+    icon: '🔬',
+    title: '리서치',
+    desc: '온체인 데이터 분석과 AI×Web3 연구. 현장에서 검증된 인사이트를 지식으로 생산한다.',
     tag: 'ONGOING',
     tagColor: 'bg-purple-500/20 text-purple-400',
   },
   {
+    num: '04',
+    icon: '🏅',
+    title: 'WEB3 인증',
+    desc: 'Basic · Associate · Expert 단계별 Web3 구조설계 공식 자격 검정 시스템 운영.',
+    tag: 'ACTIVE',
+    tagColor: 'bg-emerald-500/20 text-emerald-400',
+  },
+  {
     num: '05',
-    icon: '⚖️',
-    title: '특허',
-    desc: '블록체인 통합 전략 특허 출원 및 등록. A/B-1 완료, B-2/C 진행 중.',
-    tag: 'IN PROGRESS',
-    tagColor: 'bg-amber-500/20 text-amber-400',
+    icon: '⚙️',
+    title: '설계',
+    desc: 'AI 에이전트가 실제 경제에서 작동할 때 필요한 신원·보안·실행·책임 구조를 설계한다.',
+    tag: 'IN DEV',
+    tagColor: 'bg-blue-500/20 text-blue-400',
   },
 ]
 
@@ -48,7 +48,7 @@ export default function Tracks() {
         <div className="text-center mb-16">
           <p className="cc-label mb-3">BUSINESS TRACKS</p>
           <h2 className="text-4xl font-bold text-cc-text mb-3">5대 사업 트랙</h2>
-          <p className="text-cc-muted">CoinCraft가 동시에 전진하는 다섯 개의 축</p>
+          <p className="text-cc-muted">COINCRAFT가 동시에 전진하는 다섯 개의 전략 트랙</p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">

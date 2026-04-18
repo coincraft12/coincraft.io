@@ -10,7 +10,7 @@ import Spinner from '@/components/ui/Spinner';
 
 const MENU_ITEMS = [
   { href: '/my/courses', icon: '🎓', label: '내 강좌', desc: '수강 중인 강좌와 전자책' },
-  { href: '/my/certificates', icon: '🏆', label: '내 자격증', desc: '취득한 CoinCraft 자격증' },
+  { href: '/my/certificates', icon: '🏆', label: '내 자격증', desc: '취득한 COINCRAFT 자격증' },
   { href: '/my/wishlist', icon: '♥', label: '위시리스트', desc: '저장한 강좌 목록' },
   { href: '/my/payments', icon: '💳', label: '결제 내역', desc: '구매 및 결제 이력' },
   { href: '/exams', icon: '📋', label: '자격 시험', desc: '검정 시험 목록 및 응시' },

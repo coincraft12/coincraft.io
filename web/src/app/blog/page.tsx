@@ -3,7 +3,7 @@ import Footer from '@/components/ui/Footer';
 import PostCard from '@/components/blog/post-card';
 import { fetchPosts, fetchCategories } from '@/lib/blog';
 
-export const metadata = { title: '블로그 — CoinCraft' };
+export const metadata = { title: '블로그 — COINCRAFT' };
 export const revalidate = 300;
 
 export default async function BlogPage({

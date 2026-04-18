@@ -89,7 +89,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
           {/* 타이틀 */}
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <Badge variant={getLevelVariant(exam.level)}>CoinCraft {levelLabel}</Badge>
+              <Badge variant={getLevelVariant(exam.level)}>COINCRAFT {levelLabel}</Badge>
             </div>
             <h1 className="text-2xl font-bold text-cc-text mb-2">{exam.title}</h1>
             {exam.description && (

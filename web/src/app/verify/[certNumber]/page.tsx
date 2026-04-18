@@ -79,7 +79,7 @@ export default async function VerifyCertPage({ params }: { params: Promise<{ cer
             <h1 className="text-xl font-bold text-cc-text mb-1">
               {cert.isValid ? '유효한 자격증입니다' : '만료된 자격증입니다'}
             </h1>
-            <p className="text-cc-muted text-sm">CoinCraft 공식 자격 검증 시스템</p>
+            <p className="text-cc-muted text-sm">COINCRAFT 공식 자격 검증 시스템</p>
           </div>
 
           {/* Cert details */}
@@ -89,7 +89,7 @@ export default async function VerifyCertPage({ params }: { params: Promise<{ cer
               <div>
                 <p className="text-xs text-cc-muted mb-1">자격증 종류</p>
                 <p className="text-cc-text font-bold text-lg">
-                  CoinCraft {getLevelLabel(cert.level)} 자격증
+                  COINCRAFT {getLevelLabel(cert.level)} 자격증
                 </p>
               </div>
               <Badge variant={getLevelVariant(cert.level)}>
@@ -136,7 +136,7 @@ export default async function VerifyCertPage({ params }: { params: Promise<{ cer
 
           <div className="mt-6 text-center">
             <Link href="/exams" className="text-sm text-cc-muted hover:text-cc-accent transition-colors">
-              CoinCraft 자격 시험 보러 가기 →
+              COINCRAFT 자격 시험 보러 가기 →
             </Link>
           </div>
         </div>

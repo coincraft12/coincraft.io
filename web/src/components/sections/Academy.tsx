@@ -55,9 +55,6 @@ export default async function Academy() {
           <a href="/courses" className="cc-btn cc-btn-primary">
             전체 강의 보기
           </a>
-          <a href="/cert" className="cc-btn cc-btn-outline">
-            자격 검정 안내
-          </a>
         </div>
       </div>
     </section>

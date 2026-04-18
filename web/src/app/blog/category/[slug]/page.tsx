@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const categories = await fetchCategories();
   const cat = categories.find((c) => c.slug === slug);
   return {
-    title: cat ? `${cat.name} — CoinCraft 블로그` : '카테고리 — CoinCraft 블로그',
+    title: cat ? `${cat.name} — COINCRAFT 블로그` : '카테고리 — COINCRAFT 블로그',
   };
 }
 

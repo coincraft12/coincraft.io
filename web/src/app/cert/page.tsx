@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 
-export const metadata = { title: 'WEB3 구조 설계자 검정 — CoinCraft' };
+export const metadata = { title: 'WEB3 구조 설계자 검정 — COINCRAFT' };
 export const revalidate = 60;
 
 async function fetchExamCapacity(): Promise<{ registeredCount: number; maxCapacity: number | null } | null> {
@@ -83,7 +83,7 @@ export default async function CertPage() {
           <h1 className="text-center text-3xl md:text-4xl font-extrabold text-cc-text mt-4 mb-2">
             WEB3 구조 설계자 검정
           </h1>
-          <p className="text-center text-cc-muted mb-5">CoinCraft 주관 | 주식회사 코인크래프트</p>
+          <p className="text-center text-cc-muted mb-5">COINCRAFT 주관 | 주식회사 코인크래프트</p>
           <p className="text-center text-base font-bold text-[#93b4ff] leading-relaxed mb-12">
             블록체인과 WEB3를 이해하는 수준을 넘어,<br />
             구조를 읽고 판단할 수 있는 사람을 검증합니다.

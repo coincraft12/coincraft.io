@@ -79,7 +79,7 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           <div className="cc-glass p-8">
             <h1 className="text-2xl font-bold text-cc-text mb-2">회원가입</h1>
-            <p className="text-cc-muted text-sm mb-8">CoinCraft 계정을 만들어 Web3 학습을 시작하세요.</p>
+            <p className="text-cc-muted text-sm mb-8">COINCRAFT 계정을 만들어 Web3 학습을 시작하세요.</p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input

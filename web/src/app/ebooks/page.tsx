@@ -2,7 +2,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import EbookCard from '@/components/ebooks/ebook-card';
 
-export const metadata = { title: '전자책 — CoinCraft' };
+export const metadata = { title: '전자책 — COINCRAFT' };
 export const dynamic = 'force-dynamic';
 
 interface EbookListItem {

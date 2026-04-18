@@ -2,8 +2,8 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 
 export const metadata = {
-  title: 'About — CoinCraft',
-  description: 'CoinCraft는 Web3 아키텍처 교육, 온체인 분석, Custody 시스템 설계, 특허 전략을 통해 블록체인 산업의 전문가를 양성합니다.',
+  title: 'About — COINCRAFT',
+  description: 'COINCRAFT는 AI 에이전트가 실제 경제에서 작동할 때 필요한 신뢰 구조를 설계하는 Web3 전문 조직입니다.',
 };
 
 export default function AboutPage() {
@@ -13,10 +13,14 @@ export default function AboutPage() {
       <main className="min-h-screen bg-cc-primary pt-24 pb-16">
         <div className="cc-container max-w-3xl">
           <div className="mb-12">
-            <p className="cc-label mb-2">ABOUT</p>
-            <h1 className="text-4xl md:text-5xl font-bold text-cc-text mb-6">CoinCraft란?</h1>
+            <p className="cc-label mb-2">ABOUT COINCRAFT</p>
+            <h1 className="text-4xl md:text-5xl font-bold text-cc-text mb-6">
+              우리는 <span className="text-cc-accent">무엇을</span> 만드는가
+            </h1>
             <p className="text-cc-muted text-lg leading-relaxed">
-              CoinCraft는 블록체인의 구조를 설계하는 사람들을 위한 전문 교육 플랫폼입니다.
+              COINCRAFT는 블록체인을 단순히 가르치는 것을 넘어,
+              AI 에이전트가 실제 경제에서 작동할 때 필요한
+              신뢰 구조를 설계하는 Web3 전문 조직입니다.
             </p>
           </div>
 
@@ -24,36 +28,45 @@ export default function AboutPage() {
             <section className="cc-glass p-8">
               <h2 className="text-xl font-bold text-cc-text mb-4">미션</h2>
               <p className="text-cc-muted leading-relaxed">
-                우리는 Web3 기술의 본질을 이해하고, 블록체인 시스템을 직접 설계·구현할 수 있는
-                진정한 전문가를 양성합니다. 단순한 트렌드 추종이 아닌, 시스템 아키텍처 수준의
-                깊은 이해를 목표로 합니다.
+                AI와 Web3가 교차하는 지점에서, 실제로 작동하는 신뢰 시스템을 설계한다.
               </p>
             </section>
 
             <section className="cc-glass p-8">
-              <h2 className="text-xl font-bold text-cc-text mb-4">주요 트랙</h2>
+              <h2 className="text-xl font-bold text-cc-text mb-4">비전</h2>
+              <p className="text-cc-muted leading-relaxed">
+                Web3 구조설계와 AI 신뢰 인프라의 표준을 만드는 전문 기관.
+              </p>
+            </section>
+
+            <section className="cc-glass p-8">
+              <h2 className="text-xl font-bold text-cc-text mb-4">5대 전략 트랙</h2>
               <ul className="space-y-3 text-cc-muted">
                 <li className="flex items-start gap-3">
                   <span className="text-cc-accent mt-0.5">▸</span>
-                  <span><strong className="text-cc-text">WEB3 Architect Track</strong> — 블록체인 아키텍처 설계 전문가 양성</span>
+                  <span><strong className="text-cc-text">출판</strong> — 리서치와 전문 지식을 콘텐츠로 상품화. 온체인 분석 리포트, 기술 보고서, 단행본 출판</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-cc-accent mt-0.5">▸</span>
-                  <span><strong className="text-cc-text">온체인 분석</strong> — 체인 데이터 해석 및 투자 인사이트 도출</span>
+                  <span><strong className="text-cc-text">아카데미</strong> — Web3 구조설계 전문가 양성을 위한 단계별 강의 커리큘럼</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-cc-accent mt-0.5">▸</span>
-                  <span><strong className="text-cc-text">Custody 설계</strong> — 디지털 자산 수탁 시스템 아키텍처</span>
+                  <span><strong className="text-cc-text">리서치</strong> — 온체인 데이터 분석과 AI×Web3 연구. 현장에서 검증된 인사이트를 지식으로 생산</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-cc-accent mt-0.5">▸</span>
-                  <span><strong className="text-cc-text">특허 전략</strong> — 블록체인 기술 IP 확보 및 출원 전략</span>
+                  <span><strong className="text-cc-text">WEB3 인증</strong> — Basic · Associate · Expert 단계별 Web3 구조설계 공식 자격 검정 시스템</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-cc-accent mt-0.5">▸</span>
+                  <span><strong className="text-cc-text">설계</strong> — AI 에이전트가 실제 경제에서 작동할 때 필요한 신원·보안·실행·책임 구조 설계</span>
                 </li>
               </ul>
             </section>
 
             <section className="cc-glass p-8">
-              <h2 className="text-xl font-bold text-cc-text mb-4">자격증 체계</h2>
+              <h2 className="text-xl font-bold text-cc-text mb-4">자격 인증 체계</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   { level: 'Basic', color: 'text-emerald-400', desc: '블록체인 기초 이해 및 Web3 생태계 파악' },

@@ -72,7 +72,7 @@ export default async function ExamsPage() {
           <div className="mb-12 text-center">
             <p className="cc-label mb-2">CERTIFICATION</p>
             <h1 className="text-3xl md:text-4xl font-bold text-cc-text mb-4">
-              CoinCraft 자격 검정
+              COINCRAFT 자격 검정
             </h1>
             <p className="text-cc-muted max-w-xl mx-auto">
               블록체인 전문성을 공식 자격증으로 증명하세요.

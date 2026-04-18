@@ -16,14 +16,14 @@ export default function About() {
               우리는 <span className="text-cc-accent">무엇을</span> 만드는가
             </h2>
             <p className="text-cc-text text-lg leading-relaxed mb-4">
-              CoinCraft는 블록체인 기술을 단순히 가르치는 것을 넘어,
-              실제 산업에서 작동하는 시스템을 설계하고 특허화하는
-              Web3 전문 조직입니다.
+              COINCRAFT는 블록체인을 단순히 가르치는 것을 넘어,
+              AI 에이전트가 실제 경제에서 작동할 때 필요한
+              신뢰 구조를 설계하는 Web3 전문 조직입니다.
             </p>
             <p className="text-cc-muted leading-relaxed mb-10">
-              Sharon과 AI가 함께하는 단일 팀 구조로,
-              교육·콘텐츠·특허·Custody 시스템·온체인 분석
-              다섯 가지 트랙을 동시에 운영합니다.
+              출판·아카데미·리서치·WEB3 인증·설계,
+              다섯 개의 트랙을 동시에 전진하며
+              블록체인 산업의 지식 기반을 만들어갑니다.
             </p>
             <div className="flex gap-8">
               {stats.map((s) => (
@@ -41,14 +41,14 @@ export default function About() {
               <div className="text-2xl mb-3">🎯</div>
               <h3 className="text-lg font-bold text-cc-text mb-2">미션</h3>
               <p className="text-cc-muted leading-relaxed">
-                블록체인 전문가가 실무에서 즉시 활용할 수 있는 지식과 시스템을 제공한다.
+                AI와 Web3가 교차하는 지점에서, 실제로 작동하는 신뢰 시스템을 설계한다.
               </p>
             </div>
             <div className="cc-glass p-6">
               <div className="text-2xl mb-3">🔭</div>
               <h3 className="text-lg font-bold text-cc-text mb-2">비전</h3>
               <p className="text-cc-muted leading-relaxed">
-                Web3 구조설계의 표준을 만드는 글로벌 전문 기관.
+                Web3 구조설계와 AI 신뢰 인프라의 표준을 만드는 전문 기관.
               </p>
             </div>
           </div>

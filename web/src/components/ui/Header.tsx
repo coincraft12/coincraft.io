@@ -82,9 +82,9 @@ export default function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a2e] border-b border-white/10">
-      <div className="max-w-cc mx-auto px-6 flex items-center justify-between h-16">
-        {/* Logo */}
-        <a href="/" className="flex items-center h-10">
+      <div className="max-w-cc mx-auto px-6 flex items-center justify-between h-16 relative">
+        {/* Logo — centered on mobile, left on desktop */}
+        <a href="/" className="flex items-center h-10 md:static absolute left-1/2 -translate-x-1/2 md:translate-x-0">
           <Image src="/logo-header-v4.png" alt="COINCRAFT" width={160} height={40} className="h-10 w-auto object-contain" />
         </a>
 

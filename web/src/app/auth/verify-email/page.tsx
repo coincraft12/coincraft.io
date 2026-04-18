@@ -48,7 +48,7 @@ function VerifyEmailInner() {
           <>
             <div className="text-5xl mb-6">✅</div>
             <h2 className="text-2xl font-bold text-cc-text mb-3">이메일 인증 완료!</h2>
-            <p className="text-cc-muted mb-6">이제 CoinCraft의 모든 서비스를 이용할 수 있습니다.</p>
+            <p className="text-cc-muted mb-6">이제 COINCRAFT의 모든 서비스를 이용할 수 있습니다.</p>
             <Link href="/login" className="cc-btn cc-btn-primary">로그인하기</Link>
           </>
         )}

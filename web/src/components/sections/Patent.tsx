@@ -1,7 +1,7 @@
 const badges = [
   { label: '복구 정보 비가역적 소멸 보안 매체', done: true },
   { label: '단방향 상태머신 기반 복구 시스템', done: true },
-  { label: '다중키 오프라인 복구 시스템 (출원 중)', done: false },
+  { label: '다중키 오프라인 복구 시스템', done: true },
   { label: '온체인 TX 기반 역량 인증 (출원 중)', done: false },
 ]
 
@@ -17,9 +17,9 @@ export default function Patent() {
               <span className="text-cc-accent">기술을 보호합니다</span>
             </h2>
             <p className="text-cc-muted leading-relaxed mb-8">
-              CoinCraft는 설계한 기술을 특허로 보호합니다.<br />
-              보안 매체·복구 시스템 2건 출원 완료,<br />
-              다중키 복구 및 온체인 역량 인증 특허 출원 진행 중입니다.
+              COINCRAFT는 설계한 기술을 특허로 보호합니다.<br />
+              보안 매체·복구 시스템·다중키 복구 3건 출원 완료,<br />
+              온체인 역량 인증 특허 출원 진행 중입니다.
             </p>
             <div className="flex flex-wrap gap-3">
               {badges.map((b) => (

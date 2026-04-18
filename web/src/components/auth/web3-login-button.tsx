@@ -30,7 +30,7 @@ async function loginWithWindowEthereum(
     `/api/v1/auth/web3/nonce?address=${address}`
   );
 
-  const message = `CoinCraft에 로그인합니다.\n\n주소: ${address}\nNonce: ${nonce}`;
+  const message = `COINCRAFT에 로그인합니다.\n\n주소: ${address}\nNonce: ${nonce}`;
   const signature = (await window.ethereum!.request({
     method: 'personal_sign',
     params: [message, address],
@@ -72,7 +72,7 @@ async function loginWithWalletConnect(
     `/api/v1/auth/web3/nonce?address=${address}`
   );
 
-  const message = `CoinCraft에 로그인합니다.\n\n주소: ${address}\nNonce: ${nonce}`;
+  const message = `COINCRAFT에 로그인합니다.\n\n주소: ${address}\nNonce: ${nonce}`;
   const signature = (await wcProvider.request({
     method: 'personal_sign',
     params: [message, address],

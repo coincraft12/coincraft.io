@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 
-export const metadata = { title: '시험 관리 세부 규정 — CoinCraft' };
+export const metadata = { title: '시험 관리 세부 규정 — COINCRAFT' };
 
 export default function CertExamRulesPage() {
   return (

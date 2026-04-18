@@ -2,7 +2,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 
 export const metadata = {
-  title: '개인정보처리방침 — CoinCraft',
+  title: '개인정보처리방침 — COINCRAFT',
 };
 
 export default function PrivacyPage() {
@@ -22,7 +22,7 @@ export default function PrivacyPage() {
           <div className="space-y-8 text-cc-muted leading-relaxed">
             <section className="cc-glass p-8">
               <h2 className="text-lg font-bold text-cc-text mb-4">1. 수집하는 개인정보</h2>
-              <p className="mb-3">CoinCraft(이하 "회사")는 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다.</p>
+              <p className="mb-3">COINCRAFT(이하 "회사")는 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다.</p>
               <ul className="space-y-2 list-disc list-inside">
                 <li>필수 항목: 이메일 주소, 이름, 비밀번호(암호화 저장)</li>
                 <li>선택 항목: 프로필 사진, 지갑 주소</li>

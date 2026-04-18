@@ -2,7 +2,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 
 export const metadata = {
-  title: '이용약관 — CoinCraft',
+  title: '이용약관 — COINCRAFT',
 };
 
 export default function TermsPage() {
@@ -23,7 +23,7 @@ export default function TermsPage() {
             <section className="cc-glass p-8">
               <h2 className="text-lg font-bold text-cc-text mb-4">제1조 (목적)</h2>
               <p>
-                이 약관은 CoinCraft(이하 "회사")가 제공하는 교육 플랫폼 서비스(이하 "서비스")의
+                이 약관은 COINCRAFT(이하 "회사")가 제공하는 교육 플랫폼 서비스(이하 "서비스")의
                 이용 조건 및 절차에 관한 사항을 규정함을 목적으로 합니다.
               </p>
             </section>

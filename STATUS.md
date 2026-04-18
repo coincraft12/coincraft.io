@@ -138,6 +138,18 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 **시드 데이터:**
 - Basic 레벨 블록체인 기초 시험 5문항 (api/src/db/seed-exam.ts)
 
+## 2026-04-18 작업 내역 (추가)
+
+**홈페이지·About 카피 개선 + 운영 배포:**
+- Hero: 라벨 `Web3 · AI · Blockchain Architecture`, 헤딩 "AI 시대의 Web3 신뢰를 설계하는 사람들"
+- 5대 사업트랙 재정의: Custody설계·핵심정체성·특허 → 리서치·WEB3인증·설계
+- About 페이지 홈 메시지와 일치 (미션·비전·5대트랙 통일)
+- 전체 CoinCraft → COINCRAFT 일괄 변경 (src/ 30개 파일)
+- Community SNS 링크 교체: LinkedIn·Instagram·YouTube 정확한 URL
+- 모바일 헤더 로고 가운데 배치 (absolute 중앙 정렬)
+- 출판 트랙 설명: 사토시픽션 제거 → 온체인 리포트·기술보고서·단행본 출판 일반화
+- 스테이징 + 운영 동시 배포 완료
+
 ## 2026-04-18 작업 내역
 
 **결제 고도화 — 무통장 입금 + 가상계좌 전 상품 적용 (스테이징 배포 완료):**

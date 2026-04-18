@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 
-export const metadata = { title: '자격 관리·운영 규정 — CoinCraft' };
+export const metadata = { title: '자격 관리·운영 규정 — COINCRAFT' };
 
 export default function CertPolicyPage() {
   return (

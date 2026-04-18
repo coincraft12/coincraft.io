@@ -3,21 +3,21 @@ const channels = [
     icon: 'in',
     name: 'LinkedIn',
     desc: '전문 인사이트 · 업계 분석',
-    href: 'https://linkedin.com/in/coincraft',
+    href: 'https://www.linkedin.com/company/coincraft-inc',
     color: 'hover:border-blue-500/40 hover:bg-blue-500/5',
   },
   {
     icon: '📷',
     name: 'Instagram',
     desc: '감성 콘텐츠 · 일상 스토리',
-    href: 'https://instagram.com/coincraft',
+    href: 'https://www.instagram.com/coincraft.labs/',
     color: 'hover:border-pink-500/40 hover:bg-pink-500/5',
   },
   {
     icon: '▶',
     name: 'YouTube',
     desc: '강의 영상 · 심층 분석',
-    href: 'https://youtube.com/@coincraft',
+    href: 'https://www.youtube.com/@코인크래프트',
     color: 'hover:border-red-500/40 hover:bg-red-500/5',
   },
 ]
@@ -31,7 +31,7 @@ export default function Community() {
           <h2 className="text-4xl font-bold text-cc-text mb-3">
             함께 <span className="text-cc-accent">성장하세요</span>
           </h2>
-          <p className="text-cc-muted">CoinCraft의 다양한 채널에서 최신 인사이트를 만나보세요.</p>
+          <p className="text-cc-muted">COINCRAFT의 다양한 채널에서 최신 인사이트를 만나보세요.</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">

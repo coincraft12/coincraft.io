@@ -41,7 +41,7 @@ export default function CertificateCard({
       {/* Level badge and cert icon */}
       <div className="flex items-center justify-between">
         <Badge variant={getLevelVariant(level)}>
-          CoinCraft {getLevelLabel(level)}
+          COINCRAFT {getLevelLabel(level)}
         </Badge>
         {isExpired && (
           <Badge variant="danger">만료됨</Badge>

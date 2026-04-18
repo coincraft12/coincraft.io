@@ -15,9 +15,9 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await fetchPostBySlug(slug);
-  if (!post) return { title: '포스트 없음 — CoinCraft' };
+  if (!post) return { title: '포스트 없음 — COINCRAFT' };
   return {
-    title: `${post.title} — CoinCraft`,
+    title: `${post.title} — COINCRAFT`,
     description: post.excerpt ?? undefined,
     openGraph: {
       title: post.title,

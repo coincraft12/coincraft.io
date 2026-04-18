@@ -87,7 +87,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2 text-sm text-[#666]">
                 <span>🚫</span>
-                ⓒ CoinCraft, 강의 예제, 영상 복제 금지
+                ⓒ COINCRAFT, 강의 예제, 영상 복제 금지
               </li>
             </ul>
 

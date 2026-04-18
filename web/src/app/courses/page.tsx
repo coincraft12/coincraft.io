@@ -5,7 +5,7 @@ import CourseCard from '@/components/courses/course-card';
 import CourseFilters from '@/components/courses/course-filters';
 import Spinner from '@/components/ui/Spinner';
 
-export const metadata = { title: '전체 강좌 — CoinCraft' };
+export const metadata = { title: '전체 강좌 — COINCRAFT' };
 export const revalidate = 60;
 
 interface CourseMeta {

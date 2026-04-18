@@ -2,7 +2,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Link from 'next/link';
 
-export const metadata = { title: '강사진 — CoinCraft' };
+export const metadata = { title: '강사진 — COINCRAFT' };
 export const revalidate = 300;
 
 interface InstructorProfile {
@@ -39,7 +39,7 @@ export default async function InstructorsPage() {
             <div>
               <p className="cc-label mb-2">INSTRUCTORS</p>
               <h1 className="text-3xl md:text-4xl font-bold text-cc-text">강사진</h1>
-              <p className="text-cc-muted mt-2">CoinCraft의 전문 강사진을 소개합니다.</p>
+              <p className="text-cc-muted mt-2">COINCRAFT의 전문 강사진을 소개합니다.</p>
             </div>
             <Link
               href="/instructors/apply"

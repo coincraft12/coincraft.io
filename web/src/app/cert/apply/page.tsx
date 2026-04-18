@@ -3,7 +3,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import ExamRegisteredRedirect from './ExamRegisteredRedirect';
 
-export const metadata = { title: '검정 신청 — CoinCraft' };
+export const metadata = { title: '검정 신청 — COINCRAFT' };
 export const revalidate = 60;
 
 async function fetchExamCapacity(): Promise<{ registeredCount: number; maxCapacity: number | null } | null> {

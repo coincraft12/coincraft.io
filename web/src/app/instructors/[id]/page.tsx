@@ -44,9 +44,9 @@ async function fetchInstructor(id: string): Promise<InstructorDetail | null> {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const instructor = await fetchInstructor(id);
-  if (!instructor) return { title: '강사 — CoinCraft' };
+  if (!instructor) return { title: '강사 — COINCRAFT' };
   return {
-    title: `${instructor.name} — CoinCraft`,
+    title: `${instructor.name} — COINCRAFT`,
     description: instructor.bio?.slice(0, 160) ?? undefined,
   };
 }
