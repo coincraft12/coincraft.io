@@ -22,7 +22,7 @@ async function fetchExamCapacity(): Promise<{ registeredCount: number; maxCapaci
 
 const SCHEDULE = [
   { label: '시험일', value: '2026년 5월 2일 (토)' },
-  { label: '접수 기간', value: '4월 12일(토) ~ 4월 26일(일)' },
+  { label: '접수 기간', value: '4월 20일(월) ~ 4월 26일(일)' },
   { label: '수험료', value: null },
   { label: '응시 자격', value: '제한 없음' },
   { label: '합격 기준', value: '100점 만점 · 70점 이상' },
