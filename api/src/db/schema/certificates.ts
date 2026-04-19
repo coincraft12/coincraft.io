@@ -1,12 +1,13 @@
 import { pgTable, uuid, varchar, timestamp, text, index } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { courses } from './courses';
+import { certExams } from './cert-exams';
 
 export const certificates = pgTable('certificates', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
   courseId: uuid('course_id').references(() => courses.id),
-  examId: uuid('exam_id'),
+  examId: uuid('exam_id').references(() => certExams.id, { onDelete: 'set null' }),
   level: varchar('level', { length: 20 }).notNull(),
   certNumber: varchar('cert_number', { length: 50 }).notNull().unique(),
   issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),

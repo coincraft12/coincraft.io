@@ -14,5 +14,10 @@ export const certExams = pgTable('cert_exams', {
   maxCapacity: integer('max_capacity'),
   pdfDeliveryDate: date('pdf_delivery_date'),
   pdfFileUrl: text('pdf_file_url'),
+  // 시험 일정
+  examDate: date('exam_date'),
+  registrationStart: timestamp('registration_start', { withTimezone: true }),
+  registrationEnd: timestamp('registration_end', { withTimezone: true }),
+  examRound: integer('exam_round').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
