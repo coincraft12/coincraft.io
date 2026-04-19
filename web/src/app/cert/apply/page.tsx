@@ -6,15 +6,31 @@ import ExamRegisteredRedirect from './ExamRegisteredRedirect';
 export const metadata = { title: '검정 신청 — COINCRAFT' };
 export const revalidate = 60;
 
-async function fetchExamCapacity(): Promise<{ registeredCount: number; maxCapacity: number | null } | null> {
+async function fetchExamCapacity(): Promise<{
+  registeredCount: number;
+  maxCapacity: number | null;
+  registrationStart: string | null;
+  registrationEnd: string | null;
+} | null> {
   try {
     const apiBase = process.env.API_INTERNAL_URL ?? '';
     const res = await fetch(`${apiBase}/api/v1/exams`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
     const json = await res.json();
-    const exams: Array<{ level: string; registeredCount: number; maxCapacity: number | null }> = json.data ?? [];
+    const exams: Array<{
+      level: string;
+      registeredCount: number;
+      maxCapacity: number | null;
+      registrationStart: string | null;
+      registrationEnd: string | null;
+    }> = json.data ?? [];
     const basic = exams.find((e) => e.level === 'basic');
-    return basic ? { registeredCount: basic.registeredCount, maxCapacity: basic.maxCapacity } : null;
+    return basic ? {
+      registeredCount: basic.registeredCount,
+      maxCapacity: basic.maxCapacity,
+      registrationStart: basic.registrationStart ?? null,
+      registrationEnd: basic.registrationEnd ?? null,
+    } : null;
   } catch {
     return null;
   }
@@ -52,7 +68,13 @@ const EXAM_FLOW = [
 
 export default async function CertApplyPage() {
   const capacity = await fetchExamCapacity();
-  const isFull = capacity?.maxCapacity != null && capacity.registeredCount >= capacity.maxCapacity;
+  const now = new Date();
+  const regStart = capacity?.registrationStart ? new Date(capacity.registrationStart) : null;
+  const regEnd = capacity?.registrationEnd ? new Date(capacity.registrationEnd) : null;
+  const isNotYetOpen = regStart != null && now < regStart;
+  const isClosed = regEnd != null && now > regEnd;
+  const isRegistrationOpen = !isNotYetOpen && !isClosed;
+  const isFull = isRegistrationOpen && capacity?.maxCapacity != null && capacity.registeredCount >= capacity.maxCapacity;
   const remaining = capacity?.maxCapacity != null ? capacity.maxCapacity - capacity.registeredCount : null;
 
   return (
@@ -136,7 +158,17 @@ export default async function CertApplyPage() {
 
           {/* 신청 버튼 */}
           <div className="text-center mb-10">
-            {capacity?.maxCapacity != null && (
+            {isNotYetOpen && (
+              <p className="text-sm mb-3 font-semibold text-cc-muted">
+                접수 기간이 아닙니다. 접수 기간: 4/20(월) ~ 4/26(일) KST
+              </p>
+            )}
+            {isClosed && (
+              <p className="text-sm mb-3 font-semibold text-red-400">
+                접수 기간이 마감되었습니다. 접수 기간: 4/20(월) ~ 4/26(일) KST
+              </p>
+            )}
+            {isRegistrationOpen && capacity?.maxCapacity != null && (
               <p className={`text-sm mb-3 font-semibold ${isFull ? 'text-red-400' : remaining !== null && remaining <= 5 ? 'text-orange-400' : 'text-cc-muted'}`}>
                 {isFull
                   ? '접수 정원이 마감되었습니다.'
@@ -145,9 +177,9 @@ export default async function CertApplyPage() {
                   : `현재 ${capacity.registeredCount}명 접수 완료 / 총 ${capacity.maxCapacity}명 정원`}
               </p>
             )}
-            {isFull ? (
+            {(isNotYetOpen || isClosed || isFull) ? (
               <div className="inline-block bg-white/10 text-cc-muted text-base font-bold px-12 py-4 rounded-lg cursor-not-allowed">
-                접수 마감
+                {isFull ? '접수 마감' : isClosed ? '접수 종료' : '접수 예정'}
               </div>
             ) : (
               <a

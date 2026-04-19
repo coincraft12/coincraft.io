@@ -19,6 +19,8 @@ interface ExamInfo {
   examFee: string;
   timeLimit: number;
   passingScore: number;
+  registrationStart: string | null;
+  registrationEnd: string | null;
 }
 
 type PayMethod = 'card' | 'trans' | 'vbank' | 'bank_transfer';
@@ -44,7 +46,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 const EXAM_SCHEDULE = [
   { label: '시험일', value: '2026년 5월 2일 (토) 오후 2시' },
-  { label: '접수 기간', value: '4월 14일(월) ~ 4월 20일(일)' },
+  { label: '접수 기간', value: '4월 20일(월) ~ 4월 26일(일)' },
   { label: '응시료', value: null },
   { label: '시험 방식', value: '온라인 · 객관식 40문항 · 60분' },
   { label: '합격 기준', value: '100점 만점 · 70점 이상' },
@@ -112,17 +114,23 @@ export default function CertRegisterPage() {
     }
   }, [user]);
 
-  // Fetch active exam
+  // Fetch active exam + registration period check
   useEffect(() => {
     fetch(`${API_BASE}/api/v1/exams`)
       .then((r) => r.ok ? r.json() : Promise.reject('fetch fail'))
       .then((j: { success: boolean; data: ExamInfo[] }) => {
         const active = j.data.find((e) => e) ?? j.data[0];
-        if (active) {
-          setExam(active);
-        } else {
-          setFetchError('현재 접수 중인 시험이 없습니다.');
+        if (!active) { setFetchError('현재 접수 중인 시험이 없습니다.'); return; }
+        const now = new Date();
+        if (active.registrationStart && now < new Date(active.registrationStart)) {
+          setFetchError('접수 기간이 아닙니다. 접수 기간: 4/20(월) ~ 4/26(일) KST');
+          return;
         }
+        if (active.registrationEnd && now > new Date(active.registrationEnd)) {
+          setFetchError('접수 기간이 마감되었습니다. 접수 기간: 4/20(월) ~ 4/26(일) KST');
+          return;
+        }
+        setExam(active);
       })
       .catch(() => setFetchError('시험 정보를 불러올 수 없습니다.'));
   }, []);
