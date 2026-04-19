@@ -7,6 +7,8 @@ import {
   startExamSchema,
   submitExamSchema,
   createExamSchema,
+  updateExamSchema,
+  refundRegistrationSchema,
   addQuestionSchema,
   bulkImportQuestionsSchema,
 } from './cert.schema';
@@ -133,5 +135,74 @@ export async function certRoutes(app: FastifyInstance): Promise<void> {
     }
     const questions = await certService.bulkImportQuestions(id, body.data.questions);
     return reply.code(201).send(created(questions, `${questions.length}개 문제가 업로드되었습니다.`));
+  });
+
+  // ── Admin: 시험 관리 ───────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/exams — 전체 시험 목록 (비활성 포함)
+  app.get('/api/v1/admin/exams', { preHandler: [authenticate, requireRole('admin')] }, async (_request, reply) => {
+    const exams = await certService.listAdminExams();
+    return reply.send(ok(exams));
+  });
+
+  // PUT /api/v1/admin/exams/:id — 시험 정보 수정
+  app.put('/api/v1/admin/exams/:id', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = updateExamSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message },
+      });
+    }
+    const exam = await certService.updateExam(id, body.data);
+    return reply.send(ok(exam, '시험 정보가 수정되었습니다.'));
+  });
+
+  // ── Admin: 접수자 관리 ─────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/exams/:id/registrations?status=payment_completed — 접수자 목록
+  app.get('/api/v1/admin/exams/:id/registrations', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { status } = request.query as { status?: string };
+    const rows = await certService.listRegistrations(id, status);
+    return reply.send(ok(rows));
+  });
+
+  // PUT /api/v1/admin/registrations/:id/refund — 환불 처리
+  app.put('/api/v1/admin/registrations/:id/refund', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = refundRegistrationSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message },
+      });
+    }
+    const result = await certService.refundRegistration(id, body.data.reason);
+    return reply.send(ok(result, '환불 처리되었습니다.'));
+  });
+
+  // PUT /api/v1/admin/registrations/:id/cancel — 취소 처리
+  app.put('/api/v1/admin/registrations/:id/cancel', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await certService.cancelRegistration(id);
+    return reply.send(ok(result, '접수가 취소되었습니다.'));
+  });
+
+  // PUT /api/v1/admin/registrations/:id/pdf-sent — PDF 발송 완료 처리
+  app.put('/api/v1/admin/registrations/:id/pdf-sent', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await certService.markPdfSent(id);
+    return reply.send(ok(result, 'PDF 발송 완료 처리되었습니다.'));
+  });
+
+  // ── Admin: 시험 결과 ───────────────────────────────────────────────────────
+
+  // GET /api/v1/admin/exams/:id/results — 응시 결과 + 합격자 목록
+  app.get('/api/v1/admin/exams/:id/results', { preHandler: [authenticate, requireRole('admin')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const results = await certService.listExamResults(id);
+    return reply.send(ok(results));
   });
 }

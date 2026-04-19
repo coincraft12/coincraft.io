@@ -21,6 +21,20 @@ export const createExamSchema = z.object({
   isActive: z.boolean().default(false),
   prerequisiteCourseId: z.string().uuid().optional(),
   examFee: z.number().min(0).default(0),
+  maxCapacity: z.number().int().min(1).optional(),
+  pdfDeliveryDate: z.string().optional(),
+  pdfFileUrl: z.string().url().optional(),
+  // 시험 일정
+  examDate: z.string().optional(),                                         // YYYY-MM-DD
+  registrationStart: z.string().datetime({ offset: true }).optional(),
+  registrationEnd: z.string().datetime({ offset: true }).optional(),
+  examRound: z.number().int().min(1).default(1),
+});
+
+export const updateExamSchema = createExamSchema.partial();
+
+export const refundRegistrationSchema = z.object({
+  reason: z.string().min(1).max(500),
 });
 
 export const addQuestionSchema = z.object({
@@ -40,5 +54,7 @@ export type StartExamDto = z.infer<typeof startExamSchema>;
 export type SubmitExamDto = z.infer<typeof submitExamSchema>;
 export type MintDto = z.infer<typeof mintSchema>;
 export type CreateExamDto = z.infer<typeof createExamSchema>;
+export type UpdateExamDto = z.infer<typeof updateExamSchema>;
+export type RefundRegistrationDto = z.infer<typeof refundRegistrationSchema>;
 export type AddQuestionDto = z.infer<typeof addQuestionSchema>;
 export type BulkImportQuestionsDto = z.infer<typeof bulkImportQuestionsSchema>;

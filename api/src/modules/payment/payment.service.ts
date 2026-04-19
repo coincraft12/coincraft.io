@@ -53,6 +53,13 @@ export interface PaymentHistoryItem {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function formatExamDate(dateStr: string | null): string {
+  if (!dateStr) return '일정 미정';
+  const d = new Date(dateStr);
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+
 function makeError(message: string, code: string, statusCode: number): Error {
   return Object.assign(new Error(message), { code, statusCode });
 }
@@ -495,7 +502,7 @@ export async function prepareExamPayment(
   birthdate?: string
 ): Promise<PrepareExamPaymentResult> {
   const [exam] = await db
-    .select({ id: certExams.id, title: certExams.title, examFee: certExams.examFee, isActive: certExams.isActive })
+    .select({ id: certExams.id, title: certExams.title, examFee: certExams.examFee, isActive: certExams.isActive, registrationStart: certExams.registrationStart, registrationEnd: certExams.registrationEnd })
     .from(certExams)
     .where(eq(certExams.id, examId))
     .limit(1);
@@ -507,6 +514,17 @@ export async function prepareExamPayment(
   const amount = Math.round(Number(exam.examFee));
   if (amount === 0) {
     throw makeError('무료 시험은 결제가 필요하지 않습니다.', 'BAD_REQUEST', 400);
+  }
+
+  // 접수 기간 검증
+  if (exam.registrationStart && exam.registrationEnd) {
+    const now = new Date();
+    if (now < new Date(exam.registrationStart)) {
+      throw makeError('아직 접수 기간이 시작되지 않았습니다.', 'REGISTRATION_NOT_STARTED', 400);
+    }
+    if (now > new Date(exam.registrationEnd)) {
+      throw makeError('접수 기간이 마감되었습니다.', 'REGISTRATION_CLOSED', 400);
+    }
   }
 
   // 이름 + 생년월일 중복 접수 차단
@@ -575,7 +593,7 @@ export async function confirmExamPayment(
 
   const [[eu], [ex]] = await Promise.all([
     db.select({ name: users.name, phone: users.phone, email: users.email }).from(users).where(eq(users.id, userId)).limit(1),
-    db.select({ title: certExams.title, level: certExams.level, maxCapacity: certExams.maxCapacity }).from(certExams).where(eq(certExams.id, examId)).limit(1),
+    db.select({ title: certExams.title, level: certExams.level, maxCapacity: certExams.maxCapacity, examDate: certExams.examDate }).from(certExams).where(eq(certExams.id, examId)).limit(1),
   ]);
 
   // 정원 초과 체크
@@ -622,13 +640,14 @@ export async function confirmExamPayment(
         registrationNumber,
         applicantName,
         applicantBirthdate,
+        status: 'payment_completed',
       });
     }
   });
 
   // 알림톡 + 이메일 — 시험 접수 완료
   const displayName = applicantName ?? eu?.name ?? '';
-  const examDateTime = '2026년 5월 2일 (토) 오후 2시';
+  const examDateTime = formatExamDate(ex?.examDate ?? null);
   const rulesUrl = `${env.FRONTEND_URL}/cert/exam-rules`;
   if (eu?.phone && ex?.title && registrationNumber) {
     notifyExamRegistration(eu.phone, displayName, ex.title, examDateTime, registrationNumber, rulesUrl).catch(() => {});
@@ -1002,7 +1021,7 @@ export async function approveBankTransferPayment(
     const examId = payment.productId;
     const meta = payment.metadata as { orderId?: string; applicantName?: string; applicantBirthdate?: string } | null;
 
-    const [ex] = await db.select({ title: certExams.title, level: certExams.level }).from(certExams).where(eq(certExams.id, examId)).limit(1);
+    const [ex] = await db.select({ title: certExams.title, level: certExams.level, examDate: certExams.examDate }).from(certExams).where(eq(certExams.id, examId)).limit(1);
 
     await db.transaction(async (tx) => {
       await tx.update(payments).set({ status: 'paid', paidAt: new Date() }).where(eq(payments.id, paymentId));
@@ -1017,11 +1036,12 @@ export async function approveBankTransferPayment(
           applicantName: meta?.applicantName ?? u?.name ?? '',
           applicantBirthdate: meta?.applicantBirthdate ?? '',
           registrationNumber: regNumber,
+          status: 'payment_completed',
         });
       }
     });
 
-    const examDateTime = '2026년 5월 2일 (토) 오후 2시';
+    const examDateTime = formatExamDate(ex?.examDate ?? null);
     const rulesUrl = `${env.FRONTEND_URL}/cert/exam-rules`;
     const [reg] = await db.select({ registrationNumber: examRegistrations.registrationNumber })
       .from(examRegistrations).where(and(eq(examRegistrations.userId, payment.userId), eq(examRegistrations.examId, examId))).limit(1);

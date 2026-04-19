@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray, not } from 'drizzle-orm';
 import { db } from '../../db';
 import {
   certExams,
@@ -9,11 +9,12 @@ import {
   enrollments,
   courses,
   users,
+  payments,
 } from '../../db/schema';
 import { notifyExamResult, notifyCertIssued } from '../../lib/notifications';
 import { sendExamResultEmail, sendCertIssuedEmail } from '../../lib/email';
 import { redis } from '../../lib/redis';
-import type { CreateExamDto, AddQuestionDto } from './cert.schema';
+import type { CreateExamDto, UpdateExamDto, AddQuestionDto } from './cert.schema';
 import { hasExamPayment } from '../payment/payment.service';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -29,6 +30,14 @@ function toDateStr(date: Date): string {
   return `${y}${m}${d}`;
 }
 
+function computeRegistrationOpen(start: Date | string | null, end: Date | string | null): boolean | null {
+  if (!start || !end) return null;
+  const now = new Date();
+  return new Date(start) <= now && now <= new Date(end);
+}
+
+const ACTIVE_STATUSES = ['registered', 'payment_completed'] as const;
+
 // ─── Public: Exam listing ─────────────────────────────────────────────────────
 
 export async function listExams() {
@@ -43,16 +52,26 @@ export async function listExams() {
       examFee: certExams.examFee,
       maxCapacity: certExams.maxCapacity,
       prerequisiteCourseId: certExams.prerequisiteCourseId,
+      examDate: certExams.examDate,
+      registrationStart: certExams.registrationStart,
+      registrationEnd: certExams.registrationEnd,
+      examRound: certExams.examRound,
+      pdfDeliveryDate: certExams.pdfDeliveryDate,
       createdAt: certExams.createdAt,
       registeredCount: sql<number>`(
-        SELECT count(*)::int FROM exam_registrations WHERE exam_id = ${certExams.id}
+        SELECT count(*)::int FROM exam_registrations
+        WHERE exam_id = ${certExams.id}
+        AND status IN ('registered', 'payment_completed')
       )`,
     })
     .from(certExams)
     .where(eq(certExams.isActive, true))
-    .orderBy(certExams.level, certExams.createdAt);
+    .orderBy(certExams.examRound, certExams.level);
 
-  return rows;
+  return rows.map((r) => ({
+    ...r,
+    isRegistrationOpen: computeRegistrationOpen(r.registrationStart, r.registrationEnd),
+  }));
 }
 
 export async function getExam(examId: string) {
@@ -67,6 +86,12 @@ export async function getExam(examId: string) {
       examFee: certExams.examFee,
       isActive: certExams.isActive,
       prerequisiteCourseId: certExams.prerequisiteCourseId,
+      maxCapacity: certExams.maxCapacity,
+      examDate: certExams.examDate,
+      registrationStart: certExams.registrationStart,
+      registrationEnd: certExams.registrationEnd,
+      examRound: certExams.examRound,
+      pdfDeliveryDate: certExams.pdfDeliveryDate,
       createdAt: certExams.createdAt,
     })
     .from(certExams)
@@ -94,7 +119,12 @@ export async function getExam(examId: string) {
     .from(examQuestions)
     .where(eq(examQuestions.examId, examId));
 
-  return { ...exam, questionCount: questions.length, prerequisiteCourse };
+  return {
+    ...exam,
+    questionCount: questions.length,
+    prerequisiteCourse,
+    isRegistrationOpen: computeRegistrationOpen(exam.registrationStart, exam.registrationEnd),
+  };
 }
 
 // ─── Exam attempt ─────────────────────────────────────────────────────────────
@@ -117,11 +147,22 @@ export async function startExam(userId: string, examId: string) {
     throw makeError('시험을 찾을 수 없습니다.', 'NOT_FOUND', 404);
   }
 
-  // Check exam payment (유료 시험인 경우 결제 확인)
+  // Check exam payment + registration status
   if (Number(exam.examFee) > 0) {
-    const paid = await hasExamPayment(userId, examId);
-    if (!paid) {
-      throw makeError('시험 응시권이 없습니다. 결제 후 응시해주세요.', 'PAYMENT_REQUIRED', 402);
+    const [reg] = await db
+      .select({ id: examRegistrations.id, status: examRegistrations.status })
+      .from(examRegistrations)
+      .where(and(eq(examRegistrations.userId, userId), eq(examRegistrations.examId, examId)))
+      .limit(1);
+
+    if (!reg) {
+      throw makeError('시험 응시권이 없습니다. 접수 후 응시해주세요.', 'PAYMENT_REQUIRED', 402);
+    }
+    if (reg.status === 'refunded' || reg.status === 'cancelled') {
+      throw makeError('취소 또는 환불된 접수입니다. 응시할 수 없습니다.', 'REGISTRATION_CANCELLED', 403);
+    }
+    if (reg.status !== 'payment_completed') {
+      throw makeError('결제 완료 후 응시 가능합니다.', 'PAYMENT_REQUIRED', 402);
     }
   }
 
@@ -532,14 +573,20 @@ export async function getMyExamRegistrations(userId: string) {
       id: examRegistrations.id,
       examId: examRegistrations.examId,
       registrationNumber: examRegistrations.registrationNumber,
+      applicantName: examRegistrations.applicantName,
+      status: examRegistrations.status,
+      pdfSent: examRegistrations.pdfSent,
       registeredAt: examRegistrations.registeredAt,
+      refundedAt: examRegistrations.refundedAt,
       examTitle: certExams.title,
       examLevel: certExams.level,
+      examRound: certExams.examRound,
+      examDate: certExams.examDate,
     })
     .from(examRegistrations)
     .innerJoin(certExams, eq(examRegistrations.examId, certExams.id))
     .where(eq(examRegistrations.userId, userId))
-    .orderBy(examRegistrations.registeredAt);
+    .orderBy(desc(examRegistrations.registeredAt));
 
   return rows;
 }
@@ -610,10 +657,42 @@ export async function createExam(dto: CreateExamDto) {
       isActive: dto.isActive,
       prerequisiteCourseId: dto.prerequisiteCourseId ?? null,
       examFee: String(dto.examFee),
+      maxCapacity: dto.maxCapacity ?? null,
+      pdfDeliveryDate: dto.pdfDeliveryDate ?? null,
+      pdfFileUrl: dto.pdfFileUrl ?? null,
+      examDate: dto.examDate ?? null,
+      registrationStart: dto.registrationStart ? new Date(dto.registrationStart) : null,
+      registrationEnd: dto.registrationEnd ? new Date(dto.registrationEnd) : null,
+      examRound: dto.examRound,
     })
     .returning();
 
   return exam;
+}
+
+export async function updateExam(examId: string, dto: UpdateExamDto) {
+  const [existing] = await db.select({ id: certExams.id }).from(certExams).where(eq(certExams.id, examId)).limit(1);
+  if (!existing) throw makeError('시험을 찾을 수 없습니다.', 'NOT_FOUND', 404);
+
+  const updateValues: Record<string, unknown> = {};
+  if (dto.title !== undefined) updateValues.title = dto.title;
+  if (dto.level !== undefined) updateValues.level = dto.level;
+  if (dto.description !== undefined) updateValues.description = dto.description;
+  if (dto.passingScore !== undefined) updateValues.passingScore = dto.passingScore;
+  if (dto.timeLimit !== undefined) updateValues.timeLimit = dto.timeLimit;
+  if (dto.isActive !== undefined) updateValues.isActive = dto.isActive;
+  if (dto.prerequisiteCourseId !== undefined) updateValues.prerequisiteCourseId = dto.prerequisiteCourseId;
+  if (dto.examFee !== undefined) updateValues.examFee = String(dto.examFee);
+  if (dto.maxCapacity !== undefined) updateValues.maxCapacity = dto.maxCapacity;
+  if (dto.pdfDeliveryDate !== undefined) updateValues.pdfDeliveryDate = dto.pdfDeliveryDate;
+  if (dto.pdfFileUrl !== undefined) updateValues.pdfFileUrl = dto.pdfFileUrl;
+  if (dto.examDate !== undefined) updateValues.examDate = dto.examDate;
+  if (dto.registrationStart !== undefined) updateValues.registrationStart = dto.registrationStart ? new Date(dto.registrationStart) : null;
+  if (dto.registrationEnd !== undefined) updateValues.registrationEnd = dto.registrationEnd ? new Date(dto.registrationEnd) : null;
+  if (dto.examRound !== undefined) updateValues.examRound = dto.examRound;
+
+  const [updated] = await db.update(certExams).set(updateValues).where(eq(certExams.id, examId)).returning();
+  return updated;
 }
 
 export async function addQuestion(examId: string, dto: AddQuestionDto) {
@@ -671,4 +750,178 @@ export async function bulkImportQuestions(examId: string, questions: AddQuestion
     .returning();
 
   return inserted;
+}
+
+// ─── Admin: 시험 관리 ──────────────────────────────────────────────────────────
+
+export async function listAdminExams() {
+  const rows = await db
+    .select({
+      id: certExams.id,
+      title: certExams.title,
+      level: certExams.level,
+      isActive: certExams.isActive,
+      examRound: certExams.examRound,
+      examDate: certExams.examDate,
+      registrationStart: certExams.registrationStart,
+      registrationEnd: certExams.registrationEnd,
+      examFee: certExams.examFee,
+      maxCapacity: certExams.maxCapacity,
+      pdfDeliveryDate: certExams.pdfDeliveryDate,
+      pdfFileUrl: certExams.pdfFileUrl,
+      createdAt: certExams.createdAt,
+      totalRegistered: sql<number>`(
+        SELECT count(*)::int FROM exam_registrations
+        WHERE exam_id = ${certExams.id} AND status IN ('registered', 'payment_completed')
+      )`,
+      totalRefunded: sql<number>`(
+        SELECT count(*)::int FROM exam_registrations
+        WHERE exam_id = ${certExams.id} AND status = 'refunded'
+      )`,
+      totalPassed: sql<number>`(
+        SELECT count(*)::int FROM exam_attempts
+        WHERE exam_id = ${certExams.id} AND is_passed = true
+      )`,
+    })
+    .from(certExams)
+    .orderBy(desc(certExams.examRound), certExams.level);
+
+  return rows.map((r) => ({
+    ...r,
+    isRegistrationOpen: computeRegistrationOpen(r.registrationStart, r.registrationEnd),
+  }));
+}
+
+// ─── Admin: 접수자 목록 ────────────────────────────────────────────────────────
+
+export async function listRegistrations(examId: string, status?: string) {
+  const [exam] = await db.select({ id: certExams.id }).from(certExams).where(eq(certExams.id, examId)).limit(1);
+  if (!exam) throw makeError('시험을 찾을 수 없습니다.', 'NOT_FOUND', 404);
+
+  const conditions = [eq(examRegistrations.examId, examId)];
+  if (status) conditions.push(eq(examRegistrations.status, status));
+
+  const rows = await db
+    .select({
+      id: examRegistrations.id,
+      registrationNumber: examRegistrations.registrationNumber,
+      applicantName: examRegistrations.applicantName,
+      applicantBirthdate: examRegistrations.applicantBirthdate,
+      status: examRegistrations.status,
+      pdfSent: examRegistrations.pdfSent,
+      registeredAt: examRegistrations.registeredAt,
+      refundedAt: examRegistrations.refundedAt,
+      refundReason: examRegistrations.refundReason,
+      userEmail: users.email,
+      userPhone: users.phone,
+      userName: users.name,
+      paymentAmount: payments.amount,
+    })
+    .from(examRegistrations)
+    .innerJoin(users, eq(examRegistrations.userId, users.id))
+    .leftJoin(payments, eq(examRegistrations.paymentId, payments.id))
+    .where(and(...conditions))
+    .orderBy(examRegistrations.registeredAt);
+
+  return rows;
+}
+
+// ─── Admin: 환불 처리 ──────────────────────────────────────────────────────────
+
+export async function refundRegistration(registrationId: string, reason: string) {
+  const [reg] = await db
+    .select({ id: examRegistrations.id, status: examRegistrations.status })
+    .from(examRegistrations)
+    .where(eq(examRegistrations.id, registrationId))
+    .limit(1);
+
+  if (!reg) throw makeError('접수 정보를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  if (reg.status === 'refunded') throw makeError('이미 환불된 접수입니다.', 'ALREADY_REFUNDED', 409);
+  if (reg.status === 'cancelled') throw makeError('취소된 접수는 환불할 수 없습니다.', 'ALREADY_CANCELLED', 409);
+
+  const [updated] = await db
+    .update(examRegistrations)
+    .set({ status: 'refunded', refundedAt: new Date(), refundReason: reason })
+    .where(eq(examRegistrations.id, registrationId))
+    .returning();
+
+  return updated;
+}
+
+// ─── Admin: 취소 처리 ──────────────────────────────────────────────────────────
+
+export async function cancelRegistration(registrationId: string) {
+  const [reg] = await db
+    .select({ id: examRegistrations.id, status: examRegistrations.status })
+    .from(examRegistrations)
+    .where(eq(examRegistrations.id, registrationId))
+    .limit(1);
+
+  if (!reg) throw makeError('접수 정보를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+  if (reg.status === 'cancelled') throw makeError('이미 취소된 접수입니다.', 'ALREADY_CANCELLED', 409);
+  if (reg.status === 'refunded') throw makeError('환불된 접수는 취소할 수 없습니다.', 'ALREADY_REFUNDED', 409);
+
+  const [updated] = await db
+    .update(examRegistrations)
+    .set({ status: 'cancelled' })
+    .where(eq(examRegistrations.id, registrationId))
+    .returning();
+
+  return updated;
+}
+
+// ─── Admin: PDF 발송 완료 처리 ─────────────────────────────────────────────────
+
+export async function markPdfSent(registrationId: string) {
+  const [reg] = await db.select({ id: examRegistrations.id }).from(examRegistrations).where(eq(examRegistrations.id, registrationId)).limit(1);
+  if (!reg) throw makeError('접수 정보를 찾을 수 없습니다.', 'NOT_FOUND', 404);
+
+  const [updated] = await db
+    .update(examRegistrations)
+    .set({ pdfSent: true })
+    .where(eq(examRegistrations.id, registrationId))
+    .returning({ id: examRegistrations.id, pdfSent: examRegistrations.pdfSent });
+
+  return updated;
+}
+
+// ─── Admin: 응시 결과 목록 ─────────────────────────────────────────────────────
+
+export async function listExamResults(examId: string) {
+  const [exam] = await db.select({ id: certExams.id, passingScore: certExams.passingScore }).from(certExams).where(eq(certExams.id, examId)).limit(1);
+  if (!exam) throw makeError('시험을 찾을 수 없습니다.', 'NOT_FOUND', 404);
+
+  const rows = await db
+    .select({
+      attemptId: examAttempts.id,
+      score: examAttempts.score,
+      isPassed: examAttempts.isPassed,
+      submittedAt: examAttempts.submittedAt,
+      userId: examAttempts.userId,
+      userName: users.name,
+      userEmail: users.email,
+      registrationNumber: examRegistrations.registrationNumber,
+      applicantName: examRegistrations.applicantName,
+      registrationStatus: examRegistrations.status,
+    })
+    .from(examAttempts)
+    .innerJoin(users, eq(examAttempts.userId, users.id))
+    .leftJoin(
+      examRegistrations,
+      and(eq(examRegistrations.userId, examAttempts.userId), eq(examRegistrations.examId, examId))
+    )
+    .where(and(eq(examAttempts.examId, examId), eq(examAttempts.status, 'submitted')))
+    .orderBy(desc(examAttempts.score));
+
+  const passed = rows.filter((r) => r.isPassed);
+  const failed = rows.filter((r) => !r.isPassed);
+
+  return {
+    passingScore: exam.passingScore,
+    totalAttempts: rows.length,
+    passCount: passed.length,
+    failCount: failed.length,
+    passRate: rows.length > 0 ? Math.round((passed.length / rows.length) * 100) : 0,
+    results: rows,
+  };
 }
