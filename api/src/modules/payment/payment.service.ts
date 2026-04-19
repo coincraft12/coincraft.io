@@ -789,6 +789,18 @@ export async function refundPayment(userId: string, paymentId: string): Promise<
     throw makeError('결제 공급자 정보가 없습니다.', 'MISSING_IMP_UID', 400);
   }
 
+  // 1-b. Exam refund deadline = registrationEnd
+  if (payment.productType === 'exam') {
+    const [exam] = await db
+      .select({ registrationEnd: certExams.registrationEnd })
+      .from(certExams)
+      .where(eq(certExams.id, payment.productId))
+      .limit(1);
+    if (exam?.registrationEnd && new Date() > new Date(exam.registrationEnd)) {
+      throw makeError('환불 기간이 마감되었습니다. (접수 마감일까지만 환불 가능)', 'REFUND_DEADLINE_PASSED', 400);
+    }
+  }
+
   // 2. Get PortOne access token
   if (!env.PORTONE_IMP_KEY || !env.PORTONE_IMP_SECRET) {
     throw makeError('결제 설정이 올바르지 않습니다.', 'CONFIG_ERROR', 500);

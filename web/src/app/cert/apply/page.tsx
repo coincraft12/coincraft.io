@@ -162,7 +162,7 @@ export default async function CertApplyPage() {
           {/* 환불 정책 */}
           <h2 className="text-lg font-bold text-cc-text mb-3">환불 정책</h2>
           <p className="text-sm text-cc-muted leading-relaxed mb-10">
-            시험일 3일 전(4월 29일)까지 전액 환불 가능합니다.<br />
+            접수 마감일(4월 26일)까지 전액 환불 가능합니다.<br />
             이후 환불은 불가합니다.
           </p>
 
