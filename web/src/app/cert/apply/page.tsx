@@ -22,7 +22,7 @@ async function fetchExamCapacity(): Promise<{ registeredCount: number; maxCapaci
 
 const SCHEDULE = [
   { label: '시험일', value: '2026년 5월 2일 (토)' },
-  { label: '접수 기간', value: '4월 14일(월) ~ 4월 20일(일)' },
+  { label: '접수 기간', value: '4월 12일(토) ~ 4월 26일(일)' },
   { label: '수험료', value: null },
   { label: '응시 자격', value: '제한 없음' },
   { label: '합격 기준', value: '100점 만점 · 70점 이상' },
@@ -162,7 +162,7 @@ export default async function CertApplyPage() {
           {/* 환불 정책 */}
           <h2 className="text-lg font-bold text-cc-text mb-3">환불 정책</h2>
           <p className="text-sm text-cc-muted leading-relaxed mb-10">
-            시험일 7일 전(4월 25일)까지 전액 환불 가능합니다.<br />
+            시험일 3일 전(4월 29일)까지 전액 환불 가능합니다.<br />
             이후 환불은 불가합니다.
           </p>
 
