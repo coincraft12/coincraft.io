@@ -117,7 +117,7 @@ export default async function CertApplyPage() {
               결제 확인 후 <strong>16챕터 강의 자료 PDF 전원 무료 제공</strong>
             </p>
             <p className="text-xs text-cc-muted mt-1">
-              WEB3 구조 설계자 Basic 전 범위 학습 자료 · 4월 21일 일괄 이메일 배포
+              WEB3 구조 설계자 Basic 전 범위 학습 자료 · 4월 27일 일괄 이메일 배포
             </p>
           </div>
 
