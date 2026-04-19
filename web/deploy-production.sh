@@ -14,7 +14,7 @@ TAR_FILE="/tmp/coincraft-promote.tar.gz"
 SERVER_JS="/tmp/coincraft-server.js"
 PUBLIC_TAR="/tmp/coincraft-public-promote.tar.gz"
 
-echo ">>> [1/4] 스테이징 빌드 수집..."
+echo ">>> [1/5] 스테이징 빌드 수집..."
 ssh "$STAGING_HOST" "
   cd $STAGING_PATH
   tar -czf /tmp/staging-next.tar.gz --exclude='.next/cache' --exclude='.next/dev' --exclude='.next/standalone' .next/
@@ -28,7 +28,7 @@ scp "$STAGING_HOST:/tmp/staging-public.tar.gz" "$PUBLIC_TAR"
 ssh "$STAGING_HOST" "rm -f /tmp/staging-next.tar.gz /tmp/staging-public.tar.gz"
 echo "    크기: $(ls -lh $TAR_FILE | awk '{print $5}')"
 
-echo ">>> [2/4] 운영 서버 업로드..."
+echo ">>> [2/5] 운영 서버 업로드..."
 scp "$TAR_FILE" "$PROD_HOST:$PROD_PATH/next-build.tar.gz"
 scp "$SERVER_JS" "$PROD_HOST:$PROD_PATH/server.js"
 scp "/tmp/coincraft-web-package.json" "$PROD_HOST:$PROD_PATH/package.json"
@@ -36,7 +36,11 @@ scp "/tmp/coincraft-web-package-lock.json" "$PROD_HOST:$PROD_PATH/package-lock.j
 scp "$PUBLIC_TAR" "$PROD_HOST:$PROD_PATH/public.tar.gz"
 rm "$TAR_FILE" "$SERVER_JS" "$PUBLIC_TAR" "/tmp/coincraft-web-package.json" "/tmp/coincraft-web-package-lock.json"
 
-echo ">>> [3/4] 서버 교체 및 재시작..."
+echo ">>> [3/5] DB 마이그레이션..."
+ssh "$PROD_HOST" "cd /opt/coincraft-api && node dist/db/migrate.js" \
+  && echo "    Migration: OK" || { echo "    Migration: FAIL — 배포 중단"; exit 1; }
+
+echo ">>> [4/5] 서버 교체 및 재시작..."
 ssh "$PROD_HOST" "
   set -e
   cd $PROD_PATH
@@ -44,7 +48,7 @@ ssh "$PROD_HOST" "
   tar -xzf public.tar.gz && rm public.tar.gz
 
   pm2 stop coincraft-web || true
-  kill $(lsof -ti:3000) 2>/dev/null || true
+  fuser -k 3000/tcp 2>/dev/null || true
   sleep 1
   rm -rf .next-old
   mv .next .next-old
@@ -63,7 +67,7 @@ ssh "$PROD_HOST" "
   pm2 status coincraft-web
 "
 
-echo ">>> [4/4] 헬스체크..."
+echo ">>> [5/5] 헬스체크..."
 sleep 3
 curl -sf https://coincraft.io > /dev/null && echo "    Web: OK" || echo "    Web: FAIL"
 curl -sf https://coincraft.io/api/v1/courses > /dev/null && echo "    API: OK" || echo "    API: FAIL"

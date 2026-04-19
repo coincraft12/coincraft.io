@@ -9,14 +9,14 @@ STAGING_HOST="custody-staging"
 STAGING_PATH="/opt/coincraft-staging"
 TAR_FILE="/tmp/coincraft-next-build.tar.gz"
 
-echo ">>> [1/5] 스테이징 빌드..."
+echo ">>> [1/6] 스테이징 빌드..."
 NEXT_PUBLIC_API_URL= NODE_ENV=production npm run build
 
-echo ">>> [2/5] .next 패키징..."
+echo ">>> [2/6] .next 패키징..."
 tar -czf "$TAR_FILE" --exclude='.next/cache' --exclude='.next/dev' --exclude='.next/standalone' .next/ || true
 echo "    크기: $(ls -lh $TAR_FILE | awk '{print $5}')"
 
-echo ">>> [3/5] 서버 업로드..."
+echo ">>> [3/6] 서버 업로드..."
 scp "$TAR_FILE" "$STAGING_HOST:$STAGING_PATH/next-build.tar.gz"
 rm "$TAR_FILE"
 
@@ -26,7 +26,11 @@ tar -czf /tmp/coincraft-public.tar.gz public/
 scp /tmp/coincraft-public.tar.gz "$STAGING_HOST:$STAGING_PATH/public.tar.gz"
 rm /tmp/coincraft-public.tar.gz
 
-echo ">>> [4/5] 서버 교체 및 재시작..."
+echo ">>> [4/6] DB 마이그레이션..."
+ssh "$STAGING_HOST" "cd /opt/coincraft-api && node dist/db/migrate.js" \
+  && echo "    Migration: OK" || { echo "    Migration: FAIL — 배포 중단"; exit 1; }
+
+echo ">>> [5/6] 서버 교체 및 재시작..."
 ssh "$STAGING_HOST" "
   set -e
   cd $STAGING_PATH
@@ -49,7 +53,7 @@ ssh "$STAGING_HOST" "
   pm2 status coincraft-staging
 "
 
-echo ">>> [5/5] 헬스체크..."
+echo ">>> [6/6] 헬스체크..."
 sleep 3
 curl -sf https://staging.coincraft.io > /dev/null && echo "    Web: OK" || echo "    Web: FAIL"
 curl -sf https://staging.coincraft.io/api/v1/courses > /dev/null && echo "    API: OK" || echo "    API: FAIL"
