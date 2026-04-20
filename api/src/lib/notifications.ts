@@ -10,8 +10,8 @@ const TEMPLATES = {
   CERT:          'KA01TP260413133146159R6CY4X0UrHW', // 인증서 발급
   COUPON:        'KA01PF2604131308326646KKlOv6D1pw', // 쿠폰 발급
   EBOOK:         'KA01TP260413132729677IgDhNkDR492', // 전자책 구매 완료
-  VBANK:         '', // 가상계좌 발급 — Solapi 등록 후 ID 입력
-  BANK_TRANSFER: '', // 무통장 입금 안내 — Solapi 등록 후 ID 입력
+  VBANK:         'KA01TP260417182930001ExxopnuI8D3', // 가상계좌 발급
+  BANK_TRANSFER: 'KA01TP260417183147855jQBjcScmVjD', // 무통장 입금 안내
   BOOK_ORDER:    'KA01TP260413132647277oXVt6BuPEl1', // 종이책 주문 확인
   BOOK_SHIPPED:  'KA01TP260413132547112K2E2GluwzaK', // 종이책 배송 출발
   BOOK_DELIVERED:'KA01TP260413132821831iHE2GeUfhJ1', // 종이책 배송 완료
