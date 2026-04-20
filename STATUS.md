@@ -5,7 +5,7 @@
 
 ## 현재 상태
 - **단계**: Phase 4 완료 + 결제 고도화 완료 + coincraft.io 운영 서버 배포 완료
-- **마지막 업데이트**: 2026-04-18
+- **마지막 업데이트**: 2026-04-21
 - **결정 근거**: CIO-003 (WordPress 완전 제거 — 자체 풀스택 플랫폼)
 
 ## 아키텍처 (CIO-003 확정)
@@ -187,7 +187,7 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 - `email.ts`: `sendVbankEmail`, `sendBankTransferEmail` 구현 완료
 
 **미완료 / 다음 세션 처리 필요:**
-- [ ] Solapi 가상계좌/무통장 알림톡 템플릿 등록 후 `TEMPLATES.VBANK`, `TEMPLATES.BANK_TRANSFER` ID 입력
+- [x] Solapi 알림톡 템플릿 ID 입력 완료 (2026-04-21) — VBANK: `KA01TP260417182930001ExxopnuI8D3` / BANK_TRANSFER: `KA01TP260417183147855jQBjcScmVjD`
 - [ ] PortOne 대시보드에서 webhook URL 등록: `https://coincraft.io/api/v1/payments/webhook`
 - [ ] 검정료 운영 DB 복원: 현재 테스트값 → 30,000원
 
