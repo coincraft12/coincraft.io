@@ -188,8 +188,8 @@ Next.js 16 (web/)  ← staging.coincraft.io (port 3000)
 
 **미완료 / 다음 세션 처리 필요:**
 - [x] Solapi 알림톡 템플릿 ID 입력 완료 (2026-04-21) — VBANK: `KA01TP260417182930001ExxopnuI8D3` / BANK_TRANSFER: `KA01TP260417183147855jQBjcScmVjD`
-- [ ] PortOne 대시보드에서 webhook URL 등록: `https://coincraft.io/api/v1/payments/webhook`
-- [ ] 검정료 운영 DB 복원: 현재 테스트값 → 30,000원
+- [x] PortOne 대시보드 webhook URL 등록 완료: `https://coincraft.io/api/v1/payments/webhook`
+- [x] 검정료 운영 DB 30,000원 복원 완료
 
 ## 2026-04-17 작업 내역
 
