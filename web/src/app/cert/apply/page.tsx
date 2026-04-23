@@ -168,13 +168,14 @@ export default async function CertApplyPage() {
                 접수 기간이 마감되었습니다. 접수 기간: 4/20(월) ~ 4/26(일) KST
               </p>
             )}
-            {isRegistrationOpen && capacity?.maxCapacity != null && (
-              <p className={`text-sm mb-3 font-semibold ${isFull ? 'text-red-400' : remaining !== null && remaining <= 5 ? 'text-orange-400' : 'text-cc-muted'}`}>
-                {isFull
-                  ? '접수 정원이 마감되었습니다.'
-                  : remaining !== null && remaining <= 5
-                  ? `잔여 ${remaining}석 — 마감 임박`
-                  : `현재 ${capacity.registeredCount}명 접수 완료 / 총 ${capacity.maxCapacity}명 정원`}
+            {isRegistrationOpen && capacity?.maxCapacity != null && isFull && (
+              <p className="text-sm mb-3 font-semibold text-red-400">
+                접수 정원이 마감되었습니다.
+              </p>
+            )}
+            {isRegistrationOpen && capacity?.maxCapacity != null && !isFull && remaining !== null && remaining <= 5 && (
+              <p className="text-sm mb-3 font-semibold text-orange-400">
+                잔여 {remaining}석 — 마감 임박
               </p>
             )}
             {(isNotYetOpen || isClosed || isFull) ? (

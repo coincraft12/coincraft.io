@@ -15,6 +15,8 @@
 - DATA FIX: on-chain-signals [4-1]~[4-3] Vimeo URL 한 칸 밀림 수정 — local/staging/production DB 모두 적용
 - 데이터 픽스 스크립트 패턴 도입: `scripts/data-fix-template.ts` + `scripts/data-fix-YYYYMMDD-*.ts`
 - 법적 문서 WordPress 원본으로 교체: 이용약관(7조→27조), 개인정보처리방침(6섹션→14섹션), 환불정책(ComingSoon→9섹션 완전판) — 시행일 2026-01-19
+- cert/apply: 버튼 위 "현재 0명 접수 완료" 텍스트 제거 (정원초과·잔여5석 이하만 표시)
+- 운영 DB: coincraft.edu@gmail.com, eungjungkim0110@gmail.com → role=admin + 7개 전과정 enrollments 등록
 
 ## DB 데이터 픽스 규칙 (영구)
 
