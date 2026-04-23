@@ -1,12 +1,15 @@
-name: Deploy to Staging
+name: Deploy to Production
 
 on:
   push:
-    branches: [main]
+    branches: [production]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
 
     steps:
       - uses: actions/checkout@v4
@@ -15,7 +18,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -27,11 +30,12 @@ jobs:
           NEXT_PUBLIC_API_URL: ''
 
       - name: Setup SSH
+        working-directory: .
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 204.168.242.99 >> ~/.ssh/known_hosts
+          ssh-keyscan -H 46.62.212.134 >> ~/.ssh/known_hosts
 
       - name: Package
         run: |
@@ -44,19 +48,20 @@ jobs:
 
       - name: Upload
         run: |
-          scp /tmp/next-build.tar.gz root@204.168.242.99:/opt/coincraft-staging/next-build.tar.gz
-          scp /tmp/public.tar.gz root@204.168.242.99:/opt/coincraft-staging/public.tar.gz
-          scp .next/standalone/server.js root@204.168.242.99:/opt/coincraft-staging/server.js
+          scp /tmp/next-build.tar.gz root@46.62.212.134:/opt/coincraft-web/next-build.tar.gz
+          scp /tmp/public.tar.gz root@46.62.212.134:/opt/coincraft-web/public.tar.gz
+          scp .next/standalone/server.js root@46.62.212.134:/opt/coincraft-web/server.js
 
       - name: Deploy
+        working-directory: .
         run: |
-          ssh root@204.168.242.99 "
+          ssh root@46.62.212.134 "
             set -e
-            cd /opt/coincraft-staging
+            cd /opt/coincraft-web
 
             tar -xzf public.tar.gz && rm public.tar.gz
 
-            pm2 stop coincraft-staging
+            pm2 stop coincraft-web
             rm -rf .next-old
             mv .next .next-old
             tar -xzf next-build.tar.gz
@@ -65,16 +70,17 @@ jobs:
             if [ -f ecosystem.config.js ]; then
               pm2 start ecosystem.config.js
             else
-              API_INTERNAL_URL=http://localhost:4001 NODE_ENV=production PORT=3000 \
-              pm2 start server.js --name coincraft-staging
+              API_INTERNAL_URL=http://localhost:4000 NODE_ENV=production PORT=3000 \
+              pm2 start server.js --name coincraft-web
             fi
 
             sleep 3
-            pm2 status coincraft-staging
+            pm2 status coincraft-web
           "
 
       - name: Health check
+        working-directory: .
         run: |
           sleep 5
-          curl -sf https://staging.coincraft.io > /dev/null && echo "Web: OK" || exit 1
-          curl -sf https://staging.coincraft.io/api/v1/courses > /dev/null && echo "API: OK" || exit 1
+          curl -sf https://coincraft.io > /dev/null && echo "Web: OK" || exit 1
+          curl -sf https://coincraft.io/api/v1/courses > /dev/null && echo "API: OK" || exit 1
