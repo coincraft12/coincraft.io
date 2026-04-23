@@ -4,5 +4,9 @@
     "rootDir": "..",
     "outDir": "../dist-scripts"
   },
-  "include": [".", "../src"]
+  "include": [
+    "bulk-upload-*.ts",
+    "../src"
+  ],
+  "exclude": ["send-migration-emails.ts"]
 }
