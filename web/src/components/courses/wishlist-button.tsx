@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { apiClient } from '@/lib/api-client';
 import { getLocalWL, saveLocalWL, toggleLocalWL } from '@/lib/local-wishlist';
 
-export default function WishlistButton({ courseId }: { courseId: string }) {
+export default function WishlistButton({ courseId, isEnrolled }: { courseId: string; isEnrolled?: boolean }) {
   const token = useAuthStore((s) => s.accessToken);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
   const [wishlisted, setWishlisted] = useState(false);
@@ -65,6 +65,8 @@ export default function WishlistButton({ courseId }: { courseId: string }) {
       setLoading(false);
     }
   };
+
+  if (isEnrolled) return null;
 
   return (
     <button

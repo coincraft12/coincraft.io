@@ -186,7 +186,7 @@ export default async function CourseDetailPage({
                 />
 
                 {/* Wishlist button */}
-                <WishlistButton courseId={course.id} />
+                <WishlistButton courseId={course.id} isEnrolled={course.isEnrolled} />
 
                 {/* Meta info */}
                 <div className="space-y-2 text-sm text-cc-muted border-t border-white/10 pt-4">

@@ -89,8 +89,8 @@ export default function CurriculumAccordion({
                         {lesson.duration && <span>{formatDuration(lesson.duration)}</span>}
                         {isCompleted ? (
                           <span title="완료">✅</span>
-                        ) : lesson.isPreview ? (
-                          <span title="미리보기 가능">🔓</span>
+                        ) : canAccess ? (
+                          <span title={lesson.isPreview ? '미리보기 가능' : '수강 가능'}>🔓</span>
                         ) : (
                           <span title="잠김">🔒</span>
                         )}

@@ -11,12 +11,12 @@
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-24)
-- FIX 1~10: 코드 감사 지적사항 전건 수정 (이전 커밋 참조)
-- DATA FIX: on-chain-signals [4-1]~[4-3] Vimeo URL 한 칸 밀림 수정 — local/staging/production DB 모두 적용
-- 데이터 픽스 스크립트 패턴 도입: `scripts/data-fix-template.ts` + `scripts/data-fix-YYYYMMDD-*.ts`
 - 법적 문서 WordPress 원본으로 교체: 이용약관(7조→27조), 개인정보처리방침(6섹션→14섹션), 환불정책(ComingSoon→9섹션 완전판) — 시행일 2026-01-19
 - cert/apply: 버튼 위 "현재 0명 접수 완료" 텍스트 제거 (정원초과·잔여5석 이하만 표시)
 - 운영 DB: coincraft.edu@gmail.com, eungjungkim0110@gmail.com → role=admin + 7개 전과정 enrollments 등록
+- FIX: 위시리스트 — 수강 중인 강좌는 위시리스트 토글/조회 시 항상 false 반환 (wishlist.service.ts)
+- FIX: 위시리스트 버튼 — isEnrolled=true이면 버튼 숨김 (wishlist-button.tsx + courses/[slug]/page.tsx)
+- FIX: 레슨 자물쇠 아이콘 — 수강등록 후에도 🔒 표시되던 버그 수정 (canAccess 기준으로 아이콘 결정)
 
 ## DB 데이터 픽스 규칙 (영구)
 

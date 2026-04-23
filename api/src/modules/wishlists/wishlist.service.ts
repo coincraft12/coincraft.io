@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '../../db';
-import { wishlists, courses } from '../../db/schema';
+import { wishlists, courses, enrollments } from '../../db/schema';
 
 export interface WishlistCourse {
   wishlistId: string;
@@ -17,6 +17,14 @@ export async function toggleWishlist(
   userId: string,
   courseId: string,
 ): Promise<{ wishlisted: boolean }> {
+  const [enrolled] = await db
+    .select({ id: enrollments.id })
+    .from(enrollments)
+    .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId), eq(enrollments.status, 'active')))
+    .limit(1);
+
+  if (enrolled) return { wishlisted: false };
+
   const [existing] = await db
     .select({ id: wishlists.id })
     .from(wishlists)
@@ -61,6 +69,14 @@ export async function listUserWishlists(userId: string): Promise<WishlistCourse[
 }
 
 export async function isWishlisted(userId: string, courseId: string): Promise<boolean> {
+  const [enrolled] = await db
+    .select({ id: enrollments.id })
+    .from(enrollments)
+    .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId), eq(enrollments.status, 'active')))
+    .limit(1);
+
+  if (enrolled) return false;
+
   const [row] = await db
     .select({ id: wishlists.id })
     .from(wishlists)
