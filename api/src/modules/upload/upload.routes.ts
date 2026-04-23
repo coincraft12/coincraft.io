@@ -210,20 +210,23 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
 
     const data = await res.json() as { uri: string; upload: { upload_link: string } };
 
-    // 강사 폴더 → 강의 폴더 생성/조회 후 영상 배치 + 허용 도메인 등록 (비동기)
+    // 허용 도메인 whitelist 등록 (응답 전 처리 — 실패 시 업로드 슬롯 반환 안 함)
+    const videoId = data.uri.split('/').pop()!;
+    const allowedDomains = ['coincraft.io', 'staging.coincraft.io', 'localhost'];
+    try {
+      await Promise.all(
+        allowedDomains.map((domain) =>
+          vimeoFetch(`/videos/${videoId}/privacy/domains/${domain}`, { method: 'PUT' })
+        )
+      );
+    } catch (e) {
+      app.log.error({ err: e }, '[vimeo-init] 도메인 whitelist 등록 실패');
+      return reply.code(502).send({ success: false, error: { code: 'VIMEO_WHITELIST_ERROR', message: 'Vimeo 도메인 허용 등록에 실패했습니다.' } });
+    }
+
+    // 폴더 배치 (비동기 — 실패해도 업로드 진행)
     setImmediate(async () => {
       try {
-        const videoId = data.uri.split('/').pop()!;
-
-        // 허용 도메인 whitelist 등록
-        const allowedDomains = ['coincraft.io', 'staging.coincraft.io', 'localhost'];
-        await Promise.all(
-          allowedDomains.map((domain) =>
-            vimeoFetch(`/videos/${videoId}/privacy/domains/${domain}`, { method: 'PUT' })
-          )
-        );
-
-        // 폴더 배치
         const instructorFolder = await findOrCreateRootFolder(instructorName);
         const courseFolder = await findOrCreateSubFolder(instructorFolder, courseTitle);
         await addVideoToFolder(data.uri, courseFolder);
@@ -357,16 +360,23 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       status: 'uploading',
     }).returning();
 
-    // 폴더 배치 + 도메인 허용 (비동기)
+    // 허용 도메인 whitelist 등록 (응답 전 처리)
+    const bulkVideoId = vimeoData.uri.split('/').pop()!;
+    const bulkAllowedDomains = ['coincraft.io', 'staging.coincraft.io', 'localhost'];
+    try {
+      await Promise.all(
+        bulkAllowedDomains.map((domain) =>
+          vimeoFetch(`/videos/${bulkVideoId}/privacy/domains/${domain}`, { method: 'PUT' })
+        )
+      );
+    } catch (e) {
+      app.log.error({ err: e }, '[bulk-upload] 도메인 whitelist 등록 실패');
+      return reply.code(502).send({ success: false, error: { code: 'VIMEO_WHITELIST_ERROR', message: 'Vimeo 도메인 허용 등록에 실패했습니다.' } });
+    }
+
+    // 폴더 배치 (비동기 — 실패해도 업로드 진행)
     setImmediate(async () => {
       try {
-        const videoId = vimeoData.uri.split('/').pop()!;
-        const allowedDomains = ['coincraft.io', 'staging.coincraft.io', 'localhost'];
-        await Promise.all(
-          allowedDomains.map((domain) =>
-            vimeoFetch(`/videos/${videoId}/privacy/domains/${domain}`, { method: 'PUT' })
-          )
-        );
         const instructorFolder = await findOrCreateRootFolder(instructorName);
         const courseFolder = await findOrCreateSubFolder(instructorFolder, courseTitle);
         await addVideoToFolder(vimeoData.uri, courseFolder);

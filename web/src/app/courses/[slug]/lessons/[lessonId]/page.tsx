@@ -76,7 +76,9 @@ type TabKey = '강의노트' | '자료' | '강평' | 'Q&A';
 const TABS: TabKey[] = ['강의노트', '자료', '강평', 'Q&A'];
 
 function findNextLessonId(chapters: Chapter[], currentLessonId: string): string | null {
-  const allLessons = chapters.flatMap((ch) => ch.lessons).sort((a, b) => a.order - b.order);
+  const allLessons = [...chapters]
+    .sort((a, b) => a.order - b.order)
+    .flatMap((ch) => [...ch.lessons].sort((a, b) => a.order - b.order));
   const currentIndex = allLessons.findIndex((l) => l.id === currentLessonId);
   if (currentIndex === -1 || currentIndex === allLessons.length - 1) return null;
   return allLessons[currentIndex + 1].id;
