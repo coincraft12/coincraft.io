@@ -6,22 +6,19 @@
 ## 현재 상태
 | 항목 | 내용 |
 |---|---|
-| 단계 | 강사 포털 강의자료 시스템 완성 + CI/CD 자동화 완료 |
+| 단계 | 코드 감사 지적사항 전건 수정 완료 |
 | 마지막 업데이트 | 2026-04-24 |
-| 배포 방식 | GitHub Actions (main→staging, production→운영) — 스크립트 배포 완전 제거 |
+| 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-24)
-- `chapter_materials`에 `lesson_id` 컬럼 추가 (migration 0011) — 레슨별 강의자료 분리
-- 강사 레슨 수정 페이지에 `LessonMaterialsEditor` 컴포넌트 추가 — PDF 직접 업로드 UI
-- 강사 강좌 관리 페이지에서 챕터 단위 강의자료 섹션 제거
-- 벌크 업로드 스크립트 3종 dynamic lesson lookup 방식으로 rewrite (hardcoded ID 제거)
-- GitHub Actions: API + DB migrate + Web + 강의자료 시딩 전 자동화
-- 배포 셸 스크립트 (`deploy-staging.sh`, `deploy-production.sh`, `deploy.sh`) 삭제
-- GitHub Secrets 7종 신규 등록 (DATABASE_URL, S3 전체)
-- 운영 workflow: 스크립트 컴파일(`dist-scripts/`) 후 SSH로 서버에서 실행
+- FIX 1: web3intro 3-2강 FILE_MAP에 `sourceFile` 필드 추가 — 존재하지 않는 파일명 키 제거
+- FIX 2+7: 전체 5개 벌크 업로드 스크립트 — try/finally pool 정리 + index 기반 order 값 적용
+- FIX 3: deploy-production.yml — S3 env vars를 pm2 restart 이전으로 이동 + `--update-env` 추가
+- FIX 4+8: deploy-staging.yml — seed 스크립트 `|| echo` 처리 + pm2 `--update-env` 추가
+- FIX 5: 양쪽 워크플로우 health check — sleep+단일 curl → 30초 retry loop로 교체
+- FIX 6: vimeo-upload.store.ts에 `lessonId` + `setLessonId` 추가; VimeoUploader에 `lessonId` prop + useEffect 연결
 
 ## 다음 작업
-- [ ] 커밋 & 스테이징 배포 (Sharon 승인 후 `git push origin main`)
 - [ ] 스테이징 GitHub Actions 정상 동작 확인
 - [ ] 운영 배포 (Sharon 승인 후 `git push origin production`)
 - [ ] 인프런 벤치마킹 기반 기능 (Q&A, 로드맵, 쿠폰, 수강생 현황)

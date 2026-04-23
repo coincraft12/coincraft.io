@@ -8,11 +8,13 @@ import Spinner from './Spinner';
 export default function VimeoUploader({
   token,
   courseId,
+  lessonId,
   existingUrl,
   onComplete,
 }: {
   token: string;
   courseId: string;
+  lessonId?: string;
   existingUrl?: string;   // 이미 저장된 영상 URL
   onComplete: (vimeoUrl: string) => void;
 }) {
@@ -20,8 +22,13 @@ export default function VimeoUploader({
   const [vimeoTitle, setVimeoTitle] = useState<string | null>(null);
   const {
     status, progress, errorMsg, videoUri, resultUrl, uploadedFileName,
-    setStatus, setProgress, setError, setVideoUri, setUploadInstance, setResultUrl, setUploadedFileName, reset,
+    setLessonId, setStatus, setProgress, setError, setVideoUri, setUploadInstance, setResultUrl, setUploadedFileName, reset,
   } = useVimeoUploadStore();
+
+  // 레슨이 바뀌면 스토어를 해당 레슨 기준으로 초기화
+  useEffect(() => {
+    if (lessonId) setLessonId(lessonId);
+  }, [lessonId]);
 
   // 기존 Vimeo URL에서 영상 제목 가져오기
   useEffect(() => {

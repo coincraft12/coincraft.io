@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 interface VimeoUploadState {
+  lessonId: string | null;
   status: 'idle' | 'uploading' | 'processing' | 'done' | 'error';
   progress: number;
   errorMsg: string;
@@ -9,6 +10,7 @@ interface VimeoUploadState {
   resultUrl: string | null;
   uploadedFileName: string | null;
 
+  setLessonId: (id: string) => void;
   setStatus: (s: VimeoUploadState['status']) => void;
   setProgress: (p: number) => void;
   setError: (msg: string) => void;
@@ -19,7 +21,8 @@ interface VimeoUploadState {
   reset: () => void;
 }
 
-export const useVimeoUploadStore = create<VimeoUploadState>((set) => ({
+export const useVimeoUploadStore = create<VimeoUploadState>((set, get) => ({
+  lessonId: null,
   status: 'idle',
   progress: 0,
   errorMsg: '',
@@ -28,6 +31,12 @@ export const useVimeoUploadStore = create<VimeoUploadState>((set) => ({
   resultUrl: null,
   uploadedFileName: null,
 
+  setLessonId: (id) => {
+    const current = get().lessonId;
+    if (current !== id) {
+      set({ lessonId: id, uploadedFileName: null, progress: 0, status: 'idle', resultUrl: null, errorMsg: '' });
+    }
+  },
   setStatus: (status) => set({ status }),
   setProgress: (progress) => set({ progress }),
   setError: (errorMsg) => set({ errorMsg, status: 'error' }),

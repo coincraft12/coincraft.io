@@ -40,55 +40,59 @@ async function s3FileExists(key: string): Promise<boolean> {
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    await pool.query(`
+      DELETE FROM chapter_materials
+      WHERE lesson_id IN (
+        SELECT l.id FROM lessons l
+        JOIN chapters c ON c.id = l.chapter_id
+        JOIN courses co ON co.id = c.course_id
+        WHERE co.slug = $1
+      )
+    `, [COURSE_SLUG]);
 
-  await pool.query(`
-    DELETE FROM chapter_materials
-    WHERE lesson_id IN (
-      SELECT l.id FROM lessons l
-      JOIN chapters c ON c.id = l.chapter_id
-      JOIN courses co ON co.id = c.course_id
-      WHERE co.slug = $1
-    )
-  `, [COURSE_SLUG]);
+    let order = 0;
+    for (const [filename, { lessonSearch, slug, title }] of Object.entries(FILE_MAP)) {
+      const key = `materials/${slug}.pdf`;
+      const url = `${ENDPOINT}/${BUCKET}/${key}`;
 
-  for (const [filename, { lessonSearch, slug, title }] of Object.entries(FILE_MAP)) {
-    const key = `materials/${slug}.pdf`;
-    const url = `${ENDPOINT}/${BUCKET}/${key}`;
-
-    const exists = await s3FileExists(key);
-    if (!exists) {
-      try {
-        const buffer = await fs.readFile(path.join(SRC_DIR, filename));
-        await s3.send(new PutObjectCommand({
-          Bucket: BUCKET, Key: key, Body: buffer,
-          ContentType: 'application/pdf', ACL: 'public-read',
-        }));
-      } catch {
-        console.warn(`⚠ S3 업로드 실패 (파일 없음?): ${filename}`);
-        continue;
+      const exists = await s3FileExists(key);
+      if (!exists) {
+        try {
+          const buffer = await fs.readFile(path.join(SRC_DIR, filename));
+          await s3.send(new PutObjectCommand({
+            Bucket: BUCKET, Key: key, Body: buffer,
+            ContentType: 'application/pdf', ACL: 'public-read',
+          }));
+        } catch {
+          console.warn(`⚠ S3 업로드 실패 (파일 없음?): ${filename}`);
+          continue;
+        }
       }
+
+      const { rows: lessonRows } = await pool.query(`
+        SELECT l.id, l.chapter_id FROM lessons l
+        JOIN chapters c ON c.id = l.chapter_id
+        JOIN courses co ON co.id = c.course_id
+        WHERE co.slug = $1 AND l.title ILIKE $2
+        LIMIT 1
+      `, [COURSE_SLUG, `%${lessonSearch}%`]);
+
+      if (!lessonRows[0]) { console.warn(`⚠ 레슨 없음 (${lessonSearch}): ${title}`); continue; }
+      const { id: lessonId, chapter_id: chapterId } = lessonRows[0];
+
+      await pool.query(
+        'INSERT INTO chapter_materials (chapter_id, lesson_id, title, file_url, file_type, "order") VALUES ($1, $2, $3, $4, $5, $6)',
+        [chapterId, lessonId, title, url, 'pdf', order]
+      );
+      order++;
+      console.log(`✓ ${title}`);
     }
 
-    const { rows: lessonRows } = await pool.query(`
-      SELECT l.id, l.chapter_id FROM lessons l
-      JOIN chapters c ON c.id = l.chapter_id
-      JOIN courses co ON co.id = c.course_id
-      WHERE co.slug = $1 AND l.title ILIKE $2
-      LIMIT 1
-    `, [COURSE_SLUG, `%${lessonSearch}%`]);
-
-    if (!lessonRows[0]) { console.warn(`⚠ 레슨 없음 (${lessonSearch}): ${title}`); continue; }
-    const { id: lessonId, chapter_id: chapterId } = lessonRows[0];
-
-    await pool.query(
-      'INSERT INTO chapter_materials (chapter_id, lesson_id, title, file_url, file_type, "order") VALUES ($1, $2, $3, $4, $5, $6)',
-      [chapterId, lessonId, title, url, 'pdf', 0]
-    );
-    console.log(`✓ ${title}`);
+    console.log(`\n총 ${Object.keys(FILE_MAP).length}개 처리 완료`);
+  } finally {
+    await pool.end();
   }
-
-  await pool.end();
-  console.log(`\n총 ${Object.keys(FILE_MAP).length}개 처리 완료`);
 }
 
 main().catch(console.error);
