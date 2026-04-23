@@ -303,7 +303,7 @@ export async function handleWebhook(impUid: string, merchantUid: string): Promis
     return meta?.orderId === merchantUid;
   });
 
-  if (!pendingPayment) return; // 이미 처리됐거나 존재하지 않는 주문
+  if (!pendingPayment) return;
 
   const expectedAmount = Math.round(Number(pendingPayment.amount));
   await verifyIamportPayment(impUid, expectedAmount);
@@ -353,6 +353,27 @@ export async function handleWebhook(impUid: string, merchantUid: string): Promis
       }
     }
   });
+
+  // 관리자 알림 — webhook 경유 결제 완료 (클라이언트 confirm 누락 케이스)
+  const [wu] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, pendingPayment.userId)).limit(1);
+  let webhookProductTitle = '';
+  if (pendingPayment.productType === 'course') {
+    const [c] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, pendingPayment.productId)).limit(1);
+    webhookProductTitle = c?.title ?? pendingPayment.productId;
+  } else if (pendingPayment.productType === 'exam') {
+    const [ex] = await db.select({ title: certExams.title }).from(certExams).where(eq(certExams.id, pendingPayment.productId)).limit(1);
+    webhookProductTitle = ex?.title ?? pendingPayment.productId;
+  }
+  import('../../lib/admin-notify').then(({ sendAdminNotification }) => {
+    sendAdminNotification(
+      '✅ 결제 완료 (Webhook)',
+      `<p>PortOne Webhook으로 결제가 확인되었습니다.</p>
+       <p>사용자: ${wu?.name ?? pendingPayment.userId} (${wu?.email ?? ''})</p>
+       <p>상품: ${webhookProductTitle}</p>
+       <p>금액: ₩${expectedAmount.toLocaleString()}</p>
+       <p>imp_uid: ${impUid}</p>`
+    ).catch(() => {});
+  }).catch(() => {});
 }
 
 export async function getPaymentHistory(userId: string): Promise<PaymentHistoryItem[]> {
@@ -920,11 +941,37 @@ export async function cancelPendingPayment(userId: string, orderId: string): Pro
     return meta?.orderId === orderId;
   });
 
-  if (!payment) return; // 이미 처리됐거나 없으면 무시
+  if (!payment) return;
 
   await db.update(payments)
     .set({ status: 'failed' })
     .where(eq(payments.id, payment.id));
+
+  // 관리자 알림 — 결제 실패/취소
+  const [u] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  let productTitle = '';
+  if (payment.productType === 'course') {
+    const [c] = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, payment.productId)).limit(1);
+    productTitle = c?.title ?? payment.productId;
+  } else if (payment.productType === 'exam') {
+    const [ex] = await db.select({ title: certExams.title }).from(certExams).where(eq(certExams.id, payment.productId)).limit(1);
+    productTitle = ex?.title ?? payment.productId;
+  } else if (payment.productType === 'ebook') {
+    const [eb] = await db.select({ title: ebooks.title }).from(ebooks).where(eq(ebooks.id, payment.productId)).limit(1);
+    productTitle = eb?.title ?? payment.productId;
+  } else {
+    productTitle = payment.productId;
+  }
+  import('../../lib/admin-notify').then(({ sendAdminNotification }) => {
+    sendAdminNotification(
+      '❌ 결제 실패/취소',
+      `<p>결제 창에서 취소되었거나 실패하였습니다.</p>
+       <p>사용자: ${u?.name ?? userId} (${u?.email ?? ''})</p>
+       <p>상품: ${productTitle}</p>
+       <p>금액: ₩${Number(payment.amount).toLocaleString()}</p>
+       <p>주문번호: ${orderId}</p>`
+    ).catch(() => {});
+  }).catch(() => {});
 }
 
 // ─── 무통장 입금 (직접 계좌이체) ────────────────────────────────────────────
