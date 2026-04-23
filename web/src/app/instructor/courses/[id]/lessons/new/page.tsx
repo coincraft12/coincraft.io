@@ -10,6 +10,7 @@ import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import VimeoUploader from '@/components/ui/VimeoUploader';
+import MarkdownEditor from '@/components/ui/MarkdownEditor';
 
 interface CreateLessonBody {
   title: string;
@@ -111,7 +112,7 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
       duration: videoDuration,
       videoProvider: form.type === 'video' ? form.videoProvider : undefined,
       videoUrl: form.type === 'video' ? form.videoUrl?.trim() || undefined : undefined,
-      textContent: form.type === 'text' ? form.textContent?.trim() || undefined : undefined,
+      textContent: form.textContent?.trim() || undefined,
     };
     mutation.mutate(body);
   }
@@ -191,18 +192,17 @@ export default function NewLessonPage({ params }: { params: Promise<{ id: string
           </>
         )}
 
-        {form.type === 'text' && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-cc-text">텍스트 내용</label>
-            <textarea
-              rows={8}
-              className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm focus:outline-none focus:border-cc-accent transition-colors resize-none"
-              placeholder="레슨 내용을 입력해 주세요."
-              value={form.textContent}
-              onChange={(e) => markDirty({ textContent: e.target.value })}
-            />
-          </div>
-        )}
+        <MarkdownEditor
+          label={form.type === 'text' ? '텍스트 내용' : '강의노트 (선택)'}
+          value={form.textContent ?? ''}
+          onChange={(v) => markDirty({ textContent: v })}
+          height={form.type === 'text' ? 320 : 240}
+        />
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-cc-text">강의자료</label>
+          <p className="text-xs text-cc-muted">레슨 저장 후 수정 페이지에서 PDF를 추가할 수 있습니다.</p>
+        </div>
 
         <div className="flex items-center gap-6">
           <label className="flex items-center gap-2 cursor-pointer">

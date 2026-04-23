@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { useVimeoUploadStore } from '@/store/vimeo-upload.store';
 import Spinner from './Spinner';
@@ -17,10 +17,20 @@ export default function VimeoUploader({
   onComplete: (vimeoUrl: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [vimeoTitle, setVimeoTitle] = useState<string | null>(null);
   const {
-    status, progress, errorMsg, videoUri, resultUrl,
-    setStatus, setProgress, setError, setVideoUri, setUploadInstance, setResultUrl, reset,
+    status, progress, errorMsg, videoUri, resultUrl, uploadedFileName,
+    setStatus, setProgress, setError, setVideoUri, setUploadInstance, setResultUrl, setUploadedFileName, reset,
   } = useVimeoUploadStore();
+
+  // 기존 Vimeo URL에서 영상 제목 가져오기
+  useEffect(() => {
+    if (!existingUrl || !existingUrl.includes('vimeo.com') || uploadedFileName) return;
+    fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(existingUrl)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.title) setVimeoTitle(d.title); })
+      .catch(() => {});
+  }, [existingUrl, uploadedFileName]);
 
   // 마운트 시: 스토어의 완료 URL이 현재 레슨과 다르면 초기화
   useEffect(() => {
@@ -63,6 +73,7 @@ export default function VimeoUploader({
 
   async function handleFile(file: File) {
     reset();
+    setUploadedFileName(file.name);
     setStatus('uploading');
 
     try {
@@ -149,7 +160,7 @@ export default function VimeoUploader({
   if (currentUrl) {
     return (
       <div className="flex items-center justify-between px-3 py-2 bg-white/5 border border-white/10 rounded text-sm">
-        <span className="text-cc-muted text-xs truncate max-w-[70%]">{currentUrl}</span>
+        <span className="text-cc-muted text-xs truncate max-w-[70%]">{uploadedFileName ?? vimeoTitle ?? '영상 등록됨'}</span>
         <button
           type="button"
           onClick={() => { reset(); setTimeout(() => fileRef.current?.click(), 0); }}

@@ -7,9 +7,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
 
     steps:
       - uses: actions/checkout@v4
@@ -20,24 +17,61 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-        env:
-          NODE_ENV: production
-          NEXT_PUBLIC_API_URL: ''
-
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 204.168.242.99 >> ~/.ssh/known_hosts
-        working-directory: .
 
-      - name: Package
+      # ── API 빌드 & 배포 ──────────────────────────────────────────────────────
+
+      - name: Install API dependencies
+        working-directory: api
+        run: npm ci
+
+      - name: Build API
+        working-directory: api
+        run: npm run build
+
+      - name: Package API
+        working-directory: api
+        run: |
+          tar -czf /tmp/coincraft-api-build.tar.gz \
+            dist/ \
+            src/db/migrations/ \
+            package.json \
+            package-lock.json
+
+      - name: Upload & Deploy API
+        run: |
+          scp /tmp/coincraft-api-build.tar.gz root@204.168.242.99:/opt/coincraft-api/api-build.tar.gz
+          ssh root@204.168.242.99 "
+            set -e
+            cd /opt/coincraft-api
+            tar -xzf api-build.tar.gz && rm api-build.tar.gz
+            npm install --omit=dev
+            node dist/db/migrate.js
+            pm2 restart coincraft-api
+            sleep 2
+            pm2 status coincraft-api
+          "
+
+      # ── Web 빌드 & 배포 ──────────────────────────────────────────────────────
+
+      - name: Install Web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build Web
+        working-directory: web
+        run: npm run build
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_URL: ''
+
+      - name: Package Web
+        working-directory: web
         run: |
           tar -czf /tmp/next-build.tar.gz \
             --exclude='.next/cache' \
@@ -46,13 +80,14 @@ jobs:
             .next/
           tar -czf /tmp/public.tar.gz public/
 
-      - name: Upload
+      - name: Upload Web
+        working-directory: web
         run: |
           scp /tmp/next-build.tar.gz root@204.168.242.99:/opt/coincraft-staging/next-build.tar.gz
           scp /tmp/public.tar.gz root@204.168.242.99:/opt/coincraft-staging/public.tar.gz
           scp .next/standalone/server.js root@204.168.242.99:/opt/coincraft-staging/server.js
 
-      - name: Deploy
+      - name: Deploy Web
         run: |
           ssh root@204.168.242.99 "
             set -e
@@ -76,11 +111,27 @@ jobs:
             sleep 3
             pm2 status coincraft-staging
           "
-        working-directory: .
+
+      # ── 강의자료 DB 시딩 ─────────────────────────────────────────────────────
+
+      - name: Seed course materials
+        working-directory: api
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: |
+          npx tsx scripts/bulk-upload-onchain-materials.ts
+          npx tsx scripts/bulk-upload-ethereum-materials.ts
+          npx tsx scripts/bulk-upload-web3intro-materials.ts
+          npx tsx scripts/bulk-upload-web3basic-materials.ts
+          npx tsx scripts/bulk-upload-web3associate-materials.ts
 
       - name: Health check
         run: |
           sleep 5
           curl -sf https://staging.coincraft.io > /dev/null && echo "Web: OK" || exit 1
           curl -sf https://staging.coincraft.io/api/v1/courses > /dev/null && echo "API: OK" || exit 1
-        working-directory: .

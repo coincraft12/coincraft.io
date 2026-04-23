@@ -574,4 +574,50 @@ export async function uploadRoutes(app: FastifyInstance): Promise<void> {
       },
     });
   });
+
+  // POST /api/v1/instructor/upload/material — PDF 강의자료 업로드
+  app.post('/material', {
+    preHandler: [authenticate, requireRole('instructor', 'admin')],
+  }, async (request, reply) => {
+    const data = await request.file();
+    if (!data) {
+      return reply.code(400).send({ success: false, error: { code: 'NO_FILE', message: '파일이 없습니다.' } });
+    }
+
+    const ext = path.extname(data.filename).toLowerCase();
+    if (!['.pdf', '.zip', '.pptx', '.docx', '.xlsx'].includes(ext)) {
+      return reply.code(400).send({ success: false, error: { code: 'INVALID_TYPE', message: 'PDF, ZIP, PPTX, DOCX, XLSX만 허용됩니다.' } });
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of data.file) chunks.push(chunk as Buffer);
+    const buffer = Buffer.concat(chunks);
+
+    if (buffer.length > 100 * 1024 * 1024) {
+      return reply.code(400).send({ success: false, error: { code: 'FILE_TOO_LARGE', message: '파일 크기는 100MB 이하여야 합니다.' } });
+    }
+
+    const baseName = path.basename(data.filename, ext)
+      .toLowerCase()
+      .replace(/[^\w\uAC00-\uD7A3\uFF00-\uFFEF\u4E00-\u9FFF]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'file';
+    const shortId = randomUUID().split('-')[0];
+    const filename = `${baseName}-${shortId}${ext}`;
+    const key = `materials/${filename}`;
+
+    let url: string;
+    if (process.env.S3_ACCESS_KEY_ID) {
+      const mimeMap: Record<string, string> = { '.pdf': 'application/pdf', '.zip': 'application/zip', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+      url = await uploadFile(key, buffer, mimeMap[ext] ?? 'application/octet-stream');
+    } else {
+      await fs.writeFile(path.join(UPLOADS_DIR, filename), buffer);
+      const publicBase = process.env.API_PUBLIC_URL
+        ? process.env.API_PUBLIC_URL.replace(/\/$/, '')
+        : `${request.protocol}://${request.hostname}:${process.env.PORT ?? 4000}`;
+      url = `${publicBase}/api/v1/files/${filename}`;
+    }
+
+    return reply.send({ success: true, data: { url, filename, size: buffer.length, originalName: data.filename } });
+  });
 }

@@ -159,7 +159,21 @@ ssh custody-staging "docker exec custody-postgres psql -U coincraft -d coincraft
 
 ---
 
-## 8. 자주 발생하는 실수 및 해결법
+## 8. GitHub Actions (CI/CD)
+
+### GitHub CLI 경로 (PATH 미등록)
+```bash
+"C:\Program Files\GitHub CLI\gh.exe" run list --repo coincraft12/coincraft.io --limit 3
+"C:\Program Files\GitHub CLI\gh.exe" run view <run_id> --repo coincraft12/coincraft.io --log-failed
+```
+
+### 브랜치 → 서버 매핑
+- `main` push → Deploy to Staging (staging.coincraft.io)
+- `production` push → Deploy to Production (coincraft.io)
+
+---
+
+## 9. 자주 발생하는 실수 및 해결법
 
 | 증상 | 원인 | 해결 |
 |---|---|---|

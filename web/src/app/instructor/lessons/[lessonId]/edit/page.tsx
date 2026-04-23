@@ -11,6 +11,8 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import VimeoUploader from '@/components/ui/VimeoUploader';
+import MarkdownEditor from '@/components/ui/MarkdownEditor';
+import LessonMaterialsEditor from '@/components/ui/LessonMaterialsEditor';
 
 interface LessonEditForm {
   title: string;
@@ -158,7 +160,7 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
       duration: videoDuration,
       isPreview: form.isPreview,
       isPublished: form.isPublished,
-      textContent: form.type === 'text' ? form.textContent.trim() || undefined : undefined,
+      textContent: form.textContent.trim() || undefined,
       order: form.order,
     });
   }
@@ -227,9 +229,6 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
                     if (duration > 0) setVideoDuration(duration);
                   }}
                 />
-                {form.videoUrl && (
-                  <p className="text-xs text-cc-muted break-all">업로드 완료: {form.videoUrl}</p>
-                )}
               </div>
             ) : (
               <Input
@@ -242,17 +241,14 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
           </>
         )}
 
-        {form.type === 'text' && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-cc-text">텍스트 내용</label>
-            <textarea
-              rows={8}
-              className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm focus:outline-none focus:border-cc-accent transition-colors resize-none"
-              value={form.textContent}
-              onChange={(e) => markDirty({ textContent: e.target.value })}
-            />
-          </div>
-        )}
+        <MarkdownEditor
+          label={form.type === 'text' ? '텍스트 내용' : '강의노트 (선택)'}
+          value={form.textContent ?? ''}
+          onChange={(v) => markDirty({ textContent: v })}
+          height={form.type === 'text' ? 320 : 240}
+        />
+
+        <LessonMaterialsEditor lessonId={lessonId} token={token ?? ''} />
 
         <div className="flex items-center gap-6">
           <label className="flex items-center gap-2 cursor-pointer">

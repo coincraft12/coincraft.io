@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
@@ -215,6 +215,7 @@ function SortableLesson({
 
 // ─── Sortable Chapter ─────────────────────────────────────────────────────────
 
+
 function SortableChapter({
   chapter,
   courseId,
@@ -224,6 +225,7 @@ function SortableChapter({
   onDeleteChapter,
   onDeleteLesson,
   onTogglePublish,
+  token,
 }: {
   chapter: ChapterItem;
   courseId: string;
@@ -233,6 +235,7 @@ function SortableChapter({
   onDeleteChapter: () => void;
   onDeleteLesson: (lessonId: string) => void;
   onTogglePublish: () => void;
+  token: string | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: chapter.id,
@@ -252,6 +255,7 @@ function SortableChapter({
   };
 
   const sortedLessons = [...chapter.lessons].sort((a, b) => a.order - b.order);
+
 
   return (
     <div style={style} className="bg-cc-secondary border border-white/10 rounded-cc">
@@ -316,7 +320,7 @@ function SortableChapter({
               <div className="px-6 py-3 text-xs text-cc-muted">레슨 없음 — 여기에 드롭하거나 추가하세요</div>
             )}
           </div>
-          <div className="px-6 py-3">
+          <div className="px-6 py-3 flex items-center gap-4 border-t border-white/5">
             <button
               onClick={() => onNavigate(`/instructor/courses/${courseId}/lessons/new?chapterId=${chapter.id}`)}
               className="text-xs text-cc-accent hover:underline"
@@ -324,6 +328,7 @@ function SortableChapter({
               + 레슨 추가
             </button>
           </div>
+
         </div>
       )}
     </div>
@@ -743,6 +748,7 @@ export default function InstructorCourseDetailPage({ params }: { params: Promise
                         const lesson = chapter.lessons.find((l) => l.id === lessonId);
                         setConfirmTarget({ type: 'lesson', id: lessonId, label: lesson?.title ?? lessonId });
                       }}
+                      token={token}
                     />
                   ))}
                 </div>

@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import Header from '@/components/ui/Header';
 import { useAuthStore } from '@/store/auth.store';
+
 import { apiClient, ApiError } from '@/lib/api-client';
 
 interface BookOrder {
@@ -41,7 +40,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AdminBookOrdersPage() {
-  const router = useRouter();
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -52,12 +50,6 @@ export default function AdminBookOrdersPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'admin')) {
-      router.push('/');
-    }
-  }, [isLoading, user, router]);
 
   const fetchOrders = useCallback(async () => {
     if (!token) return;
@@ -155,13 +147,10 @@ export default function AdminBookOrdersPage() {
     }
   };
 
-  if (isLoading || !user) return null;
+  if (!user) return null;
 
   return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-cc-primary pt-24 pb-16">
-        <div className="cc-container">
+    <div>
           <div className="mb-8 flex items-center justify-between">
             <div>
               <p className="cc-label mb-1">ADMIN</p>
@@ -270,8 +259,6 @@ export default function AdminBookOrdersPage() {
               })}
             </div>
           )}
-        </div>
-      </main>
-    </>
+    </div>
   );
 }

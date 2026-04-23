@@ -69,8 +69,9 @@ async function refreshAccessToken(): Promise<string | null> {
 async function request<T>(path: string, options: ApiOptions = {}, _isRetry = false): Promise<T> {
   const { token, ...init } = options;
 
+  const isFormData = init.body instanceof FormData;
   const headers: Record<string, string> = {
-    ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    ...(init.body !== undefined && !isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(init.headers as Record<string, string>),
   };
 
@@ -108,6 +109,8 @@ export const apiClient = {
     request<T>(path, { ...options, method: 'PATCH', body: JSON.stringify(body) }),
   delete: <T>(path: string, options?: ApiOptions) =>
     request<T>(path, { ...options, method: 'DELETE' }),
+  upload: <T>(path: string, formData: FormData, options?: Omit<ApiOptions, 'body'>) =>
+    request<T>(path, { ...options, method: 'POST', body: formData as unknown as BodyInit, headers: {} }),
 };
 
 export { ApiError };

@@ -35,6 +35,7 @@ export async function uploadFile(
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      ACL: 'public-read',
     }),
   );
   // Public URL (버킷이 private이면 presignedUrl 사용)

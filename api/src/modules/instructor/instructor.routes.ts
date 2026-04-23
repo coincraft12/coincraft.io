@@ -2,6 +2,10 @@ import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/require-role';
 import { ok, created } from '../../utils/response';
+import { db } from '../../db';
+import { chapterMaterials, chapters, courses, lessons } from '../../db/schema';
+import { eq, and, asc } from 'drizzle-orm';
+import { z } from 'zod';
 import {
   createCourseSchema,
   updateCourseSchema,
@@ -157,5 +161,163 @@ export async function instructorRoutes(app: FastifyInstance): Promise<void> {
   app.get('/stats', { preHandler }, async (request, reply) => {
     const stats = await instructorService.getInstructorStats(request.user!.id);
     return reply.send(ok(stats));
+  });
+
+  // ── 챕터 자료 관리 ──────────────────────────────────────────────────────────
+
+  // GET /api/v1/instructor/chapters/:chapterId/materials
+  app.get('/chapters/:chapterId/materials', { preHandler }, async (request, reply) => {
+    const { chapterId } = request.params as { chapterId: string };
+
+    // 강사 소유 챕터인지 확인
+    const [chapter] = await db
+      .select({ id: chapters.id, courseId: chapters.courseId })
+      .from(chapters)
+      .where(eq(chapters.id, chapterId))
+      .limit(1);
+    if (!chapter) return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: '챕터를 찾을 수 없습니다.' } });
+
+    const [course] = await db
+      .select({ instructorId: courses.instructorId })
+      .from(courses)
+      .where(eq(courses.id, chapter.courseId))
+      .limit(1);
+    if (!course || course.instructorId !== request.user!.id) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '권한이 없습니다.' } });
+    }
+
+    const materials = await db
+      .select()
+      .from(chapterMaterials)
+      .where(eq(chapterMaterials.chapterId, chapterId))
+      .orderBy(asc(chapterMaterials.order), asc(chapterMaterials.createdAt));
+    return reply.send(ok(materials));
+  });
+
+  // POST /api/v1/instructor/chapters/:chapterId/materials
+  app.post('/chapters/:chapterId/materials', { preHandler }, async (request, reply) => {
+    const { chapterId } = request.params as { chapterId: string };
+
+    const bodySchema = z.object({
+      title: z.string().min(1).max(300),
+      fileUrl: z.string().url(),
+      fileSize: z.number().int().optional(),
+      fileType: z.string().optional(),
+    });
+    const body = bodySchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
+    }
+
+    // 강사 소유 확인
+    const [chapter] = await db.select({ courseId: chapters.courseId }).from(chapters).where(eq(chapters.id, chapterId)).limit(1);
+    if (!chapter) return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: '챕터를 찾을 수 없습니다.' } });
+    const [course] = await db.select({ instructorId: courses.instructorId }).from(courses).where(eq(courses.id, chapter.courseId)).limit(1);
+    if (!course || course.instructorId !== request.user!.id) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '권한이 없습니다.' } });
+    }
+
+    const existing = await db.select({ order: chapterMaterials.order }).from(chapterMaterials).where(eq(chapterMaterials.chapterId, chapterId)).orderBy(asc(chapterMaterials.order));
+    const nextOrder = existing.length > 0 ? Math.max(...existing.map((m) => m.order)) + 1 : 0;
+
+    const [material] = await db.insert(chapterMaterials).values({
+      chapterId,
+      title: body.data.title,
+      fileUrl: body.data.fileUrl,
+      fileSize: body.data.fileSize,
+      fileType: body.data.fileType,
+      order: nextOrder,
+    }).returning();
+
+    return reply.code(201).send(created(material, '자료가 등록되었습니다.'));
+  });
+
+  // DELETE /api/v1/instructor/chapters/:chapterId/materials/:materialId
+  app.delete('/chapters/:chapterId/materials/:materialId', { preHandler }, async (request, reply) => {
+    const { chapterId, materialId } = request.params as { chapterId: string; materialId: string };
+
+    const [chapter] = await db.select({ courseId: chapters.courseId }).from(chapters).where(eq(chapters.id, chapterId)).limit(1);
+    if (!chapter) return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: '챕터를 찾을 수 없습니다.' } });
+    const [course] = await db.select({ instructorId: courses.instructorId }).from(courses).where(eq(courses.id, chapter.courseId)).limit(1);
+    if (!course || course.instructorId !== request.user!.id) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '권한이 없습니다.' } });
+    }
+
+    await db.delete(chapterMaterials).where(and(eq(chapterMaterials.id, materialId), eq(chapterMaterials.chapterId, chapterId)));
+    return reply.send({ success: true, message: '자료가 삭제되었습니다.' });
+  });
+
+  // ── 레슨 자료 관리 ──────────────────────────────────────────────────────────
+
+  // GET /api/v1/instructor/lessons/:lessonId/materials
+  app.get('/lessons/:lessonId/materials', { preHandler }, async (request, reply) => {
+    const { lessonId } = request.params as { lessonId: string };
+
+    const [lesson] = await db.select({ chapterId: lessons.chapterId, courseId: lessons.courseId }).from(lessons).where(eq(lessons.id, lessonId)).limit(1);
+    if (!lesson) return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: '레슨을 찾을 수 없습니다.' } });
+    const [course] = await db.select({ instructorId: courses.instructorId }).from(courses).where(eq(courses.id, lesson.courseId)).limit(1);
+    if (!course || course.instructorId !== request.user!.id) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '권한이 없습니다.' } });
+    }
+
+    const materials = await db
+      .select()
+      .from(chapterMaterials)
+      .where(eq(chapterMaterials.lessonId, lessonId))
+      .orderBy(asc(chapterMaterials.order), asc(chapterMaterials.createdAt));
+    return reply.send(ok(materials));
+  });
+
+  // POST /api/v1/instructor/lessons/:lessonId/materials
+  app.post('/lessons/:lessonId/materials', { preHandler }, async (request, reply) => {
+    const { lessonId } = request.params as { lessonId: string };
+
+    const bodySchema = z.object({
+      title: z.string().min(1).max(300),
+      fileUrl: z.string().url(),
+      fileSize: z.number().int().optional(),
+      fileType: z.string().optional(),
+    });
+    const body = bodySchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message: body.error.issues[0].message } });
+    }
+
+    const [lesson] = await db.select({ chapterId: lessons.chapterId, courseId: lessons.courseId }).from(lessons).where(eq(lessons.id, lessonId)).limit(1);
+    if (!lesson) return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: '레슨을 찾을 수 없습니다.' } });
+    const [course] = await db.select({ instructorId: courses.instructorId }).from(courses).where(eq(courses.id, lesson.courseId)).limit(1);
+    if (!course || course.instructorId !== request.user!.id) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '권한이 없습니다.' } });
+    }
+
+    const existing = await db.select({ order: chapterMaterials.order }).from(chapterMaterials).where(eq(chapterMaterials.lessonId, lessonId)).orderBy(asc(chapterMaterials.order));
+    const nextOrder = existing.length > 0 ? Math.max(...existing.map((m) => m.order)) + 1 : 0;
+
+    const [material] = await db.insert(chapterMaterials).values({
+      chapterId: lesson.chapterId,
+      lessonId,
+      title: body.data.title,
+      fileUrl: body.data.fileUrl,
+      fileSize: body.data.fileSize,
+      fileType: body.data.fileType,
+      order: nextOrder,
+    }).returning();
+
+    return reply.code(201).send(created(material, '자료가 등록되었습니다.'));
+  });
+
+  // DELETE /api/v1/instructor/lessons/:lessonId/materials/:materialId
+  app.delete('/lessons/:lessonId/materials/:materialId', { preHandler }, async (request, reply) => {
+    const { lessonId, materialId } = request.params as { lessonId: string; materialId: string };
+
+    const [lesson] = await db.select({ courseId: lessons.courseId }).from(lessons).where(eq(lessons.id, lessonId)).limit(1);
+    if (!lesson) return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: '레슨을 찾을 수 없습니다.' } });
+    const [course] = await db.select({ instructorId: courses.instructorId }).from(courses).where(eq(courses.id, lesson.courseId)).limit(1);
+    if (!course || course.instructorId !== request.user!.id) {
+      return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: '권한이 없습니다.' } });
+    }
+
+    await db.delete(chapterMaterials).where(and(eq(chapterMaterials.id, materialId), eq(chapterMaterials.lessonId, lessonId)));
+    return reply.send({ success: true, message: '자료가 삭제되었습니다.' });
   });
 }

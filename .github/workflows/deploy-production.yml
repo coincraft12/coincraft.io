@@ -7,9 +7,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
 
     steps:
       - uses: actions/checkout@v4
@@ -20,24 +17,82 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-        env:
-          NODE_ENV: production
-          NEXT_PUBLIC_API_URL: ''
-
       - name: Setup SSH
-        working-directory: .
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 46.62.212.134 >> ~/.ssh/known_hosts
 
-      - name: Package
+      # ── API 빌드 & 배포 ──────────────────────────────────────────────────────
+
+      - name: Install API dependencies
+        working-directory: api
+        run: npm ci
+
+      - name: Build API
+        working-directory: api
+        run: npm run build
+
+      - name: Compile seed scripts
+        working-directory: api
+        run: npx tsc -p scripts/tsconfig.scripts.json --skipLibCheck
+
+      - name: Package API
+        working-directory: api
+        run: |
+          tar -czf /tmp/coincraft-api-build.tar.gz \
+            dist/ \
+            dist-scripts/ \
+            src/db/migrations/ \
+            package.json \
+            package-lock.json
+
+      - name: Upload & Deploy API
+        env:
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+        run: |
+          scp /tmp/coincraft-api-build.tar.gz root@46.62.212.134:/opt/coincraft-api/api-build.tar.gz
+          ssh root@46.62.212.134 "
+            set -e
+            cd /opt/coincraft-api
+            tar -xzf api-build.tar.gz && rm api-build.tar.gz
+            npm install --omit=dev
+            node dist/db/migrate.js
+            pm2 restart coincraft-api
+            sleep 2
+            pm2 status coincraft-api
+            export S3_BUCKET='$S3_BUCKET'
+            export S3_ENDPOINT='$S3_ENDPOINT'
+            export S3_REGION='$S3_REGION'
+            export S3_ACCESS_KEY_ID='$S3_ACCESS_KEY_ID'
+            export S3_SECRET_ACCESS_KEY='$S3_SECRET_ACCESS_KEY'
+            node dist-scripts/scripts/bulk-upload-onchain-materials.js
+            node dist-scripts/scripts/bulk-upload-ethereum-materials.js
+            node dist-scripts/scripts/bulk-upload-web3intro-materials.js
+            node dist-scripts/scripts/bulk-upload-web3basic-materials.js
+            node dist-scripts/scripts/bulk-upload-web3associate-materials.js
+          "
+
+      # ── Web 빌드 & 배포 ──────────────────────────────────────────────────────
+
+      - name: Install Web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build Web
+        working-directory: web
+        run: npm run build
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_URL: ''
+
+      - name: Package Web
+        working-directory: web
         run: |
           tar -czf /tmp/next-build.tar.gz \
             --exclude='.next/cache' \
@@ -46,14 +101,14 @@ jobs:
             .next/
           tar -czf /tmp/public.tar.gz public/
 
-      - name: Upload
+      - name: Upload Web
+        working-directory: web
         run: |
           scp /tmp/next-build.tar.gz root@46.62.212.134:/opt/coincraft-web/next-build.tar.gz
           scp /tmp/public.tar.gz root@46.62.212.134:/opt/coincraft-web/public.tar.gz
           scp .next/standalone/server.js root@46.62.212.134:/opt/coincraft-web/server.js
 
-      - name: Deploy
-        working-directory: .
+      - name: Deploy Web
         run: |
           ssh root@46.62.212.134 "
             set -e
@@ -61,11 +116,15 @@ jobs:
 
             tar -xzf public.tar.gz && rm public.tar.gz
 
-            pm2 stop coincraft-web
+            pm2 stop coincraft-web || true
+            fuser -k 3000/tcp 2>/dev/null || true
+            sleep 1
             rm -rf .next-old
             mv .next .next-old
             tar -xzf next-build.tar.gz
             rm next-build.tar.gz
+
+            npm install --omit=dev --prefer-offline 2>/dev/null || npm install --omit=dev
 
             if [ -f ecosystem.config.js ]; then
               pm2 start ecosystem.config.js
@@ -79,7 +138,6 @@ jobs:
           "
 
       - name: Health check
-        working-directory: .
         run: |
           sleep 5
           curl -sf https://coincraft.io > /dev/null && echo "Web: OK" || exit 1

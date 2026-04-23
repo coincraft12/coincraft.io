@@ -25,3 +25,4 @@ export * from './blog';
 export * from './vimeo-bulk-uploads';
 export * from './physical-books';
 export * from './book-orders';
+export * from './chapter-materials';

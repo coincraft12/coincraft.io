@@ -134,6 +134,15 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     );
   });
 
+  // GET /api/v1/admin/users — 사용자 목록 (드롭다운용)
+  app.get('/users', { preHandler }, async (_request, reply) => {
+    const allUsers = await db
+      .select({ id: users.id, email: users.email, name: users.name })
+      .from(users)
+      .orderBy(users.name);
+    return reply.send(ok(allUsers));
+  });
+
   // GET /api/v1/admin/courses — 강좌 목록 (드롭다운용, 전체)
   app.get('/courses', { preHandler }, async (_request, reply) => {
     const allCourses = await db

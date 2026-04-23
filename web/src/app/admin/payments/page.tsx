@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import Header from '@/components/ui/Header';
 import Button from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -41,20 +39,13 @@ const PRODUCT_LABELS: Record<string, string> = {
 };
 
 export default function AdminPaymentsPage() {
-  const router = useRouter();
-  const { user, accessToken, isLoading } = useAuthStore();
+  const { user, accessToken } = useAuthStore();
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterProvider, setFilterProvider] = useState<string>('all');
-
-  useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'admin')) {
-      router.push('/');
-    }
-  }, [isLoading, user, router]);
 
   const fetchPayments = useCallback(async () => {
     if (!accessToken) return;
@@ -98,22 +89,10 @@ export default function AdminPaymentsPage() {
     return true;
   });
 
-  if (isLoading || !user) {
-    return (
-      <>
-        <Header />
-        <main className="min-h-screen bg-cc-primary pt-24 flex items-center justify-center">
-          <div className="text-cc-muted">로딩 중...</div>
-        </main>
-      </>
-    );
-  }
+  if (!user) return null;
 
   return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-cc-primary pt-24 pb-16">
-        <div className="cc-container max-w-6xl">
+    <div className="max-w-6xl">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold text-cc-text">결제 관리</h1>
             <button
@@ -216,8 +195,6 @@ export default function AdminPaymentsPage() {
               </table>
             </div>
           )}
-        </div>
-      </main>
-    </>
+    </div>
   );
 }
