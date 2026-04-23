@@ -19,6 +19,6 @@
 - FIX 6: vimeo-upload.store.ts에 `lessonId` + `setLessonId` 추가; VimeoUploader에 `lessonId` prop + useEffect 연결
 
 ## 다음 작업
-- [ ] 스테이징 GitHub Actions 정상 동작 확인
-- [ ] 운영 배포 (Sharon 승인 후 `git push origin production`)
+- [x] 스테이징 GitHub Actions 정상 동작 확인 ✅ (2026-04-24)
+- [x] 운영 배포 완료 ✅ (2026-04-24)
 - [ ] 인프런 벤치마킹 기반 기능 (Q&A, 로드맵, 쿠폰, 수강생 현황)
