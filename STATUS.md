@@ -15,6 +15,17 @@
 - DATA FIX: on-chain-signals [4-1]~[4-3] Vimeo URL 한 칸 밀림 수정 — local/staging/production DB 모두 적용
 - 데이터 픽스 스크립트 패턴 도입: `scripts/data-fix-template.ts` + `scripts/data-fix-YYYYMMDD-*.ts`
 
+## DB 데이터 픽스 규칙 (영구)
+
+> **스키마 변경(DDL)** → Drizzle 마이그레이션 (`npm run migrate`)
+> **데이터 수정(DML)** → `api/scripts/data-fix-YYYYMMDD-설명.ts` 스크립트로 작성
+
+- 템플릿: `api/scripts/data-fix-template.ts`
+- 실행: `DATABASE_URL=postgres://... npx ts-node scripts/data-fix-YYYYMMDD-xxx.ts`
+- DRY RUN: `DRY_RUN=true DATABASE_URL=... npx ts-node ...` (실제 변경 없이 쿼리만 출력)
+- **환경별 별도 실행 필수** — 로컬 → 스테이징 → 운영 순서로 각각 실행
+- 실행 완료 후 STATUS.md "마지막 작업"에 적용 환경(local/staging/production) 명시
+
 ## 다음 작업
 - [x] 스테이징 GitHub Actions 정상 동작 확인 ✅ (2026-04-24)
 - [x] 운영 배포 완료 ✅ (2026-04-24)
