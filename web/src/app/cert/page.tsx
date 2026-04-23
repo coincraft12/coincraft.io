@@ -5,18 +5,44 @@ import Footer from '@/components/ui/Footer';
 export const metadata = { title: 'WEB3 구조 설계자 검정 — COINCRAFT' };
 export const revalidate = 60;
 
-async function fetchExamCapacity(): Promise<{ registeredCount: number; maxCapacity: number | null } | null> {
+async function fetchExamCapacity(): Promise<{
+  registeredCount: number;
+  maxCapacity: number | null;
+  registrationStart: string | null;
+  registrationEnd: string | null;
+} | null> {
   try {
     const apiBase = process.env.API_INTERNAL_URL ?? '';
     const res = await fetch(`${apiBase}/api/v1/exams`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
     const json = await res.json();
-    const exams: Array<{ level: string; registeredCount: number; maxCapacity: number | null }> = json.data ?? [];
+    const exams: Array<{
+      level: string;
+      registeredCount: number;
+      maxCapacity: number | null;
+      registrationStart: string | null;
+      registrationEnd: string | null;
+    }> = json.data ?? [];
     const basic = exams.find((e) => e.level === 'basic');
-    return basic ? { registeredCount: basic.registeredCount, maxCapacity: basic.maxCapacity } : null;
+    return basic ? {
+      registeredCount: basic.registeredCount,
+      maxCapacity: basic.maxCapacity,
+      registrationStart: basic.registrationStart ?? null,
+      registrationEnd: basic.registrationEnd ?? null,
+    } : null;
   } catch {
     return null;
   }
+}
+
+function formatRegPeriod(start: string | null, end: string | null): string {
+  if (!start || !end) return '';
+  const s = new Date(start);
+  const e = new Date(end);
+  const fmt = (d: Date) =>
+    `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  const days = ['일','월','화','수','목','금','토'];
+  return `${s.getFullYear()}년 ${fmt(s)}(${days[s.getDay()]}) ~ ${fmt(e)}(${days[e.getDay()]})`;
 }
 
 const LEVELS = [
@@ -65,6 +91,8 @@ export default async function CertPage() {
   const capacity = await fetchExamCapacity();
   const isFull = capacity?.maxCapacity != null && capacity.registeredCount >= capacity.maxCapacity;
   const remaining = capacity?.maxCapacity != null ? capacity.maxCapacity - capacity.registeredCount : null;
+  const regPeriod = formatRegPeriod(capacity?.registrationStart ?? null, capacity?.registrationEnd ?? null)
+    || '2026년 4월 20일(월) ~ 4월 26일(일)';
 
   return (
     <>
@@ -144,7 +172,7 @@ export default async function CertPage() {
             <div className="space-y-2 text-sm">
               <div className="flex">
                 <span className="w-24 text-cc-muted shrink-0">접수 기간</span>
-                <span className="font-semibold text-cc-text">2026년 4월 14일(월) ~ 4월 20일(일)</span>
+                <span className="font-semibold text-cc-text">{regPeriod}</span>
               </div>
               <div className="flex">
                 <span className="w-24 text-cc-muted shrink-0">시험일</span>

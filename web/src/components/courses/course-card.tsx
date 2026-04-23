@@ -18,6 +18,7 @@ interface CourseCardProps {
   averageRating: string | null;
   reviewCount: number;
   instructor: { id: string; name: string; avatarUrl: string | null; bio?: string | null; specialties?: string[] | null; photoUrl?: string | null } | null;
+  showWishlist?: boolean;
 }
 
 const LEVEL_LABELS: Record<string, string> = {
@@ -41,7 +42,7 @@ function formatDuration(seconds: number): string {
 
 export default function CourseCard({
   id, slug, title, shortDescription, thumbnailUrl, level, price, originalPrice, isFree,
-  totalLessons, totalDuration, averageRating, reviewCount, instructor,
+  totalLessons, totalDuration, averageRating, reviewCount, instructor, showWishlist = true,
 }: CourseCardProps) {
   const discountRate =
     originalPrice && Number(originalPrice) > 0 && Number(price) < Number(originalPrice)
@@ -62,7 +63,7 @@ export default function CourseCard({
               <span className="text-4xl opacity-30">🎓</span>
             </div>
           )}
-          <WishlistHeart courseId={id} />
+          {showWishlist && <WishlistHeart courseId={id} />}
         </div>
 
         <div className="p-4 flex flex-col flex-1">

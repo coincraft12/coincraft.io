@@ -47,7 +47,7 @@ export default async function Academy() {
 
         <div className="grid md:grid-cols-3 gap-6 mb-10">
           {courses.map((course) => (
-            <CourseCard key={course.id} {...course} />
+            <CourseCard key={course.id} {...course} showWishlist={false} />
           ))}
         </div>
 
