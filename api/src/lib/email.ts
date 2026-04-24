@@ -409,3 +409,82 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
     `,
   });
 }
+
+// ─── Q&A 이메일 ─────────────────────────────────────────────────────────────
+
+export async function sendQuestionToInstructorEmail(params: {
+  instructorEmail: string;
+  instructorName: string;
+  questionTitle: string;
+  questionContent: string;
+  aiAnswer: string;
+  courseName: string;
+  lessonTitle: string;
+  questionId: string;
+}): Promise<void> {
+  const { instructorEmail, instructorName, questionTitle, questionContent, aiAnswer, courseName, lessonTitle, questionId } = params;
+  const questionUrl = `${env.FRONTEND_URL}/instructor/qa/${questionId}`;
+
+  await sendEmail({
+    to: instructorEmail,
+    subject: `[CoinCraft] 🤔 신규 Q&A — ${questionTitle}`,
+    html: wrap('신규 질문이 등록되었습니다', `
+      <p style="color:#cbd5e1;font-size:15px;line-height:1.7;">안녕하세요, <strong style="color:#f1f5f9;">${instructorName}</strong>님.<br>
+      ${courseName} > ${lessonTitle} 강의에 새로운 질문이 등록되었습니다.</p>
+
+      <div style="background:#0f172a;border-radius:8px;padding:16px;margin:20px 0;border-left:3px solid #f59e0b;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#f59e0b;">■ 질문</p>
+        <p style="margin:0 0 12px;font-size:14px;color:#f1f5f9;font-weight:600;">${questionTitle}</p>
+        <p style="margin:0;font-size:13px;color:#cbd5e1;line-height:1.6;white-space:pre-wrap;">${questionContent}</p>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:16px;margin:20px 0;border-left:3px solid #34d399;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#34d399;">✨ AI 1차 답변</p>
+        <p style="margin:0;font-size:13px;color:#cbd5e1;line-height:1.6;white-space:pre-wrap;">${aiAnswer}</p>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:14px;margin:20px 0;border-left:3px solid #60a5fa;">
+        <p style="margin:0;font-size:13px;color:#94a3b8;">
+          💡 AI가 생성한 답변을 검토한 후, 필요하면 더 자세한 설명이나 보정을 추가해 주세요.
+        </p>
+      </div>
+
+      <a href="${questionUrl}" style="display:inline-block;padding:12px 24px;background:#f59e0b;color:#0f172a;font-weight:700;text-decoration:none;border-radius:8px;font-size:14px;">Q&A 페이지로 이동</a>
+    `),
+  }).catch(() => {});
+}
+
+export async function sendAnswerNotificationToStudentEmail(params: {
+  studentEmail: string;
+  studentName: string;
+  questionTitle: string;
+  instructorName: string;
+  instructorRevision: string;
+  courseName: string;
+  lessonTitle: string;
+  questionId: string;
+}): Promise<void> {
+  const { studentEmail, studentName, questionTitle, instructorName, instructorRevision, courseName, lessonTitle, questionId } = params;
+  const questionUrl = `${env.FRONTEND_URL}/courses/${courseName}/lessons/${lessonTitle}?q=${questionId}`;
+
+  await sendEmail({
+    to: studentEmail,
+    subject: `[CoinCraft] 📢 강사 답변이 작성되었습니다 — ${questionTitle}`,
+    html: wrap('강사님이 답변을 작성했습니다', `
+      <p style="color:#cbd5e1;font-size:15px;line-height:1.7;">안녕하세요, <strong style="color:#f1f5f9;">${studentName}</strong>님.<br>
+      <strong style="color:#f59e0b;">${instructorName}</strong> 강사님이 당신의 질문에 답변을 작성했습니다.</p>
+
+      <div style="background:#0f172a;border-radius:8px;padding:16px;margin:20px 0;border-left:3px solid #f59e0b;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#f59e0b;">■ 당신의 질문</p>
+        <p style="margin:0;font-size:14px;color:#f1f5f9;font-weight:600;">${questionTitle}</p>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:16px;margin:20px 0;border-left:3px solid #34d399;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#34d399;">💬 강사 답변</p>
+        <p style="margin:0;font-size:13px;color:#cbd5e1;line-height:1.6;white-space:pre-wrap;">${instructorRevision}</p>
+      </div>
+
+      <a href="${questionUrl}" style="display:inline-block;padding:12px 24px;background:#f59e0b;color:#0f172a;font-weight:700;text-decoration:none;border-radius:8px;font-size:14px;">답변 보러가기</a>
+    `),
+  }).catch(() => {});
+}

@@ -10,6 +10,8 @@ import Spinner from '@/components/ui/Spinner';
 import LessonSidebar from '@/components/lms/lesson-sidebar';
 import VideoPlayer from '@/components/lms/video-player';
 import MarkdownContent from '@/components/ui/MarkdownContent';
+import { QASection } from '@/components/lms/qa-section';
+import { LessonReviewsSection } from '@/components/lms/lesson-reviews-section';
 
 interface Material {
   id: string;
@@ -354,8 +356,20 @@ export default function LessonPage() {
                 )}
               </div>
             )}
-            {activeTab !== '강의노트' && activeTab !== '자료' && (
-              <p className="text-cc-muted text-sm pb-4">준비 중입니다.</p>
+            {activeTab === '강평' && (
+              <div className="pb-4">
+                <LessonReviewsSection lessonId={lesson.id} />
+              </div>
+            )}
+            {activeTab === 'Q&A' && (
+              <div className="pb-4">
+                <QASection
+                  lessonId={lesson.id}
+                  courseId={lesson.courseId}
+                  courseName={course.title}
+                  lessonTitle={lesson.title}
+                />
+              </div>
             )}
 
             {/* Complete / navigation */}

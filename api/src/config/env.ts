@@ -38,6 +38,7 @@ const envSchema = z.object({
   GMAIL_USER: z.string().email().optional(),
   GMAIL_APP_PASSWORD: z.string().optional(),
   VIMEO_ACCESS_TOKEN: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
 });
 

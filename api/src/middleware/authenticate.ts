@@ -16,3 +16,14 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     return;
   }
 }
+
+export async function optionalAuth(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+  const auth = request.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return;
+  try {
+    const payload = verifyAccessToken(auth.slice(7));
+    request.user = { id: payload.sub, email: payload.email ?? '', role: payload.role ?? 'student' };
+  } catch {
+    // 토큰 실패 시 비인증으로 처리
+  }
+}

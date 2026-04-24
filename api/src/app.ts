@@ -19,9 +19,11 @@ import blogPlugin from './modules/blog';
 import { uploadRoutes, UPLOADS_DIR } from './modules/upload/upload.routes';
 import { reviewRoutes } from './modules/reviews';
 import { wishlistRoutes } from './modules/wishlists';
+import { qaRoutes } from './modules/qa';
 import bookShopPlugin from './modules/book-shop';
 import { registerPdfDeliveryJob } from './jobs/pdf-delivery';
 import { registerCertExpiryNotifierJob } from './jobs/cert-expiry-notifier';
+import { registerClaudeQAJob } from './jobs/claude-qa-job';
 
 export async function buildApp() {
   const app = Fastify({
@@ -53,12 +55,14 @@ export async function buildApp() {
   await app.register(blogPlugin);
   await app.register(uploadRoutes, { prefix: '/api/v1/instructor/upload' });
   await app.register(reviewRoutes, { prefix: '/api/v1' });
+  await app.register(qaRoutes, { prefix: '/api/v1' });
   await app.register(wishlistRoutes, { prefix: '/api/v1' });
   await app.register(bookShopPlugin);
 
   // 스케줄러 등록
   registerPdfDeliveryJob();
   registerCertExpiryNotifierJob();
+  registerClaudeQAJob();
 
   return app;
 }
