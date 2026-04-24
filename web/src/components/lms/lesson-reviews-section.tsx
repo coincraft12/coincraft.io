@@ -9,6 +9,7 @@ import Spinner from '@/components/ui/Spinner';
 
 interface Review {
   id: string;
+  userId: string;
   rating: number;
   content: string;
   userName: string;
@@ -89,7 +90,7 @@ export function LessonReviewsSection({ lessonId }: LessonReviewsSectionProps) {
     </div>
   );
 
-  const myReview = reviews?.find((r) => r.id === user?.id);
+  const myReview = reviews?.find((r: Review) => r.userId === user?.id);
 
   return (
     <div className="space-y-6">
@@ -165,7 +166,7 @@ export function LessonReviewsSection({ lessonId }: LessonReviewsSectionProps) {
                   </div>
                   <p className="text-cc-text text-sm font-medium">{review.userName}</p>
                 </div>
-                {token && review.id === user?.id && (
+                {token && review.userId === user?.id && (
                   <button
                     onClick={() => deleteReview.mutate(review.id)}
                     disabled={deleteReview.isPending}
