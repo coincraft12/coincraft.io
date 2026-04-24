@@ -20,6 +20,7 @@ import {
   getLessonWithCourse,
   isUserEnrolled,
   triggerAIAnswerForQuestion,
+  getInstructorQuestions,
 } from './qa.service';
 
 // ===== Schemas =====
@@ -463,15 +464,9 @@ export default async function qaRoutes(app: FastifyInstance) {
         const instructorId = request.user!.id;
         const status = (request.query.status || 'all') as string;
 
-        // TODO: instructorId로 본인의 강의들을 조회
-        // 그 강의들의 Q&A를 상태별로 필터링
-        // 현재는 stub 반환
+        const questionList = await getInstructorQuestions(instructorId, status);
 
-        reply.send(
-          ok({
-            questions: [],
-          })
-        );
+        reply.send(ok({ questions: questionList }));
       } catch (error) {
         console.error('[QA] Error fetching instructor Q&A:', error);
         reply.code(500).send({

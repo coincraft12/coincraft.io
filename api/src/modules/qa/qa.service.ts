@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   questions,
@@ -301,21 +301,68 @@ export async function addAnswerReaction(
   userId: string,
   reactionType: 'helpful' | 'unhelpful'
 ) {
-  // UPSERT: 기존 반응이 있으면 업데이트, 없으면 생성
+  // UPSERT
   const [reaction] = await db
     .insert(answerReactions)
-    .values({
-      answerId,
-      userId,
-      reactionType,
-    })
+    .values({ answerId, userId, reactionType })
     .onConflictDoUpdate({
       target: [answerReactions.answerId, answerReactions.userId],
       set: { reactionType, updatedAt: new Date() },
     })
     .returning();
 
+  // 트리거 미설치 환경 대비 — 카운트 수동 갱신
+  await db.update(answers)
+    .set({
+      helpfulCount: sql`(SELECT COUNT(*) FROM ${answerReactions} WHERE answer_id = ${answerId} AND reaction_type = 'helpful')`,
+      unhelpfulCount: sql`(SELECT COUNT(*) FROM ${answerReactions} WHERE answer_id = ${answerId} AND reaction_type = 'unhelpful')`,
+    })
+    .where(eq(answers.id, answerId));
+
   return reaction;
+}
+
+// ===== Instructor Q&A =====
+
+export async function getInstructorQuestions(instructorId: string, statusFilter: string) {
+  const instructorCourses = await db
+    .select({ id: courses.id })
+    .from(courses)
+    .where(eq(courses.instructorId, instructorId));
+
+  if (!instructorCourses.length) return [];
+
+  const courseIds = instructorCourses.map((c) => c.id);
+
+  const questionList = await db
+    .select({
+      id: questions.id,
+      title: questions.title,
+      status: questions.status,
+      viewCount: questions.viewCount,
+      createdAt: questions.createdAt,
+      lessonTitle: lessons.title,
+      courseName: courses.title,
+      userName: users.name,
+      answerCount: sql<number>`(SELECT COUNT(*) FROM ${answers} WHERE question_id = ${questions.id})`.as('answerCount'),
+      hasAIAnswer: sql<boolean>`EXISTS(SELECT 1 FROM ${answers} WHERE question_id = ${questions.id} AND type = 'ai')`.as('hasAIAnswer'),
+      hasInstructorAnswer: sql<boolean>`EXISTS(SELECT 1 FROM ${answers} WHERE question_id = ${questions.id} AND type = 'instructor')`.as('hasInstructorAnswer'),
+    })
+    .from(questions)
+    .leftJoin(lessons, eq(questions.lessonId, lessons.id))
+    .leftJoin(courses, eq(questions.courseId, courses.id))
+    .leftJoin(users, eq(questions.userId, users.id))
+    .where(inArray(questions.courseId, courseIds))
+    .orderBy(desc(questions.createdAt));
+
+  return questionList.filter((q) => {
+    const hasAI = Boolean(q.hasAIAnswer);
+    const hasInstructor = Boolean(q.hasInstructorAnswer);
+    if (statusFilter === 'unanswered') return !hasAI && !hasInstructor;
+    if (statusFilter === 'ai-only') return hasAI && !hasInstructor;
+    if (statusFilter === 'completed') return hasInstructor;
+    return true;
+  });
 }
 
 // ===== Review Service =====

@@ -48,6 +48,9 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
               <a href="/instructor/courses" className="text-cc-muted hover:text-cc-text transition-colors">
                 내 강좌
               </a>
+              <a href="/instructor/qa" className="text-cc-muted hover:text-cc-text transition-colors">
+                Q&A 관리
+              </a>
             </nav>
           </div>
         </div>

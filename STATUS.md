@@ -14,10 +14,10 @@
 - Q&A: AI 즉시 답변 + 강사 이메일 발송 (claude-sonnet-4-5, 404 에러 수정)
 - Vimeo 자막(transcript) DB 저장 + 강의노트 자동생성 파이프라인 구축 (레슨 등록/수정 시 자동 트리거)
 - DB: lessons 테이블에 transcript, notes_status 컬럼 추가 (직접 ALTER TABLE 적용)
-- 레슨 등록/수정 페이지에 노트 생성 상태 UI 추가 (진행 표시, 수동 생성 버튼)
-- FIX: VimeoUploader 이전 레슨 파일명 잔존 버그 수정 (Zustand reset on mount)
-- FIX: isUserEnrolled — 잘못된 raw SQL → 정상 Drizzle ORM으로 수정
-- 기존 117개 레슨 backfill 완료: transcript_ready=70, done=48, none=25(YouTube/영상없음)
+- 강사 포털 Q&A 관리 페이지 완성: 질문 목록(필터/상태배지) + 상세 + 답변 작성/수정
+- FIX: /instructor/qa API stub → 실제 구현 (getInstructorQuestions), import 경로 오류 수정
+- FIX: 좋아요/싫어요 반영 안 되는 버그 — DB 트리거 의존 → 수동 카운트 갱신으로 교체
+- 강사 포털 nav에 Q&A 관리 링크 추가
 
 ## DB 데이터 픽스 규칙 (영구)
 
