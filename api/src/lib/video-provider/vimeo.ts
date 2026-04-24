@@ -1,5 +1,47 @@
 import type { VideoProvider, VideoMetadata } from './types';
 
+export async function getVimeoTranscript(videoUrl: string): Promise<string | null> {
+  const match = videoUrl.match(/vimeo\.com\/(\d+)/);
+  if (!match) return null;
+  const videoId = match[1];
+
+  const token = process.env.VIMEO_ACCESS_TOKEN;
+  if (!token) return null;
+
+  try {
+    // 1. texttracks 목록 조회
+    const res = await fetch(`https://api.vimeo.com/videos/${videoId}/texttracks`, {
+      headers: { Authorization: `bearer ${token}` },
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json() as { data?: { link?: string; language?: string }[] };
+    const track = data.data?.find(t => t.language?.startsWith('ko')) ?? data.data?.[0];
+    if (!track?.link) return null;
+
+    // 2. VTT 파일 다운로드
+    const vttRes = await fetch(track.link);
+    if (!vttRes.ok) return null;
+    const vtt = await vttRes.text();
+
+    // 3. VTT → 순수 텍스트 변환 (타임코드·태그 제거)
+    const lines = vtt.split('\n');
+    const textLines: string[] = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === 'WEBVTT' || trimmed.includes('-->') || /^\d+$/.test(trimmed)) continue;
+      const clean = trimmed.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
+      if (clean) textLines.push(clean);
+    }
+
+    // 중복 인접 라인 제거 후 합치기
+    const deduped = textLines.filter((line, i) => line !== textLines[i - 1]);
+    return deduped.join(' ').trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export class VimeoProvider implements VideoProvider {
   extractId(url: string): string | null {
     const match = url.match(/(?:vimeo\.com\/)(\d+)/);

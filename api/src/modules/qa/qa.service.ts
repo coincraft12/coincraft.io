@@ -8,7 +8,11 @@ import {
   users,
   lessons,
   courses,
+  enrollments,
 } from '@/db/schema';
+import { generateAIAnswer } from '@/lib/anthropic';
+import { sendQuestionToInstructorEmail } from '@/lib/email';
+import { getVimeoTranscript } from '@/lib/video-provider/vimeo';
 
 // ===== Types =====
 export interface CreateQuestionInput {
@@ -222,17 +226,40 @@ export async function addInstructorAnswer(
   instructorId: string,
   instructorRevision: string
 ) {
+  // 기존 강사 답변이 있으면 UPDATE, 없으면 INSERT
+  const [existing] = await db
+    .select({ id: answers.id })
+    .from(answers)
+    .where(and(eq(answers.questionId, questionId), eq(answers.type, 'instructor')))
+    .limit(1);
+
+  if (existing) {
+    const [answer] = await db
+      .update(answers)
+      .set({
+        content: instructorRevision,
+        instructorRevision,
+        instructorRevisedBy: instructorId,
+        instructorRevisedAt: new Date(),
+        status: 'instructor_revised',
+      })
+      .where(eq(answers.id, existing.id))
+      .returning();
+    return answer;
+  }
+
   const [answer] = await db
-    .update(answers)
-    .set({
+    .insert(answers)
+    .values({
+      questionId,
+      userId: instructorId,
+      content: instructorRevision,
+      type: 'instructor',
+      status: 'instructor_revised',
       instructorRevision,
       instructorRevisedBy: instructorId,
       instructorRevisedAt: new Date(),
-      status: 'instructor_revised',
     })
-    .where(
-      and(eq(answers.questionId, questionId), eq(answers.type, 'instructor'))
-    )
     .returning();
 
   return answer;
@@ -360,6 +387,86 @@ export async function deleteReview(reviewId: string) {
   await db.delete(lessonReviews).where(eq(lessonReviews.id, reviewId));
 }
 
+// ===== AI Answer Trigger =====
+
+export async function triggerAIAnswerForQuestion(questionId: string) {
+  try {
+    // 질문 + 강의 + 강사 정보 조회
+    const [q] = await db
+      .select({
+        id: questions.id,
+        title: questions.title,
+        content: questions.content,
+        courseName: courses.title,
+        lessonTitle: lessons.title,
+        lessonTranscript: lessons.transcript,
+        lessonTextContent: lessons.textContent,
+        lessonVideoUrl: lessons.videoUrl,
+        instructorId: courses.instructorId,
+        instructorEmail: users.email,
+        instructorName: users.name,
+      })
+      .from(questions)
+      .leftJoin(lessons, eq(questions.lessonId, lessons.id))
+      .leftJoin(courses, eq(questions.courseId, courses.id))
+      .leftJoin(users, eq(courses.instructorId, users.id))
+      .where(eq(questions.id, questionId));
+
+    if (!q) return;
+
+    // 컨텍스트 우선순위: DB transcript → textContent → Vimeo 실시간 fetch
+    let lessonContent = q.lessonTranscript || q.lessonTextContent || '';
+    if (!lessonContent && q.lessonVideoUrl) {
+      const transcript = await getVimeoTranscript(q.lessonVideoUrl);
+      if (transcript) {
+        lessonContent = transcript;
+        await db.update(lessons)
+          .set({ transcript, notesStatus: 'transcript_ready' })
+          .where(eq(lessons.videoUrl, q.lessonVideoUrl!));
+      }
+    }
+
+    // AI 답변 생성
+    const aiResponse = await generateAIAnswer({
+      courseName: q.courseName || '강의',
+      lessonTitle: q.lessonTitle || '강의',
+      lessonContent: lessonContent || '(강의 내용 없음)',
+      questionTitle: q.title,
+      questionContent: q.content,
+    });
+
+    // DB 저장
+    await db.insert(answers).values({
+      questionId: q.id,
+      userId: null,
+      content: aiResponse.content,
+      type: 'ai',
+      status: 'ai_answered',
+      aiModel: aiResponse.model,
+      aiTokensUsed: aiResponse.tokensUsed,
+    });
+
+    console.log(`[QA] AI answer created for question ${questionId}`);
+
+    // 강사 이메일 발송
+    if (q.instructorEmail) {
+      await sendQuestionToInstructorEmail({
+        instructorEmail: q.instructorEmail,
+        instructorName: q.instructorName || '강사님',
+        questionTitle: q.title,
+        questionContent: q.content,
+        aiAnswer: aiResponse.content,
+        courseName: q.courseName || '강의',
+        lessonTitle: q.lessonTitle || '강의',
+        questionId: q.id,
+      });
+      console.log(`[QA] Instructor email sent for question ${questionId}`);
+    }
+  } catch (error) {
+    console.error(`[QA] triggerAIAnswer failed for ${questionId}:`, error);
+  }
+}
+
 // ===== Helper Functions =====
 
 export async function getLessonWithCourse(lessonId: string) {
@@ -403,11 +510,11 @@ export async function isUserEnrolled(
   userId: string,
   courseId: string
 ): Promise<boolean> {
-  // enrollments 테이블에서 확인
   const [result] = await db
-    .select({ exists: sql<boolean>`true` })
-    .from(sql`enrollments`)
-    .where(sql`user_id = ${userId} AND course_id = ${courseId}`);
+    .select({ id: enrollments.id })
+    .from(enrollments)
+    .where(and(eq(enrollments.userId, userId), eq(enrollments.courseId, courseId)))
+    .limit(1);
 
   return !!result;
 }

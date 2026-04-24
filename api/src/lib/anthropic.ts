@@ -38,7 +38,7 @@ ${input.lessonContent}
 답변은 학생이 이해하기 쉬운 언어로 작성해주세요.`;
 
   const message = await client.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-sonnet-4-5',
     max_tokens: 1024,
     messages: [
       {
@@ -53,16 +53,46 @@ ${input.lessonContent}
 
   return {
     content,
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-sonnet-4-5',
     tokensUsed,
   };
+}
+
+export async function generateLectureNotes(input: {
+  lessonTitle: string;
+  courseName: string;
+  transcript: string;
+}): Promise<string> {
+  const prompt = `당신은 온라인 강의 플랫폼의 콘텐츠 편집자입니다.
+아래는 "${input.courseName}" 강좌의 "${input.lessonTitle}" 강의 영상 자막입니다.
+이 자막을 바탕으로 수강생이 복습하기 좋은 강의노트를 마크다운 형식으로 작성해주세요.
+
+[작성 규칙]
+- 핵심 개념과 용어는 **굵게** 표시
+- 중요 흐름은 번호 목록으로 정리
+- 보충 설명은 인용 블록(>) 활용
+- 코드나 명령어가 있으면 코드 블록 사용
+- 분량: 강의 내용에 비례하게, 너무 짧거나 과도하게 길지 않게
+
+[자막]
+${input.transcript.slice(0, 8000)}
+
+위 자막 내용을 바탕으로 강의노트를 작성해주세요.`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 2048,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  return message.content[0].type === 'text' ? message.content[0].text : '';
 }
 
 export async function analyzeQuestionDifficulty(
   questionContent: string
 ): Promise<'easy' | 'medium' | 'hard'> {
   const message = await client.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-sonnet-4-5',
     max_tokens: 100,
     messages: [
       {

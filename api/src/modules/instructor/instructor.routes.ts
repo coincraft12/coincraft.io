@@ -105,6 +105,10 @@ export async function instructorRoutes(app: FastifyInstance): Promise<void> {
       });
     }
     const lesson = await instructorService.addLesson(request.user!.id, id, body.data);
+    // 영상 있으면 자동으로 스크립트만 백그라운드 저장
+    if (lesson.videoUrl && lesson.videoProvider === 'vimeo') {
+      instructorService.fetchTranscriptBackground(lesson.id, lesson.videoUrl).catch(console.error);
+    }
     return reply.code(201).send(created(lesson, '레슨이 추가되었습니다.'));
   });
 
@@ -126,7 +130,39 @@ export async function instructorRoutes(app: FastifyInstance): Promise<void> {
       });
     }
     const lesson = await instructorService.updateLesson(request.user!.id, id, body.data);
+    // videoUrl이 변경됐고 vimeo면 스크립트만 재수집
+    if (body.data.videoUrl && lesson.videoProvider === 'vimeo') {
+      instructorService.fetchTranscriptBackground(lesson.id, lesson.videoUrl!).catch(console.error);
+    }
     return reply.send(ok(lesson));
+  });
+
+  // POST /api/v1/instructor/lessons/:id/generate-notes — 스크립트+강의노트 생성 트리거
+  app.post('/lessons/:id/generate-notes', { preHandler }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const lesson = await instructorService.getLessonForEdit(request.user!.id, id);
+    if (!lesson) return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: '레슨을 찾을 수 없습니다.' } });
+    if (!lesson.videoUrl) return reply.code(400).send({ success: false, error: { code: 'NO_VIDEO', message: '영상이 등록되지 않았습니다.' } });
+
+    // 즉시 202 반환 후 강의노트만 백그라운드 생성
+    reply.code(202).send({ success: true, data: { status: 'notes_processing' } });
+    instructorService.generateNotesBackground(id).catch(console.error);
+  });
+
+  // POST /api/v1/instructor/lessons/:id/fetch-transcript — 자막만 수동 수집
+  app.post('/lessons/:id/fetch-transcript', { preHandler }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const lesson = await instructorService.getLessonForEdit(request.user!.id, id);
+    if (!lesson?.videoUrl) return reply.code(400).send({ success: false, error: { code: 'NO_VIDEO', message: '영상이 등록되지 않았습니다.' } });
+    reply.code(202).send({ success: true, data: { status: 'transcript_processing' } });
+    instructorService.fetchTranscriptBackground(id, lesson.videoUrl).catch(console.error);
+  });
+
+  // GET /api/v1/instructor/lessons/:id/notes-status — 생성 상태 조회
+  app.get('/lessons/:id/notes-status', { preHandler }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const status = await instructorService.getNotesStatus(id);
+    return reply.send(ok(status));
   });
 
   // DELETE /api/v1/instructor/lessons/:id — 레슨 삭제

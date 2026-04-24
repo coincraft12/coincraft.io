@@ -12,6 +12,8 @@ import {
   wishlists,
 } from '../../db/schema';
 import { generateSlug } from '../../utils/slug';
+import { getVimeoTranscript } from '../../lib/video-provider/vimeo';
+import { generateLectureNotes } from '../../lib/anthropic';
 import type {
   CreateCourseInput,
   UpdateCourseInput,
@@ -366,6 +368,8 @@ export interface LessonItem {
   isPublished: boolean;
   order: number;
   createdAt: Date;
+  textContent?: string | null;
+  notesStatus?: string;
 }
 
 export async function addLesson(
@@ -726,7 +730,84 @@ export async function getLessonForEdit(instructorId: string, lessonId: string): 
     order: lesson.order,
     createdAt: lesson.createdAt,
     textContent: lesson.textContent ?? null,
+    notesStatus: lesson.notesStatus ?? 'none',
   };
+}
+
+// ─── Notes Generation ─────────────────────────────────────────────────────────
+
+export async function getNotesStatus(lessonId: string) {
+  const [lesson] = await db
+    .select({
+      notesStatus: lessons.notesStatus,
+      transcript: lessons.transcript,
+      textContent: lessons.textContent,
+    })
+    .from(lessons)
+    .where(eq(lessons.id, lessonId))
+    .limit(1);
+
+  return {
+    status: lesson?.notesStatus ?? 'none',
+    hasTranscript: !!lesson?.transcript,
+    hasNotes: !!lesson?.textContent,
+  };
+}
+
+// 스크립트만 저장 (레슨 저장 시 자동 실행)
+export async function fetchTranscriptBackground(lessonId: string, videoUrl: string): Promise<void> {
+  try {
+    await db.update(lessons).set({ notesStatus: 'transcript_processing' }).where(eq(lessons.id, lessonId));
+
+    const transcript = await getVimeoTranscript(videoUrl);
+    if (!transcript) {
+      await db.update(lessons).set({ notesStatus: 'error' }).where(eq(lessons.id, lessonId));
+      console.error(`[Notes] Transcript not found for lesson ${lessonId}`);
+      return;
+    }
+
+    await db.update(lessons)
+      .set({ transcript, notesStatus: 'transcript_ready' })
+      .where(eq(lessons.id, lessonId));
+
+    console.log(`[Notes] Transcript saved for lesson ${lessonId} (${transcript.length} chars)`);
+  } catch (error) {
+    console.error(`[Notes] Transcript fetch failed for lesson ${lessonId}:`, error);
+    await db.update(lessons).set({ notesStatus: 'error' }).where(eq(lessons.id, lessonId));
+  }
+}
+
+// 강의노트 생성 (강사가 버튼 클릭 시 실행)
+export async function generateNotesBackground(lessonId: string): Promise<void> {
+  try {
+    const [lessonInfo] = await db
+      .select({ title: lessons.title, courseName: courses.title, transcript: lessons.transcript })
+      .from(lessons)
+      .leftJoin(courses, eq(lessons.courseId, courses.id))
+      .where(eq(lessons.id, lessonId));
+
+    if (!lessonInfo?.transcript) {
+      console.error(`[Notes] No transcript for lesson ${lessonId}`);
+      return;
+    }
+
+    await db.update(lessons).set({ notesStatus: 'notes_processing' }).where(eq(lessons.id, lessonId));
+
+    const notes = await generateLectureNotes({
+      lessonTitle: lessonInfo.title ?? '강의',
+      courseName: lessonInfo.courseName ?? '강좌',
+      transcript: lessonInfo.transcript,
+    });
+
+    await db.update(lessons)
+      .set({ textContent: notes, notesStatus: 'done' })
+      .where(eq(lessons.id, lessonId));
+
+    console.log(`[Notes] Lecture notes generated for lesson ${lessonId}`);
+  } catch (error) {
+    console.error(`[Notes] Notes generation failed for lesson ${lessonId}:`, error);
+    await db.update(lessons).set({ notesStatus: 'error' }).where(eq(lessons.id, lessonId));
+  }
 }
 
 // ─── Delete Course ────────────────────────────────────────────────────────────

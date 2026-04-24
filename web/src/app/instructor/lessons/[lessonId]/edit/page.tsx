@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use, useEffect } from 'react';
+import { useState, use, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
@@ -55,7 +55,151 @@ interface LessonDetailResponse {
     isPublished: boolean;
     textContent: string | null;
     order: number;
+    notesStatus?: string;
   };
+}
+
+type NotesStatus = 'none' | 'transcript_processing' | 'transcript_ready' | 'notes_processing' | 'done' | 'error';
+
+interface NotesStatusResponse {
+  success: boolean;
+  data: { status: NotesStatus; hasTranscript: boolean; hasNotes: boolean };
+}
+
+function NotesGenerateButton({
+  lessonId,
+  token,
+  initialStatus = 'none',
+  onDone,
+}: {
+  lessonId: string;
+  token: string;
+  initialStatus?: NotesStatus;
+  onDone: () => void;
+}) {
+  const [status, setStatus] = useState<NotesStatus>(initialStatus);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 자막 수집 중이면 자동 폴링 시작
+  useEffect(() => {
+    if (status === 'transcript_processing') startPolling();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  function startPolling() {
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await apiClient.get<NotesStatusResponse>(
+          `/api/v1/instructor/lessons/${lessonId}/notes-status`,
+          { token }
+        );
+        const s = res.data.status as NotesStatus;
+        setStatus(s);
+        if (s === 'transcript_ready' || s === 'done' || s === 'error') {
+          clearInterval(pollRef.current!);
+          if (s === 'done') onDone();
+        }
+      } catch {
+        clearInterval(pollRef.current!);
+      }
+    }, 3000);
+  }
+
+  async function handleGenerateNotes() {
+    setStatus('notes_processing');
+    try {
+      await apiClient.post(`/api/v1/instructor/lessons/${lessonId}/generate-notes`, {}, { token });
+      startPolling();
+    } catch {
+      setStatus('error');
+    }
+  }
+
+  async function handleFetchTranscript() {
+    setStatus('transcript_processing');
+    try {
+      await apiClient.post(`/api/v1/instructor/lessons/${lessonId}/fetch-transcript`, {}, { token });
+      startPolling();
+    } catch {
+      setStatus('error');
+    }
+  }
+
+  if (status === 'transcript_processing') {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm text-cc-muted">
+          <span className="inline-block animate-spin">⟳</span>
+          <span>자막 수집 중... (잠시 후 강의노트 생성 버튼이 나타납니다)</span>
+        </div>
+        <div className="w-full bg-white/10 rounded-full h-1">
+          <div className="bg-white/30 h-1 rounded-full animate-pulse w-1/3" />
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'notes_processing') {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm text-cc-accent">
+          <span className="inline-block animate-spin">⟳</span>
+          <span>강의노트 작성 중...</span>
+        </div>
+        <div className="w-full bg-white/10 rounded-full h-1">
+          <div className="bg-cc-accent h-1 rounded-full animate-pulse w-2/3" />
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'transcript_ready') {
+    return (
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleGenerateNotes}
+          className="px-4 py-2 text-sm font-medium rounded bg-cc-accent/20 text-cc-accent border border-cc-accent/40 hover:bg-cc-accent/30 transition-colors"
+        >
+          ✨ 강의노트 자동 생성
+        </button>
+        <span className="text-xs text-emerald-400">자막 수집 완료</span>
+      </div>
+    );
+  }
+
+  if (status === 'done') {
+    return (
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleGenerateNotes}
+          className="px-4 py-2 text-sm font-medium rounded bg-white/5 text-cc-muted border border-white/10 hover:bg-white/10 transition-colors"
+        >
+          강의노트 재생성
+        </button>
+        <span className="text-xs text-emerald-400">✓ 강의노트 생성 완료</span>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return <p className="text-sm text-red-400">자막 수집 실패 — Vimeo 자동 자막이 아직 준비되지 않았을 수 있습니다. 잠시 후 다시 저장해보세요.</p>;
+  }
+
+  // none: 자막 수집 전 — 수동 트리거 버튼
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={handleFetchTranscript}
+        className="px-4 py-2 text-sm font-medium rounded bg-white/5 text-cc-muted border border-white/10 hover:bg-white/10 transition-colors"
+      >
+        자막 수집 시작
+      </button>
+      <span className="text-xs text-cc-muted">아직 자막이 수집되지 않았습니다</span>
+    </div>
+  );
 }
 
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
@@ -239,6 +383,25 @@ export default function EditLessonPage({ params }: { params: Promise<{ lessonId:
               />
             )}
           </>
+        )}
+
+        {form.type === 'video' && form.videoProvider === 'vimeo' && form.videoUrl && (
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-cc-text">강의노트 자동 생성</label>
+            <NotesGenerateButton
+              lessonId={lessonId}
+              token={token ?? ''}
+              initialStatus={(lessonData?.notesStatus as NotesStatus) ?? 'none'}
+              onDone={async () => {
+                // 생성 완료 후 강의노트 다시 로드
+                const res = await apiClient.get<LessonDetailResponse>(
+                  `/api/v1/instructor/lessons/${lessonId}`,
+                  { token: token ?? undefined }
+                );
+                markDirty({ textContent: res.data.textContent ?? '' });
+              }}
+            />
+          </div>
         )}
 
         <MarkdownEditor

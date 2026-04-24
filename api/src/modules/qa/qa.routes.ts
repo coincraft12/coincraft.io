@@ -19,6 +19,7 @@ import {
   getQuestionWithLesson,
   getLessonWithCourse,
   isUserEnrolled,
+  triggerAIAnswerForQuestion,
 } from './qa.service';
 
 // ===== Schemas =====
@@ -77,16 +78,19 @@ export default async function qaRoutes(app: FastifyInstance) {
           });
         }
 
-        // 수강 여부 확인
-        const isEnrolled = await isUserEnrolled(userId, lesson.courseId);
-        if (!isEnrolled) {
-          return reply.code(403).send({
-            success: false,
-            error: {
-              code: 'NOT_ENROLLED',
-              message: '이 강의를 수강 중인 학생만 질문할 수 있습니다.',
-            },
-          });
+        // 수강 여부 확인 (강사 본인은 예외)
+        const isInstructor = lesson.instructorId === userId;
+        if (!isInstructor) {
+          const isEnrolled = await isUserEnrolled(userId, lesson.courseId);
+          if (!isEnrolled) {
+            return reply.code(403).send({
+              success: false,
+              error: {
+                code: 'NOT_ENROLLED',
+                message: '이 강의를 수강 중인 학생만 질문할 수 있습니다.',
+              },
+            });
+          }
         }
 
         // 질문 생성
@@ -97,8 +101,8 @@ export default async function qaRoutes(app: FastifyInstance) {
           input
         );
 
-        // 백그라운드에서 AI 답변 생성 (비동기 - 지금은 스킵, Phase 3에서 구현)
-        // triggerAIAnswerGeneration(question.id);
+        // 백그라운드에서 AI 답변 생성 + 강사 이메일 발송 (fire-and-forget)
+        triggerAIAnswerForQuestion(question.id).catch(() => {});
 
         reply.code(201).send(
           created(
@@ -380,16 +384,19 @@ export default async function qaRoutes(app: FastifyInstance) {
           });
         }
 
-        // 수강 여부 확인
-        const isEnrolled = await isUserEnrolled(userId, lesson.courseId);
-        if (!isEnrolled) {
-          return reply.code(403).send({
-            success: false,
-            error: {
-              code: 'NOT_ENROLLED',
-              message: '이 강의를 수강 중인 학생만 후기를 작성할 수 있습니다.',
-            },
-          });
+        // 수강 여부 확인 (강사 본인은 예외)
+        const isInstructor = lesson.instructorId === userId;
+        if (!isInstructor) {
+          const isEnrolled = await isUserEnrolled(userId, lesson.courseId);
+          if (!isEnrolled) {
+            return reply.code(403).send({
+              success: false,
+              error: {
+                code: 'NOT_ENROLLED',
+                message: '이 강의를 수강 중인 학생만 후기를 작성할 수 있습니다.',
+              },
+            });
+          }
         }
 
         // 후기 작성
@@ -444,29 +451,6 @@ export default async function qaRoutes(app: FastifyInstance) {
     }
   );
 
-  // 후기 삭제 (본인만)
-  app.delete<{ Params: { reviewId: string } }>(
-    '/reviews/:reviewId',
-    { preHandler: [authenticate] },
-    async (request, reply) => {
-      try {
-        const { reviewId } = request.params;
-        const userId = request.user!.id;
-
-        // TODO: 본인 확인 (현재는 스킵)
-
-        await deleteReview(reviewId);
-
-        reply.send(ok({}, '후기가 삭제되었습니다.'));
-      } catch (error) {
-        console.error('[QA] Error deleting review:', error);
-        reply.code(500).send({
-          success: false,
-          error: { code: 'INTERNAL_ERROR', message: '후기 삭제에 실패했습니다.' },
-        });
-      }
-    }
-  );
 
   // ===== Instructor Dashboard Routes =====
 

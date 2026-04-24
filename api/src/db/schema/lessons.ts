@@ -14,6 +14,8 @@ export const lessons = pgTable('lessons', {
   isPreview: boolean('is_preview').notNull().default(false),
   isPublished: boolean('is_published').notNull().default(false),
   textContent: text('text_content'),
+  transcript: text('transcript'),
+  notesStatus: varchar('notes_status', { length: 20 }).notNull().default('none'),
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

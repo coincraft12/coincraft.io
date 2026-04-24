@@ -39,6 +39,14 @@ export default function VimeoUploader({
       .catch(() => {});
   }, [existingUrl, uploadedFileName]);
 
+  // 마운트 시: 새 레슨(existingUrl 없음)이면 이전 업로드 상태 초기화
+  useEffect(() => {
+    if (!existingUrl) {
+      reset();
+      return;
+    }
+  }, []);
+
   // 마운트 시: 스토어의 완료 URL이 현재 레슨과 다르면 초기화
   useEffect(() => {
     if (resultUrl && existingUrl && resultUrl !== existingUrl) {

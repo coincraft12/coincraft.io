@@ -6,17 +6,18 @@
 ## 현재 상태
 | 항목 | 내용 |
 |---|---|
-| 단계 | 코드 감사 지적사항 전건 수정 완료 |
-| 마지막 업데이트 | 2026-04-24 |
+| 단계 | Q&A AI 답변 + Vimeo transcript 기반 강의노트 자동생성 구현 완료 (로컬) |
+| 마지막 업데이트 | 2026-04-25 |
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
-## 마지막 작업 (2026-04-24)
-- 법적 문서 WordPress 원본으로 교체: 이용약관(7조→27조), 개인정보처리방침(6섹션→14섹션), 환불정책(ComingSoon→9섹션 완전판) — 시행일 2026-01-19
-- cert/apply: 버튼 위 "현재 0명 접수 완료" 텍스트 제거 (정원초과·잔여5석 이하만 표시)
-- 운영 DB: coincraft.edu@gmail.com, eungjungkim0110@gmail.com → role=admin + 7개 전과정 enrollments 등록
-- FIX: 위시리스트 — 수강 중인 강좌는 위시리스트 토글/조회 시 항상 false 반환 (wishlist.service.ts)
-- FIX: 위시리스트 버튼 — isEnrolled=true이면 버튼 숨김 (wishlist-button.tsx + courses/[slug]/page.tsx)
-- FIX: 레슨 자물쇠 아이콘 — 수강등록 후에도 🔒 표시되던 버그 수정 (canAccess 기준으로 아이콘 결정)
+## 마지막 작업 (2026-04-25)
+- Q&A: AI 즉시 답변 + 강사 이메일 발송 (claude-sonnet-4-5, 404 에러 수정)
+- Vimeo 자막(transcript) DB 저장 + 강의노트 자동생성 파이프라인 구축 (레슨 등록/수정 시 자동 트리거)
+- DB: lessons 테이블에 transcript, notes_status 컬럼 추가 (직접 ALTER TABLE 적용)
+- 레슨 등록/수정 페이지에 노트 생성 상태 UI 추가 (진행 표시, 수동 생성 버튼)
+- FIX: VimeoUploader 이전 레슨 파일명 잔존 버그 수정 (Zustand reset on mount)
+- FIX: isUserEnrolled — 잘못된 raw SQL → 정상 Drizzle ORM으로 수정
+- 기존 117개 레슨 backfill 완료: transcript_ready=70, done=48, none=25(YouTube/영상없음)
 
 ## DB 데이터 픽스 규칙 (영구)
 
@@ -34,4 +35,6 @@
 - [x] 운영 배포 완료 ✅ (2026-04-24)
 - [x] on-chain-signals [4-1]~[4-3] Vimeo URL 수정 ✅ (2026-04-24, 3개 환경 모두)
 - [ ] **[4-4] 나만의 쿼리 작성 레슨 Vimeo URL 교체** — Sharon이 올바른 Vimeo URL 제공 필요
-- [ ] 인프런 벤치마킹 기반 기능 (Q&A, 로드맵, 쿠폰, 수강생 현황)
+- [ ] 스테이징 배포 및 동작 확인 (Q&A + 강의노트 기능)
+- [ ] 버그/오류 전체 재점검 (다음 세션)
+- [ ] 인프런 벤치마킹 기반 기능 (로드맵, 쿠폰, 수강생 현황)
