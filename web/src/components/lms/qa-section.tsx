@@ -46,6 +46,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [reactionError, setReactionError] = useState<string | null>(null);
 
   // 질문 목록 조회
   const { data: response, isLoading: questionsLoading, refetch: refetchQuestions } = useQuery({
@@ -93,14 +94,19 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
   // 답변 평가
   const reactToAnswer = useMutation({
     mutationFn: async ({ answerId, reactionType }: { answerId: string; reactionType: 'helpful' | 'unhelpful' }) => {
+      if (!token) throw new Error('로그인이 필요합니다.');
       await apiClient.post(
         `/api/v1/answers/${answerId}/reaction`,
         { reactionType },
-        { token: token ?? undefined }
+        { token }
       );
     },
     onSuccess: () => {
+      setReactionError(null);
       queryClient.invalidateQueries({ queryKey: ['question', expandedQuestion] });
+    },
+    onError: (err) => {
+      setReactionError(err instanceof Error ? err.message : '평가 처리에 실패했습니다.');
     },
   });
 
@@ -235,7 +241,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                                 <p className="text-cc-text">{answer.instructorRevision}</p>
                               </div>
                             )}
-                            <div className="flex gap-3 text-sm">
+                            <div className="flex gap-3 text-sm flex-wrap items-center">
                               <button
                                 onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'helpful' })}
                                 disabled={reactToAnswer.isPending}
@@ -250,6 +256,9 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                               >
                                 👎 도움 안 됨 ({answer.unhelpfulCount})
                               </button>
+                              {reactionError && (
+                                <span className="text-xs text-amber-400">{reactionError}</span>
+                              )}
                             </div>
                           </div>
                         ))

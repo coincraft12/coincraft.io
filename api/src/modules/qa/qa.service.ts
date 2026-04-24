@@ -233,8 +233,9 @@ export async function addInstructorAnswer(
     .where(and(eq(answers.questionId, questionId), eq(answers.type, 'instructor')))
     .limit(1);
 
+  let answer;
   if (existing) {
-    const [answer] = await db
+    const [updated] = await db
       .update(answers)
       .set({
         content: instructorRevision,
@@ -245,22 +246,28 @@ export async function addInstructorAnswer(
       })
       .where(eq(answers.id, existing.id))
       .returning();
-    return answer;
+    answer = updated;
+  } else {
+    const [inserted] = await db
+      .insert(answers)
+      .values({
+        questionId,
+        userId: instructorId,
+        content: instructorRevision,
+        type: 'instructor',
+        status: 'instructor_revised',
+        instructorRevision,
+        instructorRevisedBy: instructorId,
+        instructorRevisedAt: new Date(),
+      })
+      .returning();
+    answer = inserted;
   }
 
-  const [answer] = await db
-    .insert(answers)
-    .values({
-      questionId,
-      userId: instructorId,
-      content: instructorRevision,
-      type: 'instructor',
-      status: 'instructor_revised',
-      instructorRevision,
-      instructorRevisedBy: instructorId,
-      instructorRevisedAt: new Date(),
-    })
-    .returning();
+  // 질문 상태 completed로 업데이트
+  await db.update(questions)
+    .set({ status: 'completed' })
+    .where(eq(questions.id, questionId));
 
   return answer;
 }
@@ -492,6 +499,11 @@ export async function triggerAIAnswerForQuestion(questionId: string) {
       aiModel: aiResponse.model,
       aiTokensUsed: aiResponse.tokensUsed,
     });
+
+    // 질문 상태 ai_answered로 업데이트
+    await db.update(questions)
+      .set({ status: 'ai_answered' })
+      .where(eq(questions.id, q.id));
 
     console.log(`[QA] AI answer created for question ${questionId}`);
 

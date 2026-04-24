@@ -11,13 +11,13 @@
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
-- Q&A: AI 즉시 답변 + 강사 이메일 발송 (claude-sonnet-4-5, 404 에러 수정)
-- Vimeo 자막(transcript) DB 저장 + 강의노트 자동생성 파이프라인 구축 (레슨 등록/수정 시 자동 트리거)
-- DB: lessons 테이블에 transcript, notes_status 컬럼 추가 (직접 ALTER TABLE 적용)
-- 강사 포털 Q&A 관리 페이지 완성: 질문 목록(필터/상태배지) + 상세 + 답변 작성/수정
-- FIX: /instructor/qa API stub → 실제 구현 (getInstructorQuestions), import 경로 오류 수정
-- FIX: 좋아요/싫어요 반영 안 되는 버그 — DB 트리거 의존 → 수동 카운트 갱신으로 교체
-- 강사 포털 nav에 Q&A 관리 링크 추가
+- Q&A: AI 즉시 답변 + 강사 이메일 발송 (claude-sonnet-4-5), Vimeo transcript 컨텍스트 연동
+- 강사 포털 Q&A 관리 페이지: 질문 목록(필터/상태배지) + 상세 + 답변 작성/수정
+- FIX: questions.status 업데이트 누락 — AI 답변 시 'ai_answered', 강사 답변 시 'completed' 갱신
+- FIX: 강사 대시보드 필터 변경 시 선택 초기화 누락
+- FIX: qa-section 반응 버튼 비로그인/실패 시 에러 피드백 없음
+- FIX: 좋아요/싫어요 카운트 DB 트리거 의존 → 수동 UPDATE로 교체
+- FIX: /instructor/qa API stub → 실제 구현 (getInstructorQuestions)
 
 ## DB 데이터 픽스 규칙 (영구)
 

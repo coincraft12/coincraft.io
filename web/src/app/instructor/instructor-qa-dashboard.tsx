@@ -73,6 +73,14 @@ export function InstructorQADashboard() {
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function handleFilterChange(f: FilterStatus) {
+    setFilter(f);
+    setSelectedId(null);
+    setRevision('');
+    setIsEditing(false);
+    setError(null);
+  }
+
   // 질문 목록
   const { data: listRes, isLoading: listLoading } = useQuery({
     queryKey: ['instructor-qa', filter],
@@ -87,7 +95,7 @@ export function InstructorQADashboard() {
 
   const questions = listRes ?? [];
 
-  // 선택된 질문 상세 + 답변
+  // 선택된 질문 상세 + 답변 (질문 바꿀 때 이전 데이터 즉시 제거)
   const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ['instructor-qa-detail', selectedId],
     queryFn: async () => {
@@ -98,6 +106,7 @@ export function InstructorQADashboard() {
       return res.data;
     },
     enabled: !!selectedId,
+    placeholderData: undefined,
   });
 
   const selectedSummary = questions.find((q) => q.id === selectedId);
@@ -150,7 +159,7 @@ export function InstructorQADashboard() {
             {(Object.keys(FILTER_LABELS) as FilterStatus[]).map((s) => (
               <button
                 key={s}
-                onClick={() => setFilter(s)}
+                onClick={() => handleFilterChange(s)}
                 className={`text-xs px-3 py-1 rounded transition ${
                   filter === s
                     ? 'bg-cc-accent text-cc-primary font-medium'
