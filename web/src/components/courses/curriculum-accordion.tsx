@@ -86,7 +86,7 @@ export default function CurriculumAccordion({
                         {lesson.title}
                       </span>
                       <div className="flex items-center gap-2 text-xs text-cc-muted">
-                        {lesson.duration && <span>{formatDuration(lesson.duration)}</span>}
+                        {!!lesson.duration && <span>{formatDuration(lesson.duration)}</span>}
                         {isCompleted ? (
                           <span title="완료">✅</span>
                         ) : canAccess ? (
