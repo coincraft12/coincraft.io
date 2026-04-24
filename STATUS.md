@@ -6,15 +6,15 @@
 ## 현재 상태
 | 항목 | 내용 |
 |---|---|
-| 단계 | 레슨 퀴즈 자동생성 구현 완료 (로컬, 샘플 3개 확인) |
+| 단계 | 강의노트 전체 재생성 완료 (143개) + 마크다운 표 렌더링 수정 |
 | 마지막 업데이트 | 2026-04-25 |
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
+- fix: 마크다운 표 깨짐 — remark-gfm 플러그인 추가 + cc-markdown table CSS 추가
+- fix: 강의노트 전체 재생성 — 143개 노트 토큰 부족으로 잘린 문제 해결 (local + staging 완료)
 - feat: 레슨 퀴즈 자동생성 — lesson_quizzes 테이블, GET /quiz API, QuizSection UI, 퀴즈 탭 추가
-- feat: 강의노트 [5-4강]~[5-6강] 직접 작성 후 DB 저장 (notes_status=done, 3개 완료)
-- FIX: lesson-reviews-section.tsx TypeScript implicit any 에러 (GitHub Actions 빌드 실패 원인)
-- 백필 스크립트: generate-lesson-quizzes.ts (샘플 3개 완료, 전체 실행 대기)
+- FIX: @/ path alias → 상대경로 교체 (빌드 후 MODULE_NOT_FOUND 오류)
 
 ## DB 데이터 픽스 규칙 (영구)
 

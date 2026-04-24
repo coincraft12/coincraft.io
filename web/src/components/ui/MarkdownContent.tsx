@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface MarkdownContentProps {
   content: string;
@@ -8,7 +9,7 @@ interface MarkdownContentProps {
 export default function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
   return (
     <div className={`cc-markdown ${className}`}>
-      <ReactMarkdown>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
   );
 }

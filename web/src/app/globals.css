@@ -110,6 +110,21 @@
   .cc-markdown hr {
     @apply border-white/10 my-4;
   }
+  .cc-markdown table {
+    @apply w-full border-collapse mb-4 text-sm;
+  }
+  .cc-markdown thead tr {
+    @apply border-b border-white/20;
+  }
+  .cc-markdown th {
+    @apply text-left font-semibold text-cc-text px-3 py-2 bg-white/5;
+  }
+  .cc-markdown td {
+    @apply px-3 py-2 border-b border-white/10 text-cc-muted;
+  }
+  .cc-markdown tr:last-child td {
+    @apply border-b-0;
+  }
 
   /* ── Markdown editor dark theme overrides ──────────────────────────── */
   .cc-md-editor .w-md-editor {
