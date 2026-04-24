@@ -12,6 +12,7 @@ import VideoPlayer from '@/components/lms/video-player';
 import MarkdownContent from '@/components/ui/MarkdownContent';
 import { QASection } from '@/components/lms/qa-section';
 import { LessonReviewsSection } from '@/components/lms/lesson-reviews-section';
+import { QuizSection } from '@/components/lms/quiz-section';
 
 interface Material {
   id: string;
@@ -74,8 +75,8 @@ interface ProgressResponse {
   data: Record<string, boolean>;
 }
 
-type TabKey = '강의노트' | '자료' | '강평' | 'Q&A';
-const TABS: TabKey[] = ['강의노트', '자료', '강평', 'Q&A'];
+type TabKey = '강의노트' | '퀴즈' | '자료' | '강평' | 'Q&A';
+const TABS: TabKey[] = ['강의노트', '퀴즈', '자료', '강평', 'Q&A'];
 
 function findNextLessonId(chapters: Chapter[], currentLessonId: string): string | null {
   const allLessons = [...chapters]
@@ -321,6 +322,11 @@ export default function LessonPage() {
             )}
             {activeTab === '강의노트' && !lesson.textContent && (
               <p className="text-cc-muted text-sm pb-4">강의 내용이 없습니다.</p>
+            )}
+            {activeTab === '퀴즈' && (
+              <div className="pb-4">
+                <QuizSection lessonId={lesson.id} />
+              </div>
             )}
             {activeTab === '자료' && (
               <div className="pb-4">

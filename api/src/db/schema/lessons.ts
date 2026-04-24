@@ -16,6 +16,7 @@ export const lessons = pgTable('lessons', {
   textContent: text('text_content'),
   transcript: text('transcript'),
   notesStatus: varchar('notes_status', { length: 20 }).notNull().default('none'),
+  quizStatus: varchar('quiz_status', { length: 20 }).notNull().default('none'),
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

@@ -30,3 +30,4 @@ export * from './questions';
 export * from './answers';
 export * from './answer-reactions';
 export * from './lesson-reviews';
+export * from './lesson-quizzes';

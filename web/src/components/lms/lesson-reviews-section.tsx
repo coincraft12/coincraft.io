@@ -156,7 +156,7 @@ export function LessonReviewsSection({ lessonId }: LessonReviewsSectionProps) {
         <p className="text-cc-muted text-center py-8">아직 후기가 없습니다. 첫 번째 후기를 작성해보세요!</p>
       ) : (
         <div className="space-y-3">
-          {reviews?.map((review) => (
+          {reviews?.map((review: Review) => (
             <div key={review.id} className="cc-glass p-4 border border-white/10">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
