@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import { db } from '@/db';
+import { db } from '../../db';
 import {
   questions,
   answers,
@@ -9,10 +9,10 @@ import {
   lessons,
   courses,
   enrollments,
-} from '@/db/schema';
-import { generateAIAnswer } from '@/lib/anthropic';
-import { sendQuestionToInstructorEmail } from '@/lib/email';
-import { getVimeoTranscript } from '@/lib/video-provider/vimeo';
+} from '../../db/schema';
+import { generateAIAnswer } from '../../lib/anthropic';
+import { sendQuestionToInstructorEmail } from '../../lib/email';
+import { getVimeoTranscript } from '../../lib/video-provider/vimeo';
 
 // ===== Types =====
 export interface CreateQuestionInput {

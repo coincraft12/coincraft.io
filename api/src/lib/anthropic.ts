@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { env } from '@/config/env';
+import { env } from '../config/env';
 
 const ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
 

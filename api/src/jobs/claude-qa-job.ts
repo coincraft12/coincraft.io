@@ -1,9 +1,9 @@
 import cron from 'node-cron';
 import { and, eq } from 'drizzle-orm';
-import { db } from '@/db';
-import { questions, answers, lessons, courses, users } from '@/db/schema';
-import { generateAIAnswer } from '@/lib/anthropic';
-import { sendQuestionToInstructorEmail } from '@/lib/email';
+import { db } from '../db';
+import { questions, answers, lessons, courses, users } from '../db/schema';
+import { generateAIAnswer } from '../lib/anthropic';
+import { sendQuestionToInstructorEmail } from '../lib/email';
 
 /**
  * Q&A AI 답변 자동 생성

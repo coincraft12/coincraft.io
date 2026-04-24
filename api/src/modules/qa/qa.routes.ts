@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { authenticate, optionalAuth } from '@/middleware/authenticate';
-import { ok, created } from '@/utils/response';
+import { authenticate, optionalAuth } from '../../middleware/authenticate';
+import { ok, created } from '../../utils/response';
 import {
   createQuestion,
   getQuestionsByLesson,
