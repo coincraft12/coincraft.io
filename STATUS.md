@@ -6,13 +6,13 @@
 ## 현재 상태
 | 항목 | 내용 |
 |---|---|
-| 단계 | 강의노트 전체 재생성 완료 (143개) + 마크다운 표 렌더링 수정 |
+| 단계 | 강의노트 100개 완전 재생성 완료 (max_tokens 4096) + 마크다운 표 수정 |
 | 마지막 업데이트 | 2026-04-25 |
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
+- fix: 강의노트 100개 재생성 — Claude Haiku + max_tokens 4096, 잘린 노트 완전 해결 (local + staging 완료)
 - fix: 마크다운 표 깨짐 — remark-gfm 플러그인 추가 + cc-markdown table CSS 추가
-- fix: 강의노트 전체 재생성 — 143개 노트 토큰 부족으로 잘린 문제 해결 (local + staging 완료)
 - feat: 레슨 퀴즈 자동생성 — lesson_quizzes 테이블, GET /quiz API, QuizSection UI, 퀴즈 탭 추가
 - FIX: @/ path alias → 상대경로 교체 (빌드 후 MODULE_NOT_FOUND 오류)
 

@@ -80,8 +80,8 @@ ${input.transcript.slice(0, 8000)}
 위 자막 내용을 바탕으로 강의노트를 작성해주세요.`;
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 2048,
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4096,
     messages: [{ role: 'user', content: prompt }],
   });
 
