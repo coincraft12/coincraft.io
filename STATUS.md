@@ -11,11 +11,11 @@
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
-- feat: 관리자 대시보드 Anthropic API 사용 현황 페이지 추가 (토큰/비용/일별차트/모델별)
-- feat: /my 마이페이지 고도화 — 프로필 편집(이름/소개/관심분야/SNS), 아바타 업로드, 학습통계, 연동계정 표시
-- feat: users 테이블 bio/interests/social_links 컬럼 추가 (migration 0019)
-- feat: PATCH /api/v1/auth/me/profile, GET /api/v1/auth/me/stats 엔드포인트 추가
-- fix: 비공개 질문 가시성 — canViewContent 플래그 방식, Q&A 전반 버그 수정 (10패스)
+- feat: 랜딩페이지 풀 비주얼 리뉴얼 — 파티클/오로라/타이핑/스크롤 애니메이션 (framer-motion)
+- feat: 모바일 최적화 — fluid typography, 헤더 풀스크린 메뉴, overflow 방지, 터치 타깃
+- feat: /about 풀 리빌드 — values bento, 5대 트랙, cert 레벨, founder 카드
+- feat: /ej 모바일/데스크탑 완전 다른 레이아웃 (sticky 사이드바 vs 링크인바이오)
+- feat: /my 고도화 + 관리자 Anthropic 사용 현황 + users bio/interests/social_links
 
 ## DB 데이터 픽스 규칙 (영구)
 
