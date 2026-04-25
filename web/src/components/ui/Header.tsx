@@ -147,14 +147,9 @@ export default function Header() {
                 </a>
               )}
               {user.role === 'admin' && (
-                <>
-                  <a href="/admin/payments" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">
-                    결제 관리
-                  </a>
-                  <a href="/admin/book-orders" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">
-                    배송 관리
-                  </a>
-                </>
+                <a href="/admin" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">
+                  관리자 대시보드
+                </a>
               )}
               <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">
                 로그아웃
@@ -229,10 +224,7 @@ export default function Header() {
                   <a href="/instructor" className="text-sm text-cc-accent">강사 포털</a>
                 )}
                 {user.role === 'admin' && (
-                  <>
-                    <a href="/admin/payments" className="text-sm text-yellow-400">결제 관리</a>
-                    <a href="/admin/book-orders" className="text-sm text-yellow-400">배송 관리</a>
-                  </>
+                  <a href="/admin" className="text-sm text-yellow-400">관리자 대시보드</a>
                 )}
                 <button onClick={handleLogout} className="cc-btn cc-btn-primary text-sm px-4 py-2">로그아웃</button>
               </>
