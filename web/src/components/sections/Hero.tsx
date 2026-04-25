@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import ParticleCanvas from '@/components/ui/ParticleCanvas';
 
-const WORDS = ['Web3 신뢰를', '블록체인을', 'AI 에이전트를', '미래 구조를'];
+const WORDS = ['Web3 신뢰를', '블록체인을', '에이전트를', '미래 구조를'];
 
 export default function Hero() {
   const [wordIdx, setWordIdx] = useState(0);
@@ -59,7 +59,7 @@ export default function Hero() {
 
       {/* Content */}
       <motion.div className="cc-container relative z-10 pt-28 pb-20 md:py-32" style={{ y, opacity }}>
-        <div className="max-w-4xl">
+        <div className="max-w-4xl mx-auto text-center">
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -90,7 +90,7 @@ export default function Hero() {
           </motion.h1>
 
           <motion.p
-            className="text-base md:text-xl text-cc-muted mb-8 md:mb-10 leading-relaxed max-w-2xl"
+            className="text-base md:text-xl text-cc-muted mb-8 md:mb-10 leading-relaxed max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
@@ -100,7 +100,7 @@ export default function Hero() {
           </motion.p>
 
           <motion.div
-            className="flex flex-col sm:flex-row gap-3 sm:gap-4"
+            className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.45 }}
@@ -121,7 +121,7 @@ export default function Hero() {
               { num: '3+', label: '출원 특허' },
               { num: '100%', label: 'AI 기반 Q&A' },
             ].map((s) => (
-              <div key={s.label} className="text-center sm:text-left">
+              <div key={s.label} className="text-center">
                 <p className="text-2xl md:text-3xl font-black text-cc-accent">{s.num}</p>
                 <p className="text-xs md:text-sm text-cc-muted mt-1">{s.label}</p>
               </div>
