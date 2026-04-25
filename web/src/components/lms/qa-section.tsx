@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
 import Button from '@/components/ui/Button';
@@ -18,7 +19,7 @@ interface Question {
   viewCount: number;
   isPrivate: boolean;
   canViewContent: boolean;
-  status: 'pending' | 'ai_answering' | 'ai_answered' | 'completed';
+  status: 'open' | 'pending' | 'ai_answering' | 'ai_answered' | 'completed';
 }
 
 interface Answer {
@@ -42,7 +43,15 @@ interface QASectionProps {
   lessonTitle: string;
 }
 
+function stripMarkdown(text: string) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^[-*]\s+/gm, '• ');
+}
+
 export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASectionProps) {
+  const router = useRouter();
   const token = useAuthStore((s) => s.accessToken);
   const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
@@ -52,18 +61,20 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
   const [content, setContent] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reactionError, setReactionError] = useState<string | null>(null);
+  const [reactionErrors, setReactionErrors] = useState<Record<string, string>>({});
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [limit, setLimit] = useState(20);
 
   // 질문 목록 조회
   const { data: response, isLoading: questionsLoading, refetch: refetchQuestions } = useQuery({
-    queryKey: ['questions', lessonId, token],
+    queryKey: ['questions', lessonId, token, limit],
     queryFn: async () => {
-      const res = await apiClient.get<any>(`/api/v1/lessons/${lessonId}/questions?limit=20`, { token: token ?? undefined });
+      const res = await apiClient.get<any>(`/api/v1/lessons/${lessonId}/questions?limit=${limit}`, { token: token ?? undefined });
       return res;
     },
   });
 
-  const questions = response?.data?.questions || [];
+  const questions: Question[] = response?.data?.questions || [];
 
   // 질문 상세 + 답변 조회
   const { data: questionDetail, isLoading: detailLoading } = useQuery({
@@ -101,19 +112,21 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
   // 답변 평가 (토글)
   const reactToAnswer = useMutation({
     mutationFn: async ({ answerId, reactionType }: { answerId: string; reactionType: 'helpful' | 'unhelpful' }) => {
-      if (!token) throw new Error('로그인이 필요합니다.');
       return apiClient.post(
         `/api/v1/answers/${answerId}/reaction`,
         { reactionType },
-        { token }
+        { token: token! }
       );
     },
-    onSuccess: () => {
-      setReactionError(null);
+    onSuccess: (_, variables) => {
+      setReactionErrors((prev) => { const n = { ...prev }; delete n[variables.answerId]; return n; });
       queryClient.invalidateQueries({ queryKey: ['question', expandedQuestion] });
     },
-    onError: (err) => {
-      setReactionError(err instanceof Error ? err.message : '평가 처리에 실패했습니다.');
+    onError: (err, variables) => {
+      setReactionErrors((prev) => ({
+        ...prev,
+        [variables.answerId]: err instanceof Error ? err.message : '평가 처리에 실패했습니다.',
+      }));
     },
   });
 
@@ -124,7 +137,11 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
     },
     onSuccess: () => {
       setExpandedQuestion(null);
+      setDeleteError(null);
       refetchQuestions();
+    },
+    onError: () => {
+      setDeleteError('질문 삭제에 실패했습니다.');
     },
   });
 
@@ -139,17 +156,40 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
     },
   });
 
+  function handleNewQuestion() {
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    setShowCreateForm(true);
+  }
+
+  function getStatusLabel(status: Question['status']) {
+    switch (status) {
+      case 'open':
+      case 'pending': return '대기 중';
+      case 'ai_answering': return 'AI 작성 중';
+      case 'ai_answered': return 'AI 답변';
+      case 'completed': return '완료';
+    }
+  }
+
+  function getStatusClass(status: Question['status']) {
+    switch (status) {
+      case 'open':
+      case 'pending': return 'bg-yellow-500/20 text-yellow-300';
+      case 'ai_answering': return 'bg-white/10 text-cc-muted';
+      case 'ai_answered': return 'bg-blue-500/20 text-blue-300';
+      case 'completed': return 'bg-green-500/20 text-green-300';
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* 질문 작성 */}
       <div className="cc-glass p-6">
         {!showCreateForm ? (
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => setShowCreateForm(true)}
-            className="w-full"
-          >
+          <Button variant="primary" size="lg" onClick={handleNewQuestion} className="w-full">
             💬 새로운 질문 작성
           </Button>
         ) : (
@@ -186,6 +226,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                 onClick={() => {
                   setTitle('');
                   setContent('');
+                  setIsPrivate(false);
                   setShowCreateForm(false);
                   setError(null);
                 }}
@@ -210,11 +251,12 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
-      ) : questions?.length === 0 ? (
+      ) : questions.length === 0 ? (
         <p className="text-cc-muted text-center py-8">아직 질문이 없습니다. 첫 번째 질문을 작성해보세요!</p>
       ) : (
         <div className="space-y-3">
-          {questions?.map((q: Question) => (
+          {deleteError && <p className="text-red-400 text-sm text-center">{deleteError}</p>}
+          {questions.map((q) => (
             <div key={q.id} className="cc-glass p-4 border border-white/10 hover:border-cc-accent/30 transition-colors">
               <div className="flex items-start justify-between gap-3">
                 {/* 클릭 영역: 제목+메타 */}
@@ -232,22 +274,16 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                       <span className="text-cc-muted italic">🔒 비공개 질문입니다</span>
                     )}
                   </h3>
-                  <p className="text-cc-muted text-sm mt-1">{q.canViewContent ? q.userName : '비공개'} · {new Date(q.createdAt).toLocaleDateString('ko-KR')}</p>
+                  <p className="text-cc-muted text-sm mt-1">
+                    {q.canViewContent ? q.userName : '비공개'} · {new Date(q.createdAt).toLocaleDateString('ko-KR')}
+                  </p>
                   <p className="text-xs text-cc-muted mt-0.5">조회 {q.viewCount}</p>
                 </button>
 
                 {/* 우측: 상태뱃지 + 질문자 전용 컨트롤 */}
                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                  <span className={`text-xs px-3 py-1 rounded font-medium ${
-                    q.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                    q.status === 'ai_answered' ? 'bg-blue-500/20 text-blue-300' :
-                    q.status === 'completed' ? 'bg-green-500/20 text-green-300' :
-                    'bg-white/10 text-cc-muted'
-                  }`}>
-                    {q.status === 'pending' ? '대기 중' :
-                     q.status === 'ai_answering' ? 'AI 작성 중' :
-                     q.status === 'ai_answered' ? 'AI 답변' :
-                     q.status === 'completed' ? '완료' : '상태 미정'}
+                  <span className={`text-xs px-3 py-1 rounded font-medium ${getStatusClass(q.status)}`}>
+                    {getStatusLabel(q.status)}
                   </span>
                   {currentUser?.id === q.userId && (
                     <div className="flex items-center gap-2">
@@ -275,7 +311,6 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               {/* 질문 상세 */}
               {expandedQuestion === q.id && (
                 <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
-
                   {!q.canViewContent ? (
                     <p className="text-cc-muted text-sm text-center py-2">🔒 비공개 질문입니다. 강사와 질문자만 열람할 수 있습니다.</p>
                   ) : detailLoading ? (
@@ -284,7 +319,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                     </div>
                   ) : questionDetail ? (
                     <>
-                      <p className="text-cc-text text-sm">{questionDetail.question?.content}</p>
+                      <p className="text-cc-text text-sm whitespace-pre-wrap">{questionDetail.question?.content}</p>
 
                       {/* 답변 목록 */}
                       {questionDetail.answers?.length === 0 ? (
@@ -305,24 +340,33 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                                 <p className="text-sm text-cc-text mt-1">{answer.userName || 'AI 어시스턴트'}</p>
                               </div>
                             </div>
-                            <p className="text-cc-text text-sm mb-3 whitespace-pre-wrap">{answer.content.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').replace(/^[-*]\s+/gm, '• ')}</p>
+                            <p className="text-cc-text text-sm mb-3 whitespace-pre-wrap">{stripMarkdown(answer.content)}</p>
                             <div className="flex gap-3 text-sm flex-wrap items-center">
-                              <button
-                                onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'helpful' })}
-                                disabled={reactToAnswer.isPending}
-                                className={`transition disabled:opacity-50 ${answer.myReaction === 'helpful' ? 'text-green-400 font-semibold' : 'text-cc-muted hover:text-green-400'}`}
-                              >
-                                👍 도움됨 ({answer.helpfulCount})
-                              </button>
-                              <button
-                                onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'unhelpful' })}
-                                disabled={reactToAnswer.isPending}
-                                className={`transition disabled:opacity-50 ${answer.myReaction === 'unhelpful' ? 'text-red-400 font-semibold' : 'text-cc-muted hover:text-red-400'}`}
-                              >
-                                👎 도움 안 됨 ({answer.unhelpfulCount})
-                              </button>
-                              {reactionError && (
-                                <span className="text-xs text-amber-400">{reactionError}</span>
+                              {token ? (
+                                <>
+                                  <button
+                                    onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'helpful' })}
+                                    disabled={reactToAnswer.isPending}
+                                    className={`transition disabled:opacity-50 ${answer.myReaction === 'helpful' ? 'text-green-400 font-semibold' : 'text-cc-muted hover:text-green-400'}`}
+                                  >
+                                    👍 도움됨 ({answer.helpfulCount})
+                                  </button>
+                                  <button
+                                    onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'unhelpful' })}
+                                    disabled={reactToAnswer.isPending}
+                                    className={`transition disabled:opacity-50 ${answer.myReaction === 'unhelpful' ? 'text-red-400 font-semibold' : 'text-cc-muted hover:text-red-400'}`}
+                                  >
+                                    👎 도움 안 됨 ({answer.unhelpfulCount})
+                                  </button>
+                                  {reactionErrors[answer.id] && (
+                                    <span className="text-xs text-amber-400">{reactionErrors[answer.id]}</span>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-xs text-cc-muted">
+                                  👍 {answer.helpfulCount} · 👎 {answer.unhelpfulCount}
+                                  <span className="ml-2 opacity-60">(로그인 후 평가 가능)</span>
+                                </span>
                               )}
                             </div>
                           </div>
@@ -334,6 +378,16 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               )}
             </div>
           ))}
+
+          {/* 더 보기 */}
+          {questions.length >= limit && (
+            <button
+              onClick={() => setLimit((l) => l + 20)}
+              className="w-full py-3 text-sm text-cc-muted hover:text-cc-text border border-white/10 hover:border-white/20 rounded transition-colors"
+            >
+              더 보기
+            </button>
+          )}
         </div>
       )}
     </div>

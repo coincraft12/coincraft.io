@@ -246,7 +246,7 @@ export function InstructorQADashboard() {
             {aiAnswer && (
               <div className="rounded-lg p-4 border bg-blue-500/10 border-blue-500/20">
                 <p className="text-xs font-semibold text-blue-300 mb-3">🤖 AI 답변</p>
-                <p className="text-cc-text text-sm whitespace-pre-wrap">{aiAnswer.content}</p>
+                <p className="text-cc-text text-sm whitespace-pre-wrap">{aiAnswer.content.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').replace(/^[-*]\s+/gm, '• ')}</p>
                 <div className="flex gap-4 mt-3 pt-3 border-t border-white/10 text-xs text-cc-muted">
                   <span>👍 {aiAnswer.helpfulCount}</span>
                   <span>👎 {aiAnswer.unhelpfulCount}</span>

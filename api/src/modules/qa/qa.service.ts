@@ -104,7 +104,7 @@ export async function createQuestion(
       userId,
       title: input.title,
       content: input.content,
-      status: 'open',
+      status: 'pending',
       isPrivate: input.isPrivate ?? false,
     })
     .returning();
