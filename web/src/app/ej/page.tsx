@@ -56,9 +56,7 @@ export default function EJPage() {
             {/* Glow ring */}
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-cc-accent/20 blur-xl animate-pulse scale-110" />
-              <div className="relative w-24 h-24 rounded-full border-2 border-cc-accent/50 overflow-hidden shadow-lg shadow-cc-accent/20">
-                <Image src="/ej-profile.jpg" alt="EJ Kim" fill className="object-cover object-top" quality={100} />
-              </div>
+              <ProfilePhoto />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-cc-text tracking-tight">EJ Kim</h1>
