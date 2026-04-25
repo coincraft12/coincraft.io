@@ -214,53 +214,47 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
       ) : (
         <div className="space-y-3">
           {questions?.map((q: Question) => (
-            <div key={q.id} className="cc-glass p-4 cursor-pointer hover:border-cc-accent/30 transition-colors border border-white/10">
-              <button
-                onClick={() => setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}
-                className="w-full text-left"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-cc-text flex items-center gap-2">
-                      {q.title}
-                      {q.isPrivate && <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-cc-muted">🔒 비공개</span>}
-                    </h3>
-                    <p className="text-cc-muted text-sm mt-1">{q.userName} · {new Date(q.createdAt).toLocaleDateString('ko-KR')}</p>
-                    <p className="text-xs text-cc-muted mt-1">조회 {q.viewCount}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-xs px-3 py-1 rounded font-medium ${
-                      q.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                      q.status === 'ai_answered' ? 'bg-blue-500/20 text-blue-300' :
-                      q.status === 'completed' ? 'bg-green-500/20 text-green-300' :
-                      'bg-white/10 text-cc-muted'
-                    }`}>
-                      {q.status === 'pending' ? '대기 중' :
-                       q.status === 'ai_answering' ? 'AI 작성 중' :
-                       q.status === 'ai_answered' ? 'AI 답변' :
-                       q.status === 'completed' ? '완료' : '상태 미정'}
-                    </span>
-                  </div>
-                </div>
-              </button>
+            <div key={q.id} className="cc-glass p-4 border border-white/10 hover:border-cc-accent/30 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                {/* 클릭 영역: 제목+메타 */}
+                <button
+                  onClick={() => setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}
+                  className="flex-1 text-left min-w-0"
+                >
+                  <h3 className="text-base font-semibold text-cc-text flex items-center gap-2 flex-wrap">
+                    {q.title}
+                    {q.isPrivate && <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-cc-muted">🔒 비공개</span>}
+                  </h3>
+                  <p className="text-cc-muted text-sm mt-1">{q.userName} · {new Date(q.createdAt).toLocaleDateString('ko-KR')}</p>
+                  <p className="text-xs text-cc-muted mt-0.5">조회 {q.viewCount}</p>
+                </button>
 
-              {/* 질문 상세 */}
-              {expandedQuestion === q.id && (
-                <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
-                  {/* 질문자 전용: 삭제 + 비공개 토글 */}
+                {/* 우측: 상태뱃지 + 질문자 전용 컨트롤 */}
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <span className={`text-xs px-3 py-1 rounded font-medium ${
+                    q.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                    q.status === 'ai_answered' ? 'bg-blue-500/20 text-blue-300' :
+                    q.status === 'completed' ? 'bg-green-500/20 text-green-300' :
+                    'bg-white/10 text-cc-muted'
+                  }`}>
+                    {q.status === 'pending' ? '대기 중' :
+                     q.status === 'ai_answering' ? 'AI 작성 중' :
+                     q.status === 'ai_answered' ? 'AI 답변' :
+                     q.status === 'completed' ? '완료' : '상태 미정'}
+                  </span>
                   {currentUser?.id === q.userId && (
-                    <div className="flex items-center gap-3 pb-2">
-                      <label className="flex items-center gap-1.5 text-xs text-cc-muted cursor-pointer select-none">
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1 text-xs text-cc-muted cursor-pointer select-none" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={q.isPrivate}
                           onChange={(e) => togglePrivacy.mutate({ questionId: q.id, isPrivate: e.target.checked })}
-                          className="w-3.5 h-3.5 rounded accent-cc-accent"
+                          className="w-3 h-3 rounded accent-cc-accent"
                         />
-                        🔒 비공개
+                        비공개
                       </label>
                       <button
-                        onClick={() => { if (confirm('질문을 삭제하시겠습니까?')) deleteQuestion.mutate(q.id); }}
+                        onClick={(e) => { e.stopPropagation(); if (confirm('질문을 삭제하시겠습니까?')) deleteQuestion.mutate(q.id); }}
                         disabled={deleteQuestion.isPending}
                         className="text-xs text-red-400 hover:text-red-300 transition disabled:opacity-50"
                       >
@@ -268,6 +262,12 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                       </button>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* 질문 상세 */}
+              {expandedQuestion === q.id && (
+                <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
 
                   {detailLoading ? (
                     <div className="flex justify-center py-4">
