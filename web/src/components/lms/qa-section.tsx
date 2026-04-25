@@ -235,12 +235,6 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                               </div>
                             </div>
                             <p className="text-cc-text text-sm mb-3">{answer.content}</p>
-                            {answer.instructorRevision && (
-                              <div className="bg-white/5 p-3 rounded text-sm mb-3 border border-white/10">
-                                <p className="text-cc-muted mb-2 font-medium">💭 강사 보완:</p>
-                                <p className="text-cc-text">{answer.instructorRevision}</p>
-                              </div>
-                            )}
                             <div className="flex gap-3 text-sm flex-wrap items-center">
                               <button
                                 onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'helpful' })}
