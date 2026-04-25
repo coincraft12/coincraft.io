@@ -212,7 +212,7 @@ export default function PrivacyPage() {
               <p className="mb-2 font-semibold text-cc-text">행사 방법</p>
               <ul className="space-y-1 list-disc list-inside">
                 <li>계정 설정/마이페이지에서 직접 수정(가능한 항목에 한함)</li>
-                <li>또는 고객센터(coincraft.edu@gmail.com)로 요청</li>
+                <li>또는 고객센터(contact@coincraft.io)로 요청</li>
               </ul>
               <p className="mt-3 text-sm">※ 법정대리인은 만 14세 미만 아동의 개인정보에 대해 위 권리를 행사할 수 있습니다.</p>
             </section>
@@ -238,7 +238,7 @@ export default function PrivacyPage() {
               <ul className="space-y-1 list-disc list-inside">
                 <li>개인정보 보호책임자: 김응준 / 대표</li>
                 <li>소속: 주식회사 코인크래프트</li>
-                <li>이메일: <a href="mailto:coincraft.edu@gmail.com" className="text-cc-accent hover:underline">coincraft.edu@gmail.com</a></li>
+                <li>이메일: <a href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">contact@coincraft.io</a></li>
                 <li>전화: 02-515-0407</li>
                 <li>운영시간: 평일 09:00~18:00</li>
               </ul>

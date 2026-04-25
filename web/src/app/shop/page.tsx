@@ -98,8 +98,8 @@ export default function ShopPage() {
           <div className="mt-16 border-t border-white/10 pt-8">
             <p className="text-cc-muted text-sm">
               종이책은 주문 후 2~3일 이내 발송됩니다. 문의:{' '}
-              <Link href="mailto:coincraft.press@gmail.com" className="text-cc-accent hover:underline">
-                coincraft.press@gmail.com
+              <Link href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">
+                contact@coincraft.io
               </Link>
             </p>
           </div>

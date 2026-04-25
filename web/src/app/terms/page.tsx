@@ -58,7 +58,7 @@ export default function TermsPage() {
                     <li>사업장 주소: 서울특별시 강남구 강남대로112길 47 2층 J721(논현동)</li>
                     <li>사업자등록번호: 573-86-03834</li>
                     <li>통신판매업 신고번호: 2026-서울강남-00160</li>
-                    <li>이메일: coincraft.edu@gmail.com</li>
+                    <li>이메일: contact@coincraft.io</li>
                     <li>전화번호: 02-515-0407 (운영시간: 09:00~18:00)</li>
                     <li>개인정보관리책임자: 김응준</li>
                   </ul>
@@ -229,7 +229,7 @@ export default function TermsPage() {
               <ol className="space-y-2 list-decimal list-inside">
                 <li>회사는 전자상거래 등 관련 법령이 정한 소비자 보호 기준을 준수합니다.</li>
                 <li>디지털 콘텐츠 특성상 열람/다운로드/스트리밍 제공이 개시되면 청약철회가 제한될 수 있으며, 구체 기준은 상품 상세 안내 및 환불정책에 따릅니다.</li>
-                <li>환불 요청은 coincraft.edu@gmail.com으로 접수하며, 회사는 처리 결과를 안내합니다.</li>
+                <li>환불 요청은 contact@coincraft.io으로 접수하며, 회사는 처리 결과를 안내합니다.</li>
               </ol>
               <div className="mt-4 pt-4 border-t border-white/10">
                 <h3 className="font-bold text-cc-text mb-3">제22조의2 (온라인 강의·디지털 자료 환불 기준)</h3>

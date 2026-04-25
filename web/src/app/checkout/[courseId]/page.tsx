@@ -241,7 +241,7 @@ export default function CheckoutPage() {
               <div className="bg-[#0a2463]/30 border border-[#0a2463] rounded-lg p-3 text-xs text-cc-muted space-y-1">
                 <p>· 입금자명은 <strong className="text-cc-text">가입 시 이름</strong>과 동일하게 입력해주세요.</p>
                 <p>· 확인은 영업일 기준 1~2일 내 처리됩니다.</p>
-                <p>· 문의: <a href="mailto:coincraft.edu@gmail.com" className="text-cc-accent hover:underline">coincraft.edu@gmail.com</a></p>
+                <p>· 문의: <a href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">contact@coincraft.io</a></p>
               </div>
               <Button variant="ghost" size="md" className="w-full" onClick={() => router.push('/')}>
                 홈으로 돌아가기

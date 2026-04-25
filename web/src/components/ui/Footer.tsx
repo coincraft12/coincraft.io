@@ -29,7 +29,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-cc-accent">✉</span>
-                coincraft.edu@gmail.com
+                contact@coincraft.io
               </li>
               <li>
                 <a
@@ -117,7 +117,7 @@ export default function Footer() {
             [<a href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=5738603834" target="_blank" rel="noopener noreferrer" className="underline hover:text-cc-muted transition-colors">사업자 정보 확인</a>]
           </p>
           <p>
-            통신판매업: 2026-서울강남-00160 | 개인정보보호책임자: 김응준 | 이메일: coincraft.edu@gmail.com
+            통신판매업: 2026-서울강남-00160 | 개인정보보호책임자: 김응준 | 이메일: contact@coincraft.io
           </p>
           <p>
             전화번호: 02-515-0407 | 주소: 서울특별시 강남구 강남대로112길 47, 2층 J721호(논현동)

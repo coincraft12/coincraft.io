@@ -278,7 +278,7 @@ export default function BookDetailPage() {
                     목록으로
                   </button>
                 </div>
-                <p className="text-xs text-cc-muted">주문 후 2~3일 이내 발송 · 배송 문의: coincraft.press@gmail.com</p>
+                <p className="text-xs text-cc-muted">주문 후 2~3일 이내 발송 · 배송 문의: contact@coincraft.io</p>
               </div>
             </div>
           </div>

@@ -119,7 +119,7 @@ export default function RefundPage() {
               <h2 className="text-lg font-bold text-cc-text mb-4">8. 환불 신청 방법 및 문의</h2>
               <p className="mb-4">환불을 원하실 경우 아래 채널로 신청해 주세요.</p>
               <ul className="space-y-2 list-disc list-inside mb-4">
-                <li>고객센터: <a href="mailto:coincraft.edu@gmail.com" className="text-cc-accent hover:underline">coincraft.edu@gmail.com</a></li>
+                <li>고객센터: <a href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">contact@coincraft.io</a></li>
                 <li>카카오톡 채널: <strong className="text-cc-text">코인크래프트</strong></li>
                 <li>또는 사이트 내 <strong className="text-cc-text">[마이페이지 &gt; 주문내역/수강내역 &gt; 환불요청]</strong></li>
               </ul>

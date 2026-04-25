@@ -100,7 +100,7 @@ export default function CertExamRulesPage() {
           <SubTitle>제6조 (이의신청 기한 및 방법)</SubTitle>
           <div className="bg-cc-secondary border border-white/10 rounded-xl p-5 mb-4 text-sm text-cc-muted leading-relaxed space-y-1">
             <p><strong className="text-cc-text">신청 기한</strong>: 결과 통보일로부터 5영업일 이내</p>
-            <p><strong className="text-cc-text">신청 방법</strong>: 이메일 (<a href="mailto:coincraft.edu@gmail.com" className="text-cc-accent hover:underline">coincraft.edu@gmail.com</a>)</p>
+            <p><strong className="text-cc-text">신청 방법</strong>: 이메일 (<a href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">contact@coincraft.io</a>)</p>
             <p><strong className="text-cc-text">필수 기재</strong>: 수험번호, 성명, 이의신청 대상, 구체적 사유, 증빙 자료</p>
           </div>
 
@@ -162,7 +162,7 @@ export default function CertExamRulesPage() {
               </thead>
               <tbody className="divide-y divide-white/10">
                 {[
-                  ['시험 링크 미수신', '오전 11시까지 미수신 시 coincraft.edu@gmail.com으로 연락 → 재발송'],
+                  ['시험 링크 미수신', '오전 11시까지 미수신 시 contact@coincraft.io으로 연락 → 재발송'],
                   ['응시 중 연결 끊김', '제한 시간 내 재접속 후 재응답 가능'],
                   ['시스템 장애', '운영 책임자 판단에 따라 시험 연기 또는 대체 수단 제공, 전원 통보'],
                   ['제한 시간 내 미제출', '원칙적으로 불합격 처리. 시스템 귀책 사유 확인 시 재응시 기회 부여'],
@@ -234,7 +234,7 @@ export default function CertExamRulesPage() {
 
           <SubTitle>제16조 (환불 신청 및 처리)</SubTitle>
           <div className="bg-cc-secondary border border-white/10 rounded-xl p-5 mb-4 text-sm text-cc-muted leading-relaxed space-y-1">
-            <p><strong className="text-cc-text">신청 방법</strong>: 이메일 (<a href="mailto:coincraft.edu@gmail.com" className="text-cc-accent hover:underline">coincraft.edu@gmail.com</a>)</p>
+            <p><strong className="text-cc-text">신청 방법</strong>: 이메일 (<a href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">contact@coincraft.io</a>)</p>
             <p><strong className="text-cc-text">신청 기한</strong>: 시험일 7일 전 (4월 26일 기준 → 4월 19일까지)</p>
             <p><strong className="text-cc-text">처리 기간</strong>: 신청 확인 후 5영업일 이내</p>
             <p><strong className="text-cc-text">환불 계좌</strong>: 신청 이메일에 계좌 정보 명시</p>

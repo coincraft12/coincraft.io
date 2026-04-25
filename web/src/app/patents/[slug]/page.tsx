@@ -147,8 +147,8 @@ export default async function PatentPage({ params }: { params: Promise<{ slug: s
             <div className="border border-white/10 rounded-cc p-5 text-center">
               <p className="text-cc-muted text-sm">
                 특허 기술 관련 문의 및 라이선스 협의는{' '}
-                <a href="mailto:coincraft.labs@gmail.com" className="text-cc-accent hover:underline">
-                  coincraft.labs@gmail.com
+                <a href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">
+                  contact@coincraft.io
                 </a>
                 으로 연락해 주세요.
               </p>

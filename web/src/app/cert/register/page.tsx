@@ -506,8 +506,8 @@ export default function CertRegisterPage() {
             <div className="text-center text-sm text-cc-muted space-y-2 pb-4">
               <p>
                 문의:{' '}
-                <a href="mailto:coincraft.edu@gmail.com" className="text-cc-accent hover:underline">
-                  coincraft.edu@gmail.com
+                <a href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">
+                  contact@coincraft.io
                 </a>
               </p>
               <p>

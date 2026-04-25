@@ -60,8 +60,8 @@ function CompleteContent() {
 
         <p className="text-xs text-cc-muted">
           문의:{' '}
-          <a href="mailto:coincraft.edu@gmail.com" className="text-cc-accent hover:underline">
-            coincraft.edu@gmail.com
+          <a href="mailto:contact@coincraft.io" className="text-cc-accent hover:underline">
+            contact@coincraft.io
           </a>
         </p>
       </div>
