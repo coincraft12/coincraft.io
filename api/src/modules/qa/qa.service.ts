@@ -18,6 +18,7 @@ import { getVimeoTranscript } from '../../lib/video-provider/vimeo';
 export interface CreateQuestionInput {
   title: string;
   content: string;
+  isPrivate?: boolean;
 }
 
 export interface CreateAnswerInput {
@@ -102,6 +103,7 @@ export async function createQuestion(
       title: input.title,
       content: input.content,
       status: 'open',
+      isPrivate: input.isPrivate ?? false,
     })
     .returning();
 
@@ -111,7 +113,9 @@ export async function createQuestion(
 export async function getQuestionsByLesson(
   lessonId: string,
   limit: number = 10,
-  offset: number = 0
+  offset: number = 0,
+  currentUserId?: string,
+  instructorId?: string
 ) {
   const result = await db
     .select({
@@ -122,6 +126,7 @@ export async function getQuestionsByLesson(
       title: questions.title,
       content: questions.content,
       status: questions.status,
+      isPrivate: questions.isPrivate,
       viewCount: questions.viewCount,
       createdAt: questions.createdAt,
       updatedAt: questions.updatedAt,
@@ -136,7 +141,12 @@ export async function getQuestionsByLesson(
     .limit(limit)
     .offset(offset);
 
-  return result as QuestionRow[];
+  // 비공개 질문 필터링: 질문자 본인 또는 강사만 볼 수 있음
+  return result.filter((q) => {
+    if (!q.isPrivate) return true;
+    if (!currentUserId) return false;
+    return q.userId === currentUserId || currentUserId === instructorId;
+  }) as QuestionRow[];
 }
 
 export async function getQuestionById(questionId: string) {
@@ -149,6 +159,7 @@ export async function getQuestionById(questionId: string) {
       title: questions.title,
       content: questions.content,
       status: questions.status,
+      isPrivate: questions.isPrivate,
       viewCount: questions.viewCount,
       createdAt: questions.createdAt,
       updatedAt: questions.updatedAt,

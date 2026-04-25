@@ -15,6 +15,7 @@ interface Question {
   userAvatar: string | null;
   createdAt: string;
   viewCount: number;
+  isPrivate: boolean;
   status: 'pending' | 'ai_answering' | 'ai_answered' | 'completed';
 }
 
@@ -46,6 +47,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reactionError, setReactionError] = useState<string | null>(null);
 
@@ -76,13 +78,14 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
     mutationFn: async () => {
       await apiClient.post(
         `/api/v1/lessons/${lessonId}/questions`,
-        { title, content },
+        { title, content, isPrivate },
         { token: token ?? undefined }
       );
     },
     onSuccess: () => {
       setTitle('');
       setContent('');
+      setIsPrivate(false);
       setShowCreateForm(false);
       setError(null);
       refetchQuestions();
@@ -143,6 +146,15 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm resize-none focus:outline-none focus:border-cc-accent transition-colors"
             />
             {error && <p className="text-red-400 text-sm">{error}</p>}
+            <label className="flex items-center gap-2 text-sm text-cc-muted cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                className="w-4 h-4 rounded accent-cc-accent"
+              />
+              🔒 비공개 (강사와 나만 볼 수 있음)
+            </label>
             <div className="flex gap-2 justify-end">
               <Button
                 variant="ghost"
@@ -185,7 +197,10 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-cc-text">{q.title}</h3>
+                    <h3 className="text-lg font-semibold text-cc-text flex items-center gap-2">
+                      {q.title}
+                      {q.isPrivate && <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-cc-muted">🔒 비공개</span>}
+                    </h3>
                     <p className="text-cc-muted text-sm mt-1">{q.userName} · {new Date(q.createdAt).toLocaleDateString('ko-KR')}</p>
                     <p className="text-xs text-cc-muted mt-1">조회 {q.viewCount}</p>
                   </div>

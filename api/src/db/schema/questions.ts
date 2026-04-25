@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   integer,
+  boolean,
   timestamp,
   index,
 } from 'drizzle-orm/pg-core';
@@ -27,6 +28,7 @@ export const questions = pgTable(
     title: varchar('title', { length: 500 }).notNull(),
     content: text('content').notNull(),
     status: varchar('status', { length: 50 }).notNull().default('open'),
+    isPrivate: boolean('is_private').notNull().default(false),
     viewCount: integer('view_count').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

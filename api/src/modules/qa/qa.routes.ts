@@ -27,6 +27,7 @@ import {
 const createQuestionSchema = z.object({
   title: z.string().min(1).max(500),
   content: z.string().min(1).max(5000),
+  isPrivate: z.boolean().optional(),
 });
 
 const addInstructorAnswerSchema = z.object({
@@ -134,7 +135,12 @@ export default async function qaRoutes(app: FastifyInstance) {
         const limit = Math.min(parseInt(request.query.limit || '10'), 50);
         const offset = parseInt(request.query.offset || '0');
 
-        const questionList = await getQuestionsByLesson(lessonId, limit, offset);
+        const lesson = await getLessonWithCourse(lessonId);
+        const questionList = await getQuestionsByLesson(
+          lessonId, limit, offset,
+          request.user?.id,
+          lesson?.instructorId
+        );
 
         reply.send(
           ok({
@@ -173,6 +179,20 @@ export default async function qaRoutes(app: FastifyInstance) {
             success: false,
             error: { code: 'QUESTION_NOT_FOUND', message: '질문을 찾을 수 없습니다.' },
           });
+        }
+
+        // 비공개 질문 접근 제어
+        if (question.isPrivate) {
+          const currentUserId = request.user?.id;
+          const lessonInfo = await getLessonWithCourse(question.lessonId);
+          const isOwner = currentUserId === question.userId;
+          const isInstructor = currentUserId === lessonInfo?.instructorId;
+          if (!isOwner && !isInstructor) {
+            return reply.code(403).send({
+              success: false,
+              error: { code: 'FORBIDDEN', message: '비공개 질문입니다.' },
+            });
+          }
         }
 
         // 답변 조회
