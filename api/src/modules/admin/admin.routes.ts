@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db } from '../../db';
-import { users, courses, enrollments, instructors } from '../../db/schema';
+import { users, courses, enrollments, instructors, answers } from '../../db/schema';
 import { authenticate } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/require-role';
 import { ok, created } from '../../utils/response';
@@ -163,6 +163,74 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const { id } = request.params as { id: string };
     const result = await paymentService.approveBankTransferPayment(id);
     return reply.send(ok(result, '무통장 입금이 승인되었습니다.'));
+  });
+
+  // GET /api/v1/admin/anthropic-usage — Anthropic API 사용 현황
+  app.get('/anthropic-usage', { preHandler }, async (_request, reply) => {
+    // 전체 요약
+    const [summary] = await db
+      .select({
+        totalTokens: sql<number>`COALESCE(SUM(${answers.aiTokensUsed}), 0)`,
+        totalAnswers: sql<number>`COUNT(*)`,
+        avgTokens: sql<number>`COALESCE(ROUND(AVG(${answers.aiTokensUsed})), 0)`,
+      })
+      .from(answers)
+      .where(sql`${answers.type} = 'ai' AND ${answers.aiTokensUsed} IS NOT NULL`);
+
+    // 이번 달
+    const [thisMonth] = await db
+      .select({
+        tokens: sql<number>`COALESCE(SUM(${answers.aiTokensUsed}), 0)`,
+        answers: sql<number>`COUNT(*)`,
+      })
+      .from(answers)
+      .where(sql`${answers.type} = 'ai' AND ${answers.aiTokensUsed} IS NOT NULL AND ${answers.createdAt} >= date_trunc('month', CURRENT_DATE)`);
+
+    // 일별 (최근 30일)
+    const daily = await db.execute(sql`
+      SELECT
+        TO_CHAR(DATE(${answers.createdAt} AT TIME ZONE 'Asia/Seoul'), 'MM-DD') AS date,
+        COALESCE(SUM(${answers.aiTokensUsed}), 0)::int AS tokens,
+        COUNT(*)::int AS answers
+      FROM ${answers}
+      WHERE ${answers.type} = 'ai'
+        AND ${answers.aiTokensUsed} IS NOT NULL
+        AND ${answers.createdAt} >= NOW() - INTERVAL '30 days'
+      GROUP BY DATE(${answers.createdAt} AT TIME ZONE 'Asia/Seoul')
+      ORDER BY DATE(${answers.createdAt} AT TIME ZONE 'Asia/Seoul')
+    `);
+
+    // 모델별
+    const byModel = await db
+      .select({
+        model: answers.aiModel,
+        tokens: sql<number>`COALESCE(SUM(${answers.aiTokensUsed}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(answers)
+      .where(sql`${answers.type} = 'ai' AND ${answers.aiTokensUsed} IS NOT NULL`)
+      .groupBy(answers.aiModel)
+      .orderBy(sql`SUM(${answers.aiTokensUsed}) DESC`);
+
+    return reply.send(ok({
+      summary: {
+        totalTokens: Number(summary.totalTokens),
+        totalAnswers: Number(summary.totalAnswers),
+        avgTokens: Number(summary.avgTokens),
+        thisMonthTokens: Number(thisMonth.tokens),
+        thisMonthAnswers: Number(thisMonth.answers),
+      },
+      daily: (daily.rows as any[]).map((r) => ({
+        date: r.date,
+        tokens: Number(r.tokens),
+        answers: Number(r.answers),
+      })),
+      byModel: byModel.map((m) => ({
+        model: m.model ?? 'unknown',
+        tokens: Number(m.tokens),
+        count: Number(m.count),
+      })),
+    }));
   });
 
   // GET /api/v1/admin/instructors/action?token=xxx — 이메일 승인/거절 링크 (토큰 인증)

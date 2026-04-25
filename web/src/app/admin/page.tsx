@@ -21,6 +21,12 @@ const MENU_CARDS = [
     desc: '실물 도서 주문 현황 및 배송 상태 관리.',
     icon: '📦',
   },
+  {
+    href: '/admin/anthropic-usage',
+    title: 'Anthropic API 사용 현황',
+    desc: 'Q&A AI 답변 토큰 사용량 및 모델별 추정 비용.',
+    icon: '🤖',
+  },
 ];
 
 export default function AdminDashboardPage() {
