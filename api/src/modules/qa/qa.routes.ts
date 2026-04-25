@@ -21,6 +21,8 @@ import {
   isUserEnrolled,
   triggerAIAnswerForQuestion,
   getInstructorQuestions,
+  deleteQuestion,
+  updateQuestionPrivacy,
 } from './qa.service';
 
 // ===== Schemas =====
@@ -210,6 +212,37 @@ export default async function qaRoutes(app: FastifyInstance) {
           success: false,
           error: { code: 'INTERNAL_ERROR', message: '질문 조회에 실패했습니다.' },
         });
+      }
+    }
+  );
+
+  // 질문 삭제 (질문자 본인만)
+  app.delete<{ Params: { questionId: string } }>(
+    '/questions/:questionId',
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      try {
+        await deleteQuestion(request.params.questionId, request.user!.id);
+        reply.send(ok(null, '질문이 삭제되었습니다.'));
+      } catch (err: any) {
+        const code = err.code === 'NOT_FOUND' ? 404 : err.code === 'FORBIDDEN' ? 403 : 500;
+        reply.code(code).send({ success: false, error: { code: err.code || 'ERROR', message: err.message } });
+      }
+    }
+  );
+
+  // 질문 비공개 토글 (질문자 본인만)
+  app.patch<{ Params: { questionId: string } }>(
+    '/questions/:questionId/privacy',
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      try {
+        const { isPrivate } = z.object({ isPrivate: z.boolean() }).parse(request.body);
+        const result = await updateQuestionPrivacy(request.params.questionId, request.user!.id, isPrivate);
+        reply.send(ok(result));
+      } catch (err: any) {
+        const code = err.code === 'NOT_FOUND' ? 404 : err.code === 'FORBIDDEN' ? 403 : 500;
+        reply.code(code).send({ success: false, error: { code: err.code || 'ERROR', message: err.message } });
       }
     }
   );

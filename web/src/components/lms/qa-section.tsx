@@ -11,6 +11,7 @@ interface Question {
   id: string;
   title: string;
   content: string;
+  userId: string;
   userName: string;
   userAvatar: string | null;
   createdAt: string;
@@ -42,6 +43,7 @@ interface QASectionProps {
 
 export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASectionProps) {
   const token = useAuthStore((s) => s.accessToken);
+  const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -111,6 +113,28 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
     },
     onError: (err) => {
       setReactionError(err instanceof Error ? err.message : '평가 처리에 실패했습니다.');
+    },
+  });
+
+  // 질문 삭제
+  const deleteQuestion = useMutation({
+    mutationFn: async (questionId: string) => {
+      await apiClient.delete(`/api/v1/questions/${questionId}`, { token: token ?? undefined });
+    },
+    onSuccess: () => {
+      setExpandedQuestion(null);
+      refetchQuestions();
+    },
+  });
+
+  // 비공개 토글
+  const togglePrivacy = useMutation({
+    mutationFn: async ({ questionId, isPrivate }: { questionId: string; isPrivate: boolean }) => {
+      return apiClient.patch(`/api/v1/questions/${questionId}/privacy`, { isPrivate }, { token: token ?? undefined });
+    },
+    onSuccess: () => {
+      refetchQuestions();
+      queryClient.invalidateQueries({ queryKey: ['question', expandedQuestion] });
     },
   });
 
@@ -223,6 +247,28 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               {/* 질문 상세 */}
               {expandedQuestion === q.id && (
                 <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
+                  {/* 질문자 전용: 삭제 + 비공개 토글 */}
+                  {currentUser?.id === q.userId && (
+                    <div className="flex items-center gap-3 pb-2">
+                      <label className="flex items-center gap-1.5 text-xs text-cc-muted cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={q.isPrivate}
+                          onChange={(e) => togglePrivacy.mutate({ questionId: q.id, isPrivate: e.target.checked })}
+                          className="w-3.5 h-3.5 rounded accent-cc-accent"
+                        />
+                        🔒 비공개
+                      </label>
+                      <button
+                        onClick={() => { if (confirm('질문을 삭제하시겠습니까?')) deleteQuestion.mutate(q.id); }}
+                        disabled={deleteQuestion.isPending}
+                        className="text-xs text-red-400 hover:text-red-300 transition disabled:opacity-50"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  )}
+
                   {detailLoading ? (
                     <div className="flex justify-center py-4">
                       <Spinner size="sm" />

@@ -474,6 +474,38 @@ export async function deleteReview(reviewId: string) {
   await db.delete(lessonReviews).where(eq(lessonReviews.id, reviewId));
 }
 
+export async function deleteQuestion(questionId: string, userId: string) {
+  const [q] = await db
+    .select({ userId: questions.userId })
+    .from(questions)
+    .where(eq(questions.id, questionId))
+    .limit(1);
+
+  if (!q) throw Object.assign(new Error('질문을 찾을 수 없습니다.'), { code: 'NOT_FOUND' });
+  if (q.userId !== userId) throw Object.assign(new Error('삭제 권한이 없습니다.'), { code: 'FORBIDDEN' });
+
+  await db.delete(questions).where(eq(questions.id, questionId));
+}
+
+export async function updateQuestionPrivacy(questionId: string, userId: string, isPrivate: boolean) {
+  const [q] = await db
+    .select({ userId: questions.userId })
+    .from(questions)
+    .where(eq(questions.id, questionId))
+    .limit(1);
+
+  if (!q) throw Object.assign(new Error('질문을 찾을 수 없습니다.'), { code: 'NOT_FOUND' });
+  if (q.userId !== userId) throw Object.assign(new Error('권한이 없습니다.'), { code: 'FORBIDDEN' });
+
+  const [updated] = await db
+    .update(questions)
+    .set({ isPrivate })
+    .where(eq(questions.id, questionId))
+    .returning({ isPrivate: questions.isPrivate });
+
+  return updated;
+}
+
 // ===== AI Answer Trigger =====
 
 export async function triggerAIAnswerForQuestion(questionId: string) {
