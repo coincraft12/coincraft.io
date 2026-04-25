@@ -222,9 +222,15 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                   onClick={() => q.canViewContent && setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}
                   className={`flex-1 text-left min-w-0 ${!q.canViewContent ? 'cursor-default' : ''}`}
                 >
-                  <h3 className="text-base font-semibold text-cc-text flex items-center gap-2 flex-wrap">
-                    {q.title}
-                    {q.isPrivate && <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-cc-muted">🔒 비공개</span>}
+                  <h3 className="text-base font-semibold flex items-center gap-2 flex-wrap">
+                    {q.canViewContent ? (
+                      <>
+                        <span className="text-cc-text">{q.title}</span>
+                        {q.isPrivate && <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-cc-muted">🔒 비공개</span>}
+                      </>
+                    ) : (
+                      <span className="text-cc-muted italic">🔒 비공개 질문입니다</span>
+                    )}
                   </h3>
                   <p className="text-cc-muted text-sm mt-1">{q.userName} · {new Date(q.createdAt).toLocaleDateString('ko-KR')}</p>
                   <p className="text-xs text-cc-muted mt-0.5">조회 {q.viewCount}</p>
