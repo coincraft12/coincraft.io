@@ -45,12 +45,11 @@ interface QuestionDetail {
   answers: Answer[];
 }
 
-type FilterStatus = 'all' | 'unanswered' | 'ai-only' | 'completed';
+type FilterStatus = 'all' | 'unanswered' | 'completed';
 
 const FILTER_LABELS: Record<FilterStatus, string> = {
   all: '전체',
   unanswered: '미답변',
-  'ai-only': 'AI만',
   completed: '완료',
 };
 

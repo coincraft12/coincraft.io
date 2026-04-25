@@ -11,6 +11,7 @@
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
+- feat: Q&A 강사 대시보드 필터 개편 — 'AI만' 탭 제거, '미답변' = 강사 답변 없는 것으로 변경
 - fix: 강의노트 100개 재생성 — Claude Haiku + max_tokens 4096, 잘린 노트 완전 해결 (local + staging 완료)
 - fix: 마크다운 표 깨짐 — remark-gfm 플러그인 추가 + cc-markdown table CSS 추가
 - feat: 레슨 퀴즈 자동생성 — lesson_quizzes 테이블, GET /quiz API, QuizSection UI, 퀴즈 탭 추가

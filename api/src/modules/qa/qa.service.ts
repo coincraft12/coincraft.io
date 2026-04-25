@@ -365,8 +365,7 @@ export async function getInstructorQuestions(instructorId: string, statusFilter:
   return questionList.filter((q) => {
     const hasAI = Boolean(q.hasAIAnswer);
     const hasInstructor = Boolean(q.hasInstructorAnswer);
-    if (statusFilter === 'unanswered') return !hasAI && !hasInstructor;
-    if (statusFilter === 'ai-only') return hasAI && !hasInstructor;
+    if (statusFilter === 'unanswered') return !hasInstructor;
     if (statusFilter === 'completed') return hasInstructor;
     return true;
   });
