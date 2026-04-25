@@ -56,9 +56,9 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
 
   // 질문 목록 조회
   const { data: response, isLoading: questionsLoading, refetch: refetchQuestions } = useQuery({
-    queryKey: ['questions', lessonId],
+    queryKey: ['questions', lessonId, token],
     queryFn: async () => {
-      const res = await apiClient.get<any>(`/api/v1/lessons/${lessonId}/questions?limit=20`);
+      const res = await apiClient.get<any>(`/api/v1/lessons/${lessonId}/questions?limit=20`, { token: token ?? undefined });
       return res;
     },
   });
@@ -232,7 +232,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                       <span className="text-cc-muted italic">🔒 비공개 질문입니다</span>
                     )}
                   </h3>
-                  <p className="text-cc-muted text-sm mt-1">{q.userName} · {new Date(q.createdAt).toLocaleDateString('ko-KR')}</p>
+                  <p className="text-cc-muted text-sm mt-1">{q.canViewContent ? q.userName : '비공개'} · {new Date(q.createdAt).toLocaleDateString('ko-KR')}</p>
                   <p className="text-xs text-cc-muted mt-0.5">조회 {q.viewCount}</p>
                 </button>
 
