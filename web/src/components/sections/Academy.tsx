@@ -67,7 +67,7 @@ export default async function Academy() {
         {courses.length > 0 ? (
           <div className="grid md:grid-cols-3 gap-6 mb-12">
             {courses.map((course, i) => (
-              <SectionReveal key={course.id} delay={i * 100}>
+              <SectionReveal key={course.id}>
                 <CourseCard {...course} showWishlist={false} />
               </SectionReveal>
             ))}
@@ -82,7 +82,7 @@ export default async function Academy() {
           </SectionReveal>
         )}
 
-        <SectionReveal delay={300}>
+        <SectionReveal>
           <div className="flex flex-wrap items-center gap-4">
             <a href="/courses" className="cc-btn cc-btn-primary btn-shimmer">전체 강의 보기</a>
             <span className="text-cc-muted text-sm">7+ 커리큘럼 · Basic부터 Expert까지</span>

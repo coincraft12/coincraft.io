@@ -23,7 +23,7 @@ const posts = [
 ]
 
 function formatDate(dateStr: string) {
-  return dateStr
+  return new Date(dateStr).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 export default function Blog() {

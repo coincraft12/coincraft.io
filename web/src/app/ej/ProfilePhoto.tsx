@@ -20,7 +20,7 @@ export default function ProfilePhoto() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         >
-          <div className="relative w-72 h-72 rounded-2xl overflow-hidden border-2 border-cc-accent/40 shadow-2xl">
+          <div className="relative w-72 h-72 rounded-2xl overflow-hidden border-2 border-cc-accent/40 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <Image src="/ej-profile.jpg" alt="EJ Kim" fill className="object-cover object-top" quality={100} />
           </div>
         </div>

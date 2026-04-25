@@ -12,8 +12,7 @@ async function fetchExamCapacity(): Promise<{
   registrationEnd: string | null;
 } | null> {
   try {
-    const apiBase = process.env.API_INTERNAL_URL;
-    if (!apiBase) return null;
+    const apiBase = process.env.API_INTERNAL_URL ?? 'http://localhost:4001';
     const res = await fetch(`${apiBase}/api/v1/exams`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
     const json = await res.json();

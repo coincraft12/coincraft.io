@@ -33,7 +33,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="http://pf.kakao.com/_xhPxdxgn"
+                  href="https://pf.kakao.com/_xhPxdxgn"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-cc-text transition-colors"
@@ -93,7 +93,7 @@ export default function Footer() {
 
             {/* 카카오 노란색 버튼 */}
             <a
-              href="http://pf.kakao.com/_xhPxdxgn/chat"
+              href="https://pf.kakao.com/_xhPxdxgn/chat"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded text-sm font-bold transition-opacity hover:opacity-90"
