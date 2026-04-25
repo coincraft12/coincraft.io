@@ -67,10 +67,10 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
 
   // 질문 상세 + 답변 조회
   const { data: questionDetail, isLoading: detailLoading } = useQuery({
-    queryKey: ['question', expandedQuestion],
+    queryKey: ['question', expandedQuestion, token],
     queryFn: async () => {
       if (!expandedQuestion) return null;
-      const res = await apiClient.get<any>(`/api/v1/questions/${expandedQuestion}`);
+      const res = await apiClient.get<any>(`/api/v1/questions/${expandedQuestion}`, { token: token ?? undefined });
       return res.data;
     },
     enabled: !!expandedQuestion,
@@ -219,8 +219,8 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               <div className="flex items-start justify-between gap-3">
                 {/* 클릭 영역: 제목+메타 */}
                 <button
-                  onClick={() => q.canViewContent && setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}
-                  className={`flex-1 text-left min-w-0 ${!q.canViewContent ? 'cursor-default' : ''}`}
+                  onClick={() => setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}
+                  className="flex-1 text-left min-w-0"
                 >
                   <h3 className="text-base font-semibold flex items-center gap-2 flex-wrap">
                     {q.canViewContent ? (
@@ -276,7 +276,9 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               {expandedQuestion === q.id && (
                 <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
 
-                  {detailLoading ? (
+                  {!q.canViewContent ? (
+                    <p className="text-cc-muted text-sm text-center py-2">🔒 비공개 질문입니다. 강사와 질문자만 열람할 수 있습니다.</p>
+                  ) : detailLoading ? (
                     <div className="flex justify-center py-4">
                       <Spinner size="sm" />
                     </div>
