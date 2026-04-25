@@ -27,6 +27,7 @@ interface Answer {
   isAccepted: boolean;
   helpfulCount: number;
   unhelpfulCount: number;
+  myReaction: 'helpful' | 'unhelpful' | null;
   instructorRevision: string | null;
   createdAt: string;
 }
@@ -91,11 +92,11 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
     },
   });
 
-  // 답변 평가
+  // 답변 평가 (토글)
   const reactToAnswer = useMutation({
     mutationFn: async ({ answerId, reactionType }: { answerId: string; reactionType: 'helpful' | 'unhelpful' }) => {
       if (!token) throw new Error('로그인이 필요합니다.');
-      await apiClient.post(
+      return apiClient.post(
         `/api/v1/answers/${answerId}/reaction`,
         { reactionType },
         { token }
@@ -239,14 +240,14 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                               <button
                                 onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'helpful' })}
                                 disabled={reactToAnswer.isPending}
-                                className="text-cc-muted hover:text-green-400 transition disabled:opacity-50"
+                                className={`transition disabled:opacity-50 ${answer.myReaction === 'helpful' ? 'text-green-400 font-semibold' : 'text-cc-muted hover:text-green-400'}`}
                               >
                                 👍 도움됨 ({answer.helpfulCount})
                               </button>
                               <button
                                 onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'unhelpful' })}
                                 disabled={reactToAnswer.isPending}
-                                className="text-cc-muted hover:text-red-400 transition disabled:opacity-50"
+                                className={`transition disabled:opacity-50 ${answer.myReaction === 'unhelpful' ? 'text-red-400 font-semibold' : 'text-cc-muted hover:text-red-400'}`}
                               >
                                 👎 도움 안 됨 ({answer.unhelpfulCount})
                               </button>

@@ -176,7 +176,7 @@ export default async function qaRoutes(app: FastifyInstance) {
         }
 
         // 답변 조회
-        const answerList = await getAnswersByQuestion(questionId);
+        const answerList = await getAnswersByQuestion(questionId, request.user?.id);
 
         reply.send(
           ok({

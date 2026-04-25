@@ -171,7 +171,7 @@ export async function incrementQuestionViewCount(questionId: string) {
 
 // ===== Answer Service =====
 
-export async function getAnswersByQuestion(questionId: string) {
+export async function getAnswersByQuestion(questionId: string, currentUserId?: string) {
   const result = await db
     .select({
       id: answers.id,
@@ -196,7 +196,16 @@ export async function getAnswersByQuestion(questionId: string) {
     .where(eq(answers.questionId, questionId))
     .orderBy(answers.createdAt);
 
-  return result as AnswerRow[];
+  if (!currentUserId) return result as AnswerRow[];
+
+  const myReactions = await db
+    .select({ answerId: answerReactions.answerId, reactionType: answerReactions.reactionType })
+    .from(answerReactions)
+    .where(eq(answerReactions.userId, currentUserId));
+
+  const myReactionMap = new Map(myReactions.map((r) => [r.answerId, r.reactionType]));
+
+  return result.map((a) => ({ ...a, myReaction: myReactionMap.get(a.id) ?? null })) as AnswerRow[];
 }
 
 export async function createAIAnswer(
@@ -308,25 +317,39 @@ export async function addAnswerReaction(
   userId: string,
   reactionType: 'helpful' | 'unhelpful'
 ) {
-  // UPSERT
-  const [reaction] = await db
-    .insert(answerReactions)
-    .values({ answerId, userId, reactionType })
-    .onConflictDoUpdate({
-      target: [answerReactions.answerId, answerReactions.userId],
-      set: { reactionType, updatedAt: new Date() },
-    })
-    .returning();
+  const [existing] = await db
+    .select({ id: answerReactions.id, reactionType: answerReactions.reactionType })
+    .from(answerReactions)
+    .where(and(eq(answerReactions.answerId, answerId), eq(answerReactions.userId, userId)))
+    .limit(1);
 
-  // 트리거 미설치 환경 대비 — 카운트 수동 갱신
-  await db.update(answers)
+  // 같은 반응이면 취소(toggle off), 다른 반응이면 교체, 없으면 추가
+  if (existing?.reactionType === reactionType) {
+    await db.delete(answerReactions).where(eq(answerReactions.id, existing.id));
+  } else {
+    await db
+      .insert(answerReactions)
+      .values({ answerId, userId, reactionType })
+      .onConflictDoUpdate({
+        target: [answerReactions.answerId, answerReactions.userId],
+        set: { reactionType, updatedAt: new Date() },
+      });
+  }
+
+  // 카운트 갱신
+  const [updated] = await db.update(answers)
     .set({
       helpfulCount: sql`(SELECT COUNT(*) FROM ${answerReactions} WHERE answer_id = ${answerId} AND reaction_type = 'helpful')`,
       unhelpfulCount: sql`(SELECT COUNT(*) FROM ${answerReactions} WHERE answer_id = ${answerId} AND reaction_type = 'unhelpful')`,
     })
-    .where(eq(answers.id, answerId));
+    .where(eq(answers.id, answerId))
+    .returning({ helpfulCount: answers.helpfulCount, unhelpfulCount: answers.unhelpfulCount });
 
-  return reaction;
+  return {
+    myReaction: existing?.reactionType === reactionType ? null : reactionType,
+    helpfulCount: updated.helpfulCount,
+    unhelpfulCount: updated.unhelpfulCount,
+  };
 }
 
 // ===== Instructor Q&A =====
