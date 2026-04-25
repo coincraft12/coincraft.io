@@ -305,7 +305,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                                 <p className="text-sm text-cc-text mt-1">{answer.userName || 'AI 어시스턴트'}</p>
                               </div>
                             </div>
-                            <p className="text-cc-text text-sm mb-3">{answer.content}</p>
+                            <p className="text-cc-text text-sm mb-3 whitespace-pre-wrap">{answer.content.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').replace(/^[-*]\s+/gm, '• ')}</p>
                             <div className="flex gap-3 text-sm flex-wrap items-center">
                               <button
                                 onClick={() => reactToAnswer.mutate({ answerId: answer.id, reactionType: 'helpful' })}
