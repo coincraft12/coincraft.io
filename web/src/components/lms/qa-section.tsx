@@ -17,6 +17,7 @@ interface Question {
   createdAt: string;
   viewCount: number;
   isPrivate: boolean;
+  canViewContent: boolean;
   status: 'pending' | 'ai_answering' | 'ai_answered' | 'completed';
 }
 
@@ -218,8 +219,8 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               <div className="flex items-start justify-between gap-3">
                 {/* 클릭 영역: 제목+메타 */}
                 <button
-                  onClick={() => setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}
-                  className="flex-1 text-left min-w-0"
+                  onClick={() => q.canViewContent && setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}
+                  className={`flex-1 text-left min-w-0 ${!q.canViewContent ? 'cursor-default' : ''}`}
                 >
                   <h3 className="text-base font-semibold text-cc-text flex items-center gap-2 flex-wrap">
                     {q.title}

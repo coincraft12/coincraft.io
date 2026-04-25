@@ -11,11 +11,11 @@
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
+- fix: 비공개 질문 가시성 — filter 제거 → canViewContent 플래그 방식으로 변경 (질문자 본인도 목록 표시)
 - feat: Q&A 강사 대시보드 필터 개편 — 'AI만' 탭 제거, '미답변' = 강사 답변 없는 것으로 변경
 - fix: 강의노트 100개 재생성 — Claude Haiku + max_tokens 4096, 잘린 노트 완전 해결 (local + staging 완료)
 - fix: 마크다운 표 깨짐 — remark-gfm 플러그인 추가 + cc-markdown table CSS 추가
-- feat: 레슨 퀴즈 자동생성 — lesson_quizzes 테이블, GET /quiz API, QuizSection UI, 퀴즈 탭 추가
-- FIX: @/ path alias → 상대경로 교체 (빌드 후 MODULE_NOT_FOUND 오류)
+- feat: Q&A 질문 삭제·비공개 토글·반응 토글 — 질문자 본인 전용 컨트롤 추가
 
 ## DB 데이터 픽스 규칙 (영구)
 

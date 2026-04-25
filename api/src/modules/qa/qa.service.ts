@@ -141,12 +141,12 @@ export async function getQuestionsByLesson(
     .limit(limit)
     .offset(offset);
 
-  // 비공개 질문 필터링: 질문자 본인 또는 강사만 볼 수 있음
-  return result.filter((q) => {
-    if (!q.isPrivate) return true;
-    if (!currentUserId) return false;
-    return q.userId === currentUserId || currentUserId === instructorId;
-  }) as QuestionRow[];
+  // 비공개 질문: 목록에는 보이되, 내용 열람 가능 여부만 표시
+  return result.map((q) => ({
+    ...q,
+    canViewContent: !q.isPrivate ||
+      (!!currentUserId && (q.userId === currentUserId || currentUserId === instructorId)),
+  })) as QuestionRow[];
 }
 
 export async function getQuestionById(questionId: string) {
