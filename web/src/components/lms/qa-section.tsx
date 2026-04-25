@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -43,14 +43,19 @@ interface QASectionProps {
   lessonTitle: string;
 }
 
-function stripMarkdown(text: string) {
+export function stripMarkdown(text: string): string {
   return text
+    .replace(/\*\*\*([^*]+)\*\*\*/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/_([^_\n]+)_/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^[-*]\s+/gm, '• ');
+    .replace(/^[-*]\s+/gm, '• ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 }
 
-export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASectionProps) {
+export function QASection({ lessonId }: QASectionProps) {
   const router = useRouter();
   const token = useAuthStore((s) => s.accessToken);
   const currentUser = useAuthStore((s) => s.user);
@@ -60,23 +65,35 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [reactionErrors, setReactionErrors] = useState<Record<string, string>>({});
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [limit, setLimit] = useState(20);
 
+  // deleteError 3초 후 자동 제거
+  useEffect(() => {
+    if (!deleteError) return;
+    const t = setTimeout(() => setDeleteError(null), 3000);
+    return () => clearTimeout(t);
+  }, [deleteError]);
+
   // 질문 목록 조회
-  const { data: response, isLoading: questionsLoading, refetch: refetchQuestions } = useQuery({
+  const { data: response, isLoading: questionsLoading, isFetching: questionsFetching } = useQuery({
     queryKey: ['questions', lessonId, token, limit],
     queryFn: async () => {
       const res = await apiClient.get<any>(`/api/v1/lessons/${lessonId}/questions?limit=${limit}`, { token: token ?? undefined });
       return res;
     },
+    placeholderData: keepPreviousData,
   });
 
   const questions: Question[] = response?.data?.questions || [];
 
-  // 질문 상세 + 답변 조회
+  // 현재 펼쳐진 질문 (canViewContent 확인용)
+  const expandedQ = questions.find((q) => q.id === expandedQuestion);
+  const canViewExpanded = expandedQ?.canViewContent ?? true;
+
+  // 질문 상세 + 답변 조회 — canViewContent=false면 요청 안 함
   const { data: questionDetail, isLoading: detailLoading } = useQuery({
     queryKey: ['question', expandedQuestion, token],
     queryFn: async () => {
@@ -84,7 +101,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
       const res = await apiClient.get<any>(`/api/v1/questions/${expandedQuestion}`, { token: token ?? undefined });
       return res.data;
     },
-    enabled: !!expandedQuestion,
+    enabled: !!expandedQuestion && canViewExpanded,
   });
 
   // 질문 작성
@@ -101,11 +118,11 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
       setContent('');
       setIsPrivate(false);
       setShowCreateForm(false);
-      setError(null);
-      refetchQuestions();
+      setFormError(null);
+      queryClient.invalidateQueries({ queryKey: ['questions', lessonId] });
     },
     onError: (err) => {
-      setError(err instanceof ApiError ? err.message : '질문 작성에 실패했습니다.');
+      setFormError(err instanceof ApiError ? err.message : '질문 작성에 실패했습니다.');
     },
   });
 
@@ -138,7 +155,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
     onSuccess: () => {
       setExpandedQuestion(null);
       setDeleteError(null);
-      refetchQuestions();
+      queryClient.invalidateQueries({ queryKey: ['questions', lessonId] });
     },
     onError: () => {
       setDeleteError('질문 삭제에 실패했습니다.');
@@ -151,7 +168,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
       return apiClient.patch(`/api/v1/questions/${questionId}/privacy`, { isPrivate }, { token: token ?? undefined });
     },
     onSuccess: () => {
-      refetchQuestions();
+      queryClient.invalidateQueries({ queryKey: ['questions', lessonId] });
       queryClient.invalidateQueries({ queryKey: ['question', expandedQuestion] });
     },
   });
@@ -202,15 +219,18 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               maxLength={500}
               className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm focus:outline-none focus:border-cc-accent transition-colors"
             />
-            <textarea
-              placeholder="질문 내용"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              maxLength={5000}
-              rows={4}
-              className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm resize-none focus:outline-none focus:border-cc-accent transition-colors"
-            />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <div className="relative">
+              <textarea
+                placeholder="질문 내용"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                maxLength={5000}
+                rows={4}
+                className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded text-cc-text placeholder-cc-muted text-sm resize-none focus:outline-none focus:border-cc-accent transition-colors"
+              />
+              <span className="absolute bottom-2 right-3 text-xs text-cc-muted opacity-60">{content.length}/5000</span>
+            </div>
+            {formError && <p className="text-red-400 text-sm">{formError}</p>}
             <label className="flex items-center gap-2 text-sm text-cc-muted cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -228,7 +248,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                   setContent('');
                   setIsPrivate(false);
                   setShowCreateForm(false);
-                  setError(null);
+                  setFormError(null);
                 }}
               >
                 취소
@@ -236,7 +256,7 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               <Button
                 variant="primary"
                 loading={createQuestion.isPending}
-                disabled={!title || !content || createQuestion.isPending}
+                disabled={!title.trim() || !content.trim() || createQuestion.isPending}
                 onClick={() => createQuestion.mutate()}
               >
                 질문 작성
@@ -255,7 +275,9 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
         <p className="text-cc-muted text-center py-8">아직 질문이 없습니다. 첫 번째 질문을 작성해보세요!</p>
       ) : (
         <div className="space-y-3">
-          {deleteError && <p className="text-red-400 text-sm text-center">{deleteError}</p>}
+          {deleteError && (
+            <p className="text-red-400 text-sm text-center bg-red-400/10 border border-red-400/20 rounded p-2">{deleteError}</p>
+          )}
           {questions.map((q) => (
             <div key={q.id} className="cc-glass p-4 border border-white/10 hover:border-cc-accent/30 transition-colors">
               <div className="flex items-start justify-between gap-3">
@@ -287,7 +309,10 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                   </span>
                   {currentUser?.id === q.userId && (
                     <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-1 text-xs text-cc-muted cursor-pointer select-none" onClick={(e) => e.stopPropagation()}>
+                      <label
+                        className="flex items-center gap-1 text-xs text-cc-muted cursor-pointer select-none"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <input
                           type="checkbox"
                           checked={q.isPrivate}
@@ -297,7 +322,10 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                         비공개
                       </label>
                       <button
-                        onClick={(e) => { e.stopPropagation(); if (confirm('질문을 삭제하시겠습니까?')) deleteQuestion.mutate(q.id); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm('질문을 삭제하시겠습니까?')) deleteQuestion.mutate(q.id);
+                        }}
                         disabled={deleteQuestion.isPending}
                         className="text-xs text-red-400 hover:text-red-300 transition disabled:opacity-50"
                       >
@@ -312,7 +340,9 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
               {expandedQuestion === q.id && (
                 <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
                   {!q.canViewContent ? (
-                    <p className="text-cc-muted text-sm text-center py-2">🔒 비공개 질문입니다. 강사와 질문자만 열람할 수 있습니다.</p>
+                    <p className="text-cc-muted text-sm text-center py-2">
+                      🔒 비공개 질문입니다. 강사와 질문자만 열람할 수 있습니다.
+                    </p>
                   ) : detailLoading ? (
                     <div className="flex justify-center py-4">
                       <Spinner size="sm" />
@@ -326,19 +356,20 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
                         <p className="text-cc-muted text-sm">아직 답변이 없습니다.</p>
                       ) : (
                         questionDetail.answers?.map((answer: Answer) => (
-                          <div key={answer.id} className={`rounded p-4 border ${
-                            answer.type === 'ai'
-                              ? 'bg-blue-500/10 border-blue-500/20'
-                              : 'bg-green-500/10 border-green-500/20'
-                          }`}>
-                            <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <p className="text-xs font-semibold text-cc-muted flex items-center gap-1">
-                                  {answer.type === 'ai' ? '🤖 AI 답변' : '💬 강사 답변'}
-                                  {answer.isAccepted && <span className="text-green-300">✓ 채택됨</span>}
-                                </p>
-                                <p className="text-sm text-cc-text mt-1">{answer.userName || 'AI 어시스턴트'}</p>
-                              </div>
+                          <div
+                            key={answer.id}
+                            className={`rounded p-4 border ${
+                              answer.type === 'ai'
+                                ? 'bg-blue-500/10 border-blue-500/20'
+                                : 'bg-green-500/10 border-green-500/20'
+                            }`}
+                          >
+                            <div className="mb-2">
+                              <p className="text-xs font-semibold text-cc-muted flex items-center gap-1">
+                                {answer.type === 'ai' ? '🤖 AI 답변' : '💬 강사 답변'}
+                                {answer.isAccepted && <span className="text-green-300">✓ 채택됨</span>}
+                              </p>
+                              <p className="text-sm text-cc-text mt-1">{answer.userName || 'AI 어시스턴트'}</p>
                             </div>
                             <p className="text-cc-text text-sm mb-3 whitespace-pre-wrap">{stripMarkdown(answer.content)}</p>
                             <div className="flex gap-3 text-sm flex-wrap items-center">
@@ -383,9 +414,10 @@ export function QASection({ lessonId, courseId, courseName, lessonTitle }: QASec
           {questions.length >= limit && (
             <button
               onClick={() => setLimit((l) => l + 20)}
-              className="w-full py-3 text-sm text-cc-muted hover:text-cc-text border border-white/10 hover:border-white/20 rounded transition-colors"
+              disabled={questionsFetching}
+              className="w-full py-3 text-sm text-cc-muted hover:text-cc-text border border-white/10 hover:border-white/20 rounded transition-colors disabled:opacity-50"
             >
-              더 보기
+              {questionsFetching ? '불러오는 중...' : '더 보기'}
             </button>
           )}
         </div>

@@ -134,7 +134,7 @@ export default async function qaRoutes(app: FastifyInstance) {
     async (request, reply) => {
       try {
         const { lessonId } = request.params;
-        const limit = Math.min(parseInt(request.query.limit || '10'), 50);
+        const limit = Math.min(parseInt(request.query.limit || '10'), 100);
         const offset = parseInt(request.query.offset || '0');
 
         const lesson = await getLessonWithCourse(lessonId);
@@ -481,7 +481,7 @@ export default async function qaRoutes(app: FastifyInstance) {
     async (request, reply) => {
       try {
         const { lessonId } = request.params;
-        const limit = Math.min(parseInt(request.query.limit || '10'), 50);
+        const limit = Math.min(parseInt(request.query.limit || '10'), 100);
         const offset = parseInt(request.query.offset || '0');
 
         const reviewList = await getReviewsByLesson(lessonId, limit, offset);

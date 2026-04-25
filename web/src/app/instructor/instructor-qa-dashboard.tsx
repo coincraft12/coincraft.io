@@ -19,6 +19,7 @@ interface QuestionSummary {
   answerCount: number;
   hasAIAnswer: boolean;
   hasInstructorAnswer: boolean;
+  isPrivate: boolean;
 }
 
 interface Answer {
@@ -188,7 +189,9 @@ export function InstructorQADashboard() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <p className="text-sm font-medium text-cc-text line-clamp-2 flex-1">{q.title}</p>
+                  <p className="text-sm font-medium text-cc-text line-clamp-2 flex-1">
+                    {q.isPrivate && <span className="mr-1">🔒</span>}{q.title}
+                  </p>
                   <StatusBadge q={q} />
                 </div>
                 <p className="text-xs text-cc-muted truncate">
@@ -246,7 +249,7 @@ export function InstructorQADashboard() {
             {aiAnswer && (
               <div className="rounded-lg p-4 border bg-blue-500/10 border-blue-500/20">
                 <p className="text-xs font-semibold text-blue-300 mb-3">🤖 AI 답변</p>
-                <p className="text-cc-text text-sm whitespace-pre-wrap">{aiAnswer.content.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').replace(/^[-*]\s+/gm, '• ')}</p>
+                <p className="text-cc-text text-sm whitespace-pre-wrap">{aiAnswer.content.replace(/\*\*\*([^*]+)\*\*\*/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*\n]+)\*/g, '$1').replace(/_([^_\n]+)_/g, '$1').replace(/^#{1,6}\s+/gm, '').replace(/^[-*]\s+/gm, '• ').replace(/`([^`]+)`/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')}</p>
                 <div className="flex gap-4 mt-3 pt-3 border-t border-white/10 text-xs text-cc-muted">
                   <span>👍 {aiAnswer.helpfulCount}</span>
                   <span>👎 {aiAnswer.unhelpfulCount}</span>

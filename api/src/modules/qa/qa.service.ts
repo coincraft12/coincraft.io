@@ -330,6 +330,13 @@ export async function addAnswerReaction(
   userId: string,
   reactionType: 'helpful' | 'unhelpful'
 ) {
+  const [answerExists] = await db
+    .select({ id: answers.id })
+    .from(answers)
+    .where(eq(answers.id, answerId))
+    .limit(1);
+  if (!answerExists) throw Object.assign(new Error('답변을 찾을 수 없습니다.'), { code: 'NOT_FOUND' });
+
   const [existing] = await db
     .select({ id: answerReactions.id, reactionType: answerReactions.reactionType })
     .from(answerReactions)
@@ -382,6 +389,7 @@ export async function getInstructorQuestions(instructorId: string, statusFilter:
       id: questions.id,
       title: questions.title,
       status: questions.status,
+      isPrivate: questions.isPrivate,
       viewCount: questions.viewCount,
       createdAt: questions.createdAt,
       lessonTitle: lessons.title,
@@ -399,7 +407,6 @@ export async function getInstructorQuestions(instructorId: string, statusFilter:
     .orderBy(desc(questions.createdAt));
 
   return questionList.filter((q) => {
-    const hasAI = Boolean(q.hasAIAnswer);
     const hasInstructor = Boolean(q.hasInstructorAnswer);
     if (statusFilter === 'unanswered') return !hasInstructor;
     if (statusFilter === 'completed') return hasInstructor;
