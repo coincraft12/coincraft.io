@@ -11,6 +11,9 @@
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
+- fix: 전체 이메일 contact@coincraft.io 통일 (cert/checkout/patents/privacy/refund/shop/terms/footer, ej@ 제외)
+
+---
 - feat: 랜딩 섹션 전면 리뉴얼 — About/Tracks/Academy/Patent/Community 디자인 개편
 - fix: 뒤로가기 시 섹션 미표시 버그 수정 — inline script pageshow + back_forward 감지로 강제 reload
 - fix: Hero 타이핑 애니메이션 bfcache/router cache 복원 후 정상 작동
