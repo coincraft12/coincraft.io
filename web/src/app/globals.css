@@ -346,6 +346,22 @@
   50%, 100% { left: 150%; }
 }
 
+/* Hero entrance animations — CSS so they always replay on mount */
+@keyframes hero-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hero-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.hero-anim-1 { animation: hero-fade-up 0.6s ease-out 0s both; }
+.hero-anim-2 { animation: hero-fade-up 0.7s ease-out 0.15s both; }
+.hero-anim-3 { animation: hero-fade-up 0.7s ease-out 0.3s both; }
+.hero-anim-4 { animation: hero-fade-up 0.7s ease-out 0.45s both; }
+.hero-anim-5 { animation: hero-fade-in 1s ease-out 0.7s both; }
+.hero-anim-6 { animation: hero-fade-in 0.8s ease-out 1.2s both; }
+
 /* Slow spin for profile ring */
 @keyframes spin-slow {
   from { transform: rotate(0deg); }

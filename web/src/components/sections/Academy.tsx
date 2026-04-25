@@ -36,30 +36,56 @@ export default async function Academy() {
   const courses = await fetchFeaturedCourses();
 
   return (
-    <section id="academy" className="cc-section bg-cc-secondary/30 relative overflow-hidden">
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-cc-accent/4 rounded-full blur-3xl pointer-events-none" />
+    <section id="academy" className="relative py-24 md:py-36 overflow-hidden bg-cc-primary">
+      {/* Top divider glow */}
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cc-accent/25 to-transparent pointer-events-none" />
+
+      {/* Ambient center glow */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[400px] bg-cc-accent/4 rounded-full blur-[120px] pointer-events-none" />
+
+      {/* Noise texture */}
+      <div className="absolute inset-0 noise-overlay pointer-events-none opacity-20" />
+
       <div className="cc-container relative z-10">
-        <SectionReveal className="mb-16">
-          <p className="cc-label mb-3">ACADEMY</p>
-          <h2 className="text-4xl font-bold text-cc-text mb-3">
-            Web3 <span className="text-cc-accent">온라인 강좌</span>
-          </h2>
-          <p className="text-cc-muted">실무 중심의 단계별 커리큘럼으로 Web3 전문가로 성장하세요.</p>
+        <SectionReveal className="mb-16 md:mb-20">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <p className="cc-label mb-3">ACADEMY</p>
+              <h2 className="text-4xl md:text-5xl font-black text-cc-text leading-tight">
+                Web3{' '}
+                <span className="text-cc-accent glow-text">온라인 강좌</span>
+              </h2>
+            </div>
+            <p className="text-cc-muted text-sm md:text-base max-w-xs leading-relaxed">
+              실무 중심의 단계별 커리큘럼으로<br className="hidden md:block" />
+              Web3 전문가로 성장하세요.
+            </p>
+          </div>
+          <div className="mt-6 h-px bg-gradient-to-r from-cc-accent/60 via-cc-accent/15 to-transparent" />
         </SectionReveal>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-10">
-          {courses.map((course, i) => (
-            <SectionReveal key={course.id} delay={i * 100}>
-              <CourseCard {...course} showWishlist={false} />
-            </SectionReveal>
-          ))}
-        </div>
+        {courses.length > 0 ? (
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            {courses.map((course, i) => (
+              <SectionReveal key={course.id} delay={i * 100}>
+                <CourseCard {...course} showWishlist={false} />
+              </SectionReveal>
+            ))}
+          </div>
+        ) : (
+          <SectionReveal className="mb-12">
+            <div className="grid md:grid-cols-3 gap-6">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="cc-glass rounded-cc-lg h-72 animate-pulse opacity-40" />
+              ))}
+            </div>
+          </SectionReveal>
+        )}
 
         <SectionReveal delay={300}>
-          <div className="flex flex-wrap gap-4">
-            <a href="/courses" className="cc-btn cc-btn-primary btn-shimmer">
-              전체 강의 보기
-            </a>
+          <div className="flex flex-wrap items-center gap-4">
+            <a href="/courses" className="cc-btn cc-btn-primary btn-shimmer">전체 강의 보기</a>
+            <span className="text-cc-muted text-sm">7+ 커리큘럼 · Basic부터 Expert까지</span>
           </div>
         </SectionReveal>
       </div>

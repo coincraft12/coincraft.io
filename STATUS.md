@@ -11,14 +11,12 @@
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
-- feat: 랜딩페이지 풀 비주얼 리뉴얼 — 파티클/오로라/타이핑/스크롤 애니메이션 (framer-motion)
-- feat: 모바일 최적화 — fluid typography, 헤더 풀스크린 메뉴, overflow 방지, 터치 타깃
-- feat: /about 풀 리빌드 — values bento, 5대 트랙, cert 레벨, founder 카드
-- feat: /ej 모바일/데스크탑 완전 다른 레이아웃 (sticky 사이드바 vs 링크인바이오)
-- feat: /my 고도화 + 관리자 Anthropic 사용 현황 + users bio/interests/social_links
-- deploy: migration 0019 (bio/interests/social_links) 운영 DB 적용 완료
-- deploy: production 브랜치 push → GitHub Actions 운영 배포 완료 ✅
-- fix: 모바일 헤더 로고 가운데 정렬 (absolute center on mobile, static on desktop)
+- feat: 랜딩 섹션 전면 리뉴얼 — About/Tracks/Academy/Patent/Community 디자인 개편
+- fix: 뒤로가기 시 섹션 미표시 버그 수정 — inline script pageshow + back_forward 감지로 강제 reload
+- fix: Hero 타이핑 애니메이션 bfcache/router cache 복원 후 정상 작동
+- fix: Patent 섹션 motion 엘리먼트 opacity 초기값 제거 (뒤로가기 시 invisible 문제)
+- feat: Tracks 그리드 grid-cols-6 레이아웃 (상단 2개 col-span-3, 하단 3개 col-span-2)
+- fix: SectionReveal passthrough 처리 (opacity 초기화 제거)
 
 ## DB 데이터 픽스 규칙 (영구)
 

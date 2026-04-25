@@ -29,6 +29,19 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
+      <head>
+        {/* Bypass bfcache: runs outside React so cleanup can't remove it */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('pageshow', function() {
+            var nav = performance.getEntriesByType('navigation')[0];
+            if (nav && nav.type === 'back_forward') {
+              var u = new URL(location.href);
+              u.searchParams.set('_r', Date.now());
+              location.replace(u.toString());
+            }
+          });
+        `}} />
+      </head>
       <body>
         <AppProviders>{children}</AppProviders>
       </body>
