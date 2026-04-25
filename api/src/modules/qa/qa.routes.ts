@@ -141,7 +141,7 @@ export default async function qaRoutes(app: FastifyInstance) {
         const questionList = await getQuestionsByLesson(
           lessonId, limit, offset,
           request.user?.id,
-          lesson?.instructorId
+          lesson?.instructorId ?? undefined
         );
 
         reply.send(
@@ -392,7 +392,7 @@ export default async function qaRoutes(app: FastifyInstance) {
 
         reply.code(201).send(
           created(
-            { reactionId: reaction.id },
+            reaction,
             '평가가 기록되었습니다.'
           )
         );

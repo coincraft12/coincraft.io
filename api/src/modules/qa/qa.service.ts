@@ -43,12 +43,14 @@ export interface QuestionRow {
   title: string;
   content: string;
   status: string;
+  isPrivate: boolean;
   viewCount: number;
   createdAt: Date;
   updatedAt: Date;
   userName: string | null;
   userAvatar: string | null;
   answerCount?: number;
+  canViewContent?: boolean;
 }
 
 export interface AnswerRow {
