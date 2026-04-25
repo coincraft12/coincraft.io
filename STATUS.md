@@ -11,11 +11,11 @@
 | 배포 방식 | GitHub Actions (main→staging, production→운영) |
 
 ## 마지막 작업 (2026-04-25)
-- fix: 비공개 질문 가시성 — filter 제거 → canViewContent 플래그 방식으로 변경 (질문자 본인도 목록 표시)
-- feat: Q&A 강사 대시보드 필터 개편 — 'AI만' 탭 제거, '미답변' = 강사 답변 없는 것으로 변경
-- fix: 강의노트 100개 재생성 — Claude Haiku + max_tokens 4096, 잘린 노트 완전 해결 (local + staging 완료)
-- fix: 마크다운 표 깨짐 — remark-gfm 플러그인 추가 + cc-markdown table CSS 추가
-- feat: Q&A 질문 삭제·비공개 토글·반응 토글 — 질문자 본인 전용 컨트롤 추가
+- feat: 관리자 대시보드 Anthropic API 사용 현황 페이지 추가 (토큰/비용/일별차트/모델별)
+- feat: /my 마이페이지 고도화 — 프로필 편집(이름/소개/관심분야/SNS), 아바타 업로드, 학습통계, 연동계정 표시
+- feat: users 테이블 bio/interests/social_links 컬럼 추가 (migration 0019)
+- feat: PATCH /api/v1/auth/me/profile, GET /api/v1/auth/me/stats 엔드포인트 추가
+- fix: 비공개 질문 가시성 — canViewContent 플래그 방식, Q&A 전반 버그 수정 (10패스)
 
 ## DB 데이터 픽스 규칙 (영구)
 
@@ -27,6 +27,12 @@
 - DRY RUN: `DRY_RUN=true DATABASE_URL=... npx ts-node ...` (실제 변경 없이 쿼리만 출력)
 - **환경별 별도 실행 필수** — 로컬 → 스테이징 → 운영 순서로 각각 실행
 - 실행 완료 후 STATUS.md "마지막 작업"에 적용 환경(local/staging/production) 명시
+
+## 스테이징 배포 시 필수 수동 작업
+- migration 0019 (Drizzle 저널 밖 — 직접 실행 필요):
+  ```
+  ssh custody-staging "docker exec custody-postgres psql -U coincraft -d coincraft_staging -c 'ALTER TABLE users ADD COLUMN IF NOT EXISTS bio text; ALTER TABLE users ADD COLUMN IF NOT EXISTS interests text[]; ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links jsonb;'"
+  ```
 
 ## 다음 작업
 - [x] 스테이징 GitHub Actions 정상 동작 확인 ✅ (2026-04-24)

@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, boolean, timestamp, text, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, boolean, timestamp, text, index, jsonb } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -14,6 +14,9 @@ export const users = pgTable('users', {
   walletNonce: varchar('wallet_nonce', { length: 100 }),
   phone: varchar('phone', { length: 20 }),
   expoPushToken: text('expo_push_token'),
+  bio: text('bio'),
+  interests: text('interests').array(),
+  socialLinks: jsonb('social_links').$type<{ github?: string; twitter?: string; website?: string }>(),
   emailVerified: boolean('email_verified').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

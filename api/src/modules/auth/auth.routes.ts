@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { eq, and, sql } from 'drizzle-orm';
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, resendVerificationSchema } from './auth.schema';
 import * as authService from './auth.service';
 import { authenticate } from '../../middleware/authenticate';
@@ -7,6 +8,8 @@ import { ok, created } from '../../utils/response';
 import { env } from '../../config/env';
 import { generateId } from '../../utils/uuid';
 import { redis } from '../../lib/redis';
+import { db } from '../../db';
+import { enrollments, lessonProgress } from '../../db/schema';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   // POST /api/v1/auth/register
@@ -69,6 +72,27 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.get('/me', { preHandler: [authenticate] }, async (request, reply) => {
     const user = await authService.getMe(request.user!.id);
     return reply.send(ok(user));
+  });
+
+  // PATCH /api/v1/auth/me/profile
+  app.patch('/me/profile', { preHandler: [authenticate] }, async (request, reply) => {
+    const body = request.body as authService.UpdateProfileDto;
+    const user = await authService.updateProfile(request.user!.id, body);
+    return reply.send(ok(user, '프로필이 업데이트되었습니다.'));
+  });
+
+  // GET /api/v1/auth/me/stats
+  app.get('/me/stats', { preHandler: [authenticate] }, async (request, reply) => {
+    const userId = request.user!.id;
+    const [{ enrolledCount }] = await db
+      .select({ enrolledCount: sql<number>`COUNT(*)` })
+      .from(enrollments)
+      .where(and(eq(enrollments.userId, userId), eq(enrollments.status, 'active')));
+    const [{ completedLessons }] = await db
+      .select({ completedLessons: sql<number>`COUNT(*)` })
+      .from(lessonProgress)
+      .where(and(eq(lessonProgress.userId, userId), eq(lessonProgress.isCompleted, true)));
+    return reply.send(ok({ enrolledCount: Number(enrolledCount), completedLessons: Number(completedLessons) }));
   });
 
   // POST /api/v1/auth/forgot-password

@@ -28,6 +28,13 @@ export interface SafeUser {
   role: string;
   emailVerified: boolean;
   createdAt: Date;
+  bio: string | null;
+  interests: string[] | null;
+  socialLinks: { github?: string; twitter?: string; website?: string } | null;
+  googleId: string | null;
+  kakaoId: string | null;
+  naverId: string | null;
+  walletAddress: string | null;
 }
 
 // ─── Redis key helpers ────────────────────────────────────────────────────────
@@ -48,6 +55,13 @@ function toSafeUser(user: typeof users.$inferSelect): SafeUser {
     role: user.role,
     emailVerified: user.emailVerified,
     createdAt: user.createdAt,
+    bio: user.bio ?? null,
+    interests: user.interests ?? null,
+    socialLinks: (user.socialLinks as SafeUser['socialLinks']) ?? null,
+    googleId: user.googleId ?? null,
+    kakaoId: user.kakaoId ?? null,
+    naverId: user.naverId ?? null,
+    walletAddress: user.walletAddress ?? null,
   };
 }
 
@@ -332,4 +346,24 @@ export async function verifyWeb3Signature(
   const tokens = issueTokens(safeUser);
   await storeRefreshToken(tokens.refreshToken, user.id);
   return { ...tokens, user: safeUser };
+}
+
+export interface UpdateProfileDto {
+  name?: string;
+  bio?: string | null;
+  interests?: string[] | null;
+  socialLinks?: { github?: string; twitter?: string; website?: string } | null;
+  avatarUrl?: string | null;
+}
+
+export async function updateProfile(userId: string, dto: UpdateProfileDto): Promise<SafeUser> {
+  const updates: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
+  if (dto.name !== undefined) updates.name = dto.name.trim().slice(0, 100) || undefined;
+  if (dto.bio !== undefined) updates.bio = dto.bio ? dto.bio.slice(0, 500) : null;
+  if (dto.interests !== undefined) updates.interests = dto.interests;
+  if (dto.socialLinks !== undefined) updates.socialLinks = dto.socialLinks as any;
+  if (dto.avatarUrl !== undefined) updates.avatarUrl = dto.avatarUrl;
+
+  await db.update(users).set(updates).where(eq(users.id, userId));
+  return getMe(userId);
 }

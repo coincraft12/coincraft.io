@@ -7,6 +7,13 @@ interface User {
   avatarUrl: string | null;
   role: 'student' | 'instructor' | 'admin';
   emailVerified: boolean;
+  bio?: string | null;
+  interests?: string[] | null;
+  socialLinks?: { github?: string; twitter?: string; website?: string } | null;
+  googleId?: string | null;
+  kakaoId?: string | null;
+  naverId?: string | null;
+  walletAddress?: string | null;
 }
 
 interface AuthState {
