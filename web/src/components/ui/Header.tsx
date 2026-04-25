@@ -89,9 +89,9 @@ export default function Header() {
   return (
     <>
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#1a1a2e]/95 backdrop-blur-md shadow-lg shadow-black/20 border-b border-white/8' : 'bg-[#1a1a2e] border-b border-white/10'}`}>
-        <div className="max-w-cc mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          {/* Logo */}
-          <a href="/" className="flex items-center h-10 flex-shrink-0" onClick={() => setMobileOpen(false)}>
+        <div className="max-w-cc mx-auto px-4 sm:px-6 flex items-center justify-between h-16 relative">
+          {/* Logo — centered on mobile via absolute, left-aligned on desktop via static */}
+          <a href="/" className="flex items-center h-10 flex-shrink-0 absolute left-1/2 -translate-x-1/2 md:static md:left-auto md:translate-x-0" onClick={() => setMobileOpen(false)}>
             <Image src="/logo-header-v4.png" alt="COINCRAFT" width={160} height={40} className="h-9 w-auto object-contain" />
           </a>
 

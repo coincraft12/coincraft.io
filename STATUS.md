@@ -16,6 +16,9 @@
 - feat: /about 풀 리빌드 — values bento, 5대 트랙, cert 레벨, founder 카드
 - feat: /ej 모바일/데스크탑 완전 다른 레이아웃 (sticky 사이드바 vs 링크인바이오)
 - feat: /my 고도화 + 관리자 Anthropic 사용 현황 + users bio/interests/social_links
+- deploy: migration 0019 (bio/interests/social_links) 운영 DB 적용 완료
+- deploy: production 브랜치 push → GitHub Actions 운영 배포 완료 ✅
+- fix: 모바일 헤더 로고 가운데 정렬 (absolute center on mobile, static on desktop)
 
 ## DB 데이터 픽스 규칙 (영구)
 
