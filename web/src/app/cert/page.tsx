@@ -89,7 +89,8 @@ const INFO_LINKS = [
 
 export default async function CertPage() {
   const capacity = await fetchExamCapacity();
-  const isFull = capacity?.maxCapacity != null && capacity.registeredCount >= capacity.maxCapacity;
+  const isClosed = true; // 접수 기간 종료
+  const isFull = isClosed || (capacity?.maxCapacity != null && capacity.registeredCount >= capacity.maxCapacity);
   const remaining = capacity?.maxCapacity != null ? capacity.maxCapacity - capacity.registeredCount : null;
   const regPeriod = formatRegPeriod(capacity?.registrationStart ?? null, capacity?.registrationEnd ?? null)
     || '2026년 4월 20일(월) ~ 4월 26일(일)';
