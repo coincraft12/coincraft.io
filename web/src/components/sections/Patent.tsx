@@ -6,9 +6,9 @@ const patents = [
   { num: '01', label: '복구 정보 비가역적 소멸 보안 매체', done: true, slug: 'secure-media', year: '2024' },
   { num: '02', label: '단방향 상태머신 기반 복구 시스템', done: true, slug: 'state-machine-recovery', year: '2024' },
   { num: '03', label: '다중키 오프라인 복구 시스템', done: true, slug: 'multi-key-recovery', year: '2025' },
-  { num: '04', label: '온체인 TX 기반 역량 인증', done: false, slug: null, year: '출원 중' },
-  { num: '05', label: '멀티테넌트·멀티체인 서명자 동적 라우팅', done: false, slug: null, year: '가출원 완료' },
-  { num: '06', label: '이중레이어 출금·TX 논스 canonical 처리', done: false, slug: null, year: '가출원 완료' },
+  { num: '04', label: '온체인 TX 기반 역량 인증', done: false, slug: null, year: '가출원' },
+  { num: '05', label: '멀티테넌트·멀티체인 서명자 동적 라우팅', done: false, slug: null, year: '가출원' },
+  { num: '06', label: '이중레이어 출금·TX 논스 canonical 처리', done: false, slug: null, year: '가출원' },
 ];
 
 function HexShield() {
@@ -41,7 +41,7 @@ function HexShield() {
       </div>
       <div className="absolute bottom-6 left-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-cc-accent/25">
         <span className="w-1.5 h-1.5 rounded-full bg-cc-accent animate-pulse" />
-        <span className="text-cc-accent text-[11px] font-bold">2건 가출원 완료</span>
+        <span className="text-cc-accent text-[11px] font-bold">3건 가출원 진행 중</span>
       </div>
     </div>
   );
@@ -69,8 +69,7 @@ export default function Patent() {
             <p className="text-cc-muted leading-relaxed mb-8 text-sm md:text-base">
               COINCRAFT는 설계한 기술을 특허로 보호합니다.
               보안 매체·복구 시스템·다중키 복구 3건 출원 완료,
-              서명자 라우팅·TX 논스 처리 2건 가출원 완료,
-              온체인 역량 인증 특허 출원 진행 중입니다.
+              역량 인증·서명자 라우팅·TX 논스 처리 3건 가출원 진행 중입니다.
             </p>
             <div className="space-y-2.5">
               {patents.map((p) => (
